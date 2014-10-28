@@ -54,6 +54,9 @@ import org.apache.commons.vfs2.provider.LocalFileProvider;
 import org.apache.commons.vfs2.provider.TemporaryFileStore;
 import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponent;
+import org.apache.commons.vfs2.provider.sftp.SftpConstants;
+import org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
+import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 
 /**
  * A default file system manager implementation.
@@ -661,7 +664,7 @@ public class DefaultFileSystemManager implements FileSystemManager
      * @throws FileSystemException if an error occurs accessing the file.
      */
     public FileObject resolveFile(final FileObject baseFile, final String uri,
-            final FileSystemOptions fileSystemOptions)
+            FileSystemOptions fileSystemOptions)
             throws FileSystemException
     {
         final FileObject realBaseFile;
@@ -685,10 +688,20 @@ public class DefaultFileSystemManager implements FileSystemManager
 
         // Extract the scheme
         final String scheme = UriParser.extractScheme(uri);
+        final Map<String,String> queryParam = UriParser.extractQueryParams(uri);
         if (scheme != null)
         {
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
+            //In the case of SFTP set the path from root if the param is presented in URL
+            if (provider instanceof SftpFileProvider
+                    && "true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
+                if(fileSystemOptions == null){
+                    fileSystemOptions = new FileSystemOptions();
+                }
+                ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
+                        .setUserDirIsRoot(fileSystemOptions, false);
+            }         
             if (provider != null)
             {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
