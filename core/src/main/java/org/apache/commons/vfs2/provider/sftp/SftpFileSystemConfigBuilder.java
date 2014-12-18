@@ -157,10 +157,16 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder
      * @param opts The FileSystem options.
      * @param identities An array of identity Files.
      * @throws FileSystemException if an error occurs.
+     * @deprecated see #setIdentityInfo
      */
+    @Deprecated
     public void setIdentities(FileSystemOptions opts, File[] identities) throws FileSystemException
     {
         setParam(opts, "identities", identities);
+    }
+
+    public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
+        setParam(opts, "identitypassphrase", identityPassPhrase);
     }
 
     /**
@@ -191,10 +197,16 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder
      * @param opts The FileSystem options.
      * @return the array of identity Files.
      * @see #setIdentities
+     * @deprecated see
      */
+    @Deprecated
     public File[] getIdentities(FileSystemOptions opts)
     {
         return (File[]) getParam(opts, "identities");
+    }
+
+    public String getIdentityPassPhrase(FileSystemOptions opts) {
+        return (String) this.getParam(opts, "identitypassphrase");
     }
 
     /**
