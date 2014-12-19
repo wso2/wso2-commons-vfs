@@ -163,6 +163,10 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder
         setParam(opts, "identities", identities);
     }
 
+    public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
+        setParam(opts, "identitypassphrase", identityPassPhrase);
+    }
+
     /**
      * configure the compression to use.<br>
      * e.g. pass "zlib,none" to enable the compression.<br>
@@ -195,6 +199,10 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder
     public File[] getIdentities(FileSystemOptions opts)
     {
         return (File[]) getParam(opts, "identities");
+    }
+
+    public String getIdentityPassPhrase(FileSystemOptions opts) {
+        return (String) this.getParam(opts, "identitypassphrase");
     }
 
     /**

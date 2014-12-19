@@ -63,6 +63,7 @@ public final class SftpClientFactory
         // new style - user passed
         File knownHostsFile = SftpFileSystemConfigBuilder.getInstance().getKnownHosts(fileSystemOptions);
         File[] identities = SftpFileSystemConfigBuilder.getInstance().getIdentities(fileSystemOptions);
+        String passPhrase = SftpFileSystemConfigBuilder.getInstance().getIdentityPassPhrase(fileSystemOptions);
 
         if (knownHostsFile != null)
         {
@@ -102,7 +103,11 @@ public final class SftpClientFactory
                 final File privateKeyFile = identities[iterIdentities];
                 try
                 {
-                    jsch.addIdentity(privateKeyFile.getAbsolutePath());
+                    if (passPhrase != null) {
+                        jsch.addIdentity(privateKeyFile.getAbsolutePath(), passPhrase);
+                    } else {
+                        jsch.addIdentity(privateKeyFile.getAbsolutePath());
+                    }
                 }
                 catch (final JSchException e)
                 {
@@ -123,7 +128,11 @@ public final class SftpClientFactory
             {
                 try
                 {
-                    jsch.addIdentity(privateKeyFile.getAbsolutePath());
+                    if (passPhrase != null) {
+                        jsch.addIdentity(privateKeyFile.getAbsolutePath(), passPhrase);
+                    } else {
+                        jsch.addIdentity(privateKeyFile.getAbsolutePath());
+                    }
                 }
                 catch (final JSchException e)
                 {
