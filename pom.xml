@@ -20,11 +20,10 @@
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <parent>
-    <groupId>org.apache.commons</groupId>
-    <artifactId>commons-parent</artifactId>
-    <version>17</version>
+      <groupId>org.wso2</groupId>
+      <artifactId>wso2</artifactId>
+      <version>1</version>
   </parent>
-
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.commons</groupId>
   <artifactId>commons-vfs2-project</artifactId>
@@ -47,9 +46,10 @@
   </issueManagement>
 
   <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/commons/proper/vfs/trunk</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/commons/proper/vfs/trunk</developerConnection>
-    <url>http://svn.apache.org/viewvc/commons/proper/vfs/trunk/</url>
+    <connection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</connection>
+    <developerConnection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</developerConnection>
+    <url>https://github.com/wso2/wso2-commons-vfs.git</url>
+    <tag>HEAD</tag>
   </scm>
 
   <developers>
@@ -123,6 +123,7 @@
     <maven.compile.target>1.5</maven.compile.target>
     <commons.release.name>commons-vfs-${commons.release.version}</commons.release.name>
     <vfs.parent.dir>${basedir}</vfs.parent.dir>
+    <project.scm.id>wso2-scm-server</project.scm.id>
   </properties>
 
   <build>
@@ -202,6 +203,18 @@
             <commons.release.name>commons-${commons.componentid}-${commons.release.version}</commons.release.name>
         </configuration>
       </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <configuration>
+                <preparationGoals>clean install</preparationGoals>
+                <autoVersionSubmodules>true</autoVersionSubmodules>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-deploy-plugin</artifactId>
+        </plugin>
     </plugins>
   </build>
 
