@@ -49,6 +49,7 @@
     <connection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</connection>
     <developerConnection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</developerConnection>
     <url>https://github.com/wso2/wso2-commons-vfs.git</url>
+    <tag>HEAD</tag>
   </scm>
 
   <developers>
