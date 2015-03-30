@@ -101,7 +101,7 @@ public class CustomRamProviderTest extends TestCase
             os.close();
             fail("It shouldn't save such a big file");
         }
-        catch (FileSystemException e)
+        catch (Exception e)
         {
             // exception awaited
         }
