@@ -136,6 +136,7 @@
     </extensions>
     <pluginManagement>
       <plugins>
+
 	<plugin>
             <artifactId>maven-eclipse-plugin</artifactId>
             <version>2.6</version>
