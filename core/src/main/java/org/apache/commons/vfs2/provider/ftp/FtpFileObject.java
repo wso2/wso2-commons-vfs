@@ -272,18 +272,25 @@ public class FtpFileObject extends AbstractFileObject
     @Override
     protected void onChildrenChanged(FileName child, FileType newType)
     {
-        if (children != null && newType.equals(FileType.IMAGINARY))
-        {
-            try
-            {
-                children.remove(UriParser.decode(child.getBaseName()));
+        if (children != null && newType.equals(FileType.IMAGINARY)) {
+            if (!(children.isEmpty())) {
+                try {
+                    if (children.containsKey(UriParser.decode(child.getBaseName()))) {
+                        children.remove(UriParser.decode(child.getBaseName()));
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Map does not contain the " + child.getBaseName() + "in the map");
+                        }
+                    }
+                } catch (FileSystemException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("EMPTY_FTP_FILE_MAP returned empty collection.");
+                }
             }
-            catch (FileSystemException e)
-            {
-                throw new RuntimeException(e.getMessage());
-            }
-        }
-        else
+        } else
         {
             // if child was added we have to rescan the children
             // TODO - get rid of this
@@ -373,14 +380,16 @@ public class FtpFileObject extends AbstractFileObject
     @Override
     protected FileObject[] doListChildrenResolved() throws Exception
     {
-        synchronized (getFileSystem())
-        {
-            if (this.fileInfo != null && this.fileInfo.isSymbolicLink())
-            {
-                return getLinkDestination().getChildren();
+        synchronized (getFileSystem()) {
+            if (this.fileInfo != null && this.fileInfo.isSymbolicLink()) {
+                final FileObject linkDest = getLinkDestination();
+                // VFS-437: Try to avoid a recursion loop.
+                if (this.isCircular(linkDest)) {
+                    return null;
+                }
+                return linkDest.getChildren();
             }
         }
-
         return null;
     }
 
@@ -769,4 +778,18 @@ public class FtpFileObject extends AbstractFileObject
             }
         }
     }
+
+    /**
+     * +     * This is an over simplistic implementation for VFS-437.
+     * +
+     */
+    private boolean isCircular(final FileObject linkDest) throws FileSystemException {
+        return linkDest.getName().getPathDecoded().equals(this.getName().getPathDecoded());
+    }
+
+    private long getTimestamp() {
+        final Calendar timestamp = this.fileInfo.getTimestamp();
+        return timestamp == null ? 0L : timestamp.getTime().getTime();
+    }
+
 }

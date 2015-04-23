@@ -16,6 +16,9 @@
  */
 package org.apache.commons.vfs2.provider;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileType;
@@ -540,4 +543,31 @@ public final class UriParser
 
         return null;
     }
+
+    /**
+     * Extract the query String from the URI.
+     * 
+     * @param uri
+     *            StringBuilder containing the URI.
+     * @return The query string, if any. null otherwise.
+     */
+    public static Map<String, String> extractQueryParams(final String uri)
+            throws FileSystemException {
+        Map<String, String> sQueryParams = new HashMap<String, String>();
+        if (uri != null) {
+            String[] urlParts = uri.split("\\?");
+            if (urlParts.length > 1) {
+                String query = urlParts[1];
+                query = decode(query);
+                for (String param : query.split("&")) {
+                    String[] pair = param.split("=");
+                    if (pair.length > 1) {
+                        sQueryParams.put(pair[0], pair[1]);
+                    }
+                }
+            }
+        }
+        return sQueryParams;
+    }
+    
 }
