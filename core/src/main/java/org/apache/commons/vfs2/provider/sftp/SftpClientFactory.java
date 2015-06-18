@@ -24,7 +24,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.UserAuthenticationData;
+import org.apache.commons.vfs2.UserAuthenticator;
 import org.apache.commons.vfs2.util.Os;
+import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 /**
  * Create a JSch Session instance.
@@ -140,7 +143,8 @@ public final class SftpClientFactory
                 }
             }
         }
-
+        UserAuthenticationData proxyAuthData = null;
+        
         Session session;
         try
         {
@@ -196,6 +200,23 @@ public final class SftpClientFactory
                 SftpFileSystemConfigBuilder.ProxyType proxyType =
                     SftpFileSystemConfigBuilder.getInstance().getProxyType(fileSystemOptions);
                 Proxy proxy = null;
+				UserAuthenticator proxyAuth =
+				                              SftpFileSystemConfigBuilder.getInstance()
+				                                                         .getProxyUserAuthenticator(fileSystemOptions);
+				char[] proxyUsername = null, proxyPassword = null;
+				if (proxyAuth != null) {
+					proxyAuthData =
+					                UserAuthenticatorUtils.authenticate(proxyAuth,
+					                                                    SftpFileProvider.AUTHENTICATOR_TYPES);
+					proxyUsername =
+					                UserAuthenticatorUtils.getData(proxyAuthData,
+					                                               UserAuthenticationData.USERNAME,
+					                                               null);
+					proxyPassword =
+					                UserAuthenticatorUtils.getData(proxyAuthData,
+					                                               UserAuthenticationData.PASSWORD,
+					                                               null);
+				}               
                 if (SftpFileSystemConfigBuilder.PROXY_HTTP.equals(proxyType))
                 {
                     if (proxyPort != 0)
@@ -205,8 +226,12 @@ public final class SftpClientFactory
                     else
                     {
                         proxy = new ProxyHTTP(proxyHost);
-                    }
-                }
+                    }                    
+					if (proxyUsername != null && proxyPassword != null) {
+						((ProxyHTTP) proxy).setUserPasswd(new String(proxyUsername),
+						                                  new String(proxyPassword));
+					}
+				}
                 else if (SftpFileSystemConfigBuilder.PROXY_SOCKS5.equals(proxyType))
                 {
                     if (proxyPort != 0)
@@ -217,6 +242,11 @@ public final class SftpClientFactory
                     {
                         proxy = new ProxySOCKS5(proxyHost);
                     }
+                    
+					if (proxyUsername != null && proxyPassword != null) {
+						((ProxySOCKS5) proxy).setUserPasswd(new String(proxyUsername),
+						                                    new String(proxyPassword));
+					}                    
                 }
 
                 if (proxy != null)
@@ -236,8 +266,9 @@ public final class SftpClientFactory
         catch (final Exception exc)
         {
             throw new FileSystemException("vfs.provider.sftp/connect.error", new Object[]{hostname}, exc);
-        }
-
+        } finally {
+			UserAuthenticatorUtils.cleanup(proxyAuthData);
+		}
 
         return session;
     }

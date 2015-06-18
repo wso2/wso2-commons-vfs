@@ -43,6 +43,7 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.FilesCache;
 import org.apache.commons.vfs2.NameScope;
 import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.auth.StaticUserAuthenticator;
 import org.apache.commons.vfs2.cache.SoftRefFilesCache;
 import org.apache.commons.vfs2.operations.FileOperationProvider;
 import org.apache.commons.vfs2.provider.AbstractFileName;
@@ -690,18 +691,48 @@ public class DefaultFileSystemManager implements FileSystemManager
         final String scheme = UriParser.extractScheme(uri);
         final Map<String,String> queryParam = UriParser.extractQueryParams(uri);
         if (scheme != null)
-        {
+        {        	 
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
             //In the case of SFTP set the path from root if the param is presented in URL
-            if (provider instanceof SftpFileProvider
-                    && "true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
+            if (provider instanceof SftpFileProvider) {
                 if(fileSystemOptions == null){
                     fileSystemOptions = new FileSystemOptions();
                 }
-                ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
-                        .setUserDirIsRoot(fileSystemOptions, false);
-            }         
+				if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
+					((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder())).setUserDirIsRoot(fileSystemOptions,
+					                                                                                                    false);
+				}
+
+				String proxyHost = queryParam.get(SftpConstants.PROXY_SERVER);
+				if (proxyHost != null && !proxyHost.equals("")) {
+					String proxyPortStr = queryParam.get(SftpConstants.PROXY_PORT);
+					int proxyPort;
+					try {
+						proxyPort = Integer.valueOf(proxyPortStr);
+					} catch (NumberFormatException e) {
+						proxyPort = 8080;
+					}
+					String proxyUser = queryParam.get(SftpConstants.PROXY_USERNAME);
+					String proxyPassword = queryParam.get(SftpConstants.PROXY_PASSWORD);
+
+					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
+					                                                                           SftpFileSystemConfigBuilder.PROXY_HTTP);
+					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyHost(fileSystemOptions,
+					                                                                           proxyHost);
+					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyPort(fileSystemOptions,
+					                                                                           proxyPort);
+					if (proxyUser != null && !proxyUser.isEmpty()) {
+						((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyUserAuthenticator(fileSystemOptions,
+						                                                                                        new StaticUserAuthenticator(
+						                                                                                                                    null,
+						                                                                                                                    proxyUser,
+						                                                                                                                    (proxyPassword != null)
+						                                                                                                                                           ? proxyPassword
+						                                                                                                                                           : ""));
+					}
+				}
+			}     
             if (provider != null)
             {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
@@ -718,6 +749,7 @@ public class DefaultFileSystemManager implements FileSystemManager
 
         if (scheme != null)
         {
+        	
             // An unknown scheme - hand it to the default provider
             if (defaultProvider == null)
             {
