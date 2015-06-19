@@ -19,5 +19,10 @@ package org.apache.commons.vfs2.provider.sftp;
 public interface SftpConstants {
 
     public String SFTP_PATH_FROM_ROOT= "sftpPathFromRoot";
-    
+    public String PROXY_SERVER = "proxyServer";
+    public String PROXY_PORT = "proxyPort";
+    public String PROXY_USERNAME = "proxyUsername";
+    public String PROXY_PASSWORD = "proxyPassword";
+    public String TIMEOUT = "timeout";
+    public String RETRY_COUNT = "retryCount";
 }

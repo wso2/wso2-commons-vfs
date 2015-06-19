@@ -23,6 +23,7 @@ import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.UserAuthenticator;
 
 import com.jcraft.jsch.UserInfo;
 
@@ -376,4 +377,13 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder
     {
         return (String) getParam(opts, "PreferredAuthentications");
     }
+    
+	public void setProxyUserAuthenticator(FileSystemOptions opts,
+	                                      UserAuthenticator proxyUserAuthenticator) {
+		setParam(opts, "proxyUserAuthenticator", proxyUserAuthenticator);
+	}
+
+	public UserAuthenticator getProxyUserAuthenticator(FileSystemOptions opts) {
+		return (UserAuthenticator) getParam(opts, "proxyUserAuthenticator");
+	}  
 }
