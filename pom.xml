@@ -38,6 +38,7 @@
   <modules>
     <module>core</module>
     <module>sandbox</module>
+    <module>orbit</module>
   </modules>
 
   <issueManagement>
