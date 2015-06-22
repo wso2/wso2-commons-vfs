@@ -19,6 +19,8 @@ package org.apache.commons.vfs2.provider.ftp;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
@@ -39,6 +41,8 @@ public final class FtpClientFactory
 {
     private static final int BUFSZ = 40;
 
+    private static final Log log = LogFactory.getLog(FtpClientFactory.class);
+    
     private FtpClientFactory()
     {
     }
@@ -120,6 +124,7 @@ public final class FtpClientFactory
 				try {
 					iProxyPort = Integer.parseInt(proxyPort);
 				} catch (NumberFormatException nfe) {
+					log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
 					iProxyPort = 8080;
 				}
 				if (proxyUser != null && proxyPassword != null) {
