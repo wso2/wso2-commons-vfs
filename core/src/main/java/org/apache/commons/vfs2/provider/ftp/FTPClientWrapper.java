@@ -47,14 +47,21 @@ class FTPClientWrapper implements FtpClient
     private static final Log log = LogFactory.getLog(FTPClientWrapper.class);
     private final GenericFileName root;
     private final FileSystemOptions fileSystemOptions;
+    private Integer defaultTimeout = null;
 
     private FTPClient ftpClient;
 
-    FTPClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws FileSystemException
-    {
+    FTPClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions,
+                     Integer defaultTimeout) throws FileSystemException {
         this.root = root;
         this.fileSystemOptions = fileSystemOptions;
+        this.defaultTimeout = defaultTimeout;
         getFtpClient(); // fail-fast
+    }
+
+    FTPClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        this(root, fileSystemOptions, null);
     }
 
     public GenericFileName getRoot()
@@ -90,8 +97,9 @@ class FTPClientWrapper implements FtpClient
 				                                         UserAuthenticatorUtils.getData(authData,
 				                                                                        UserAuthenticationData.PASSWORD,
 				                                                                        UserAuthenticatorUtils.toChar(rootName.getPassword())),
-				                                         rootName.getPath(), getFileSystemOptions());
-			} else {
+                                                         rootName.getPath(), getFileSystemOptions(),
+                                                         defaultTimeout);
+            } else {
 				return FtpClientFactory.createConnection(rootName.getHostName(),
 				                                         rootName.getPort(),
 				                                         UserAuthenticatorUtils.getData(authData,
@@ -107,8 +115,9 @@ class FTPClientWrapper implements FtpClient
 				                                         mParams.get(SftpConstants.PROXY_USERNAME),
 				                                         mParams.get(SftpConstants.PROXY_PASSWORD),
 				                                         mParams.get(SftpConstants.TIMEOUT),
-				                                         mParams.get(SftpConstants.RETRY_COUNT));
-			}          
+                                                         mParams.get(SftpConstants.RETRY_COUNT),
+                                                         defaultTimeout);
+            }
         }
         finally
         {

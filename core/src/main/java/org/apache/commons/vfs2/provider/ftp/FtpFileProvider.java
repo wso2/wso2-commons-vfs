@@ -125,7 +125,7 @@ public class FtpFileProvider
             rootName.getPath(),
             fileSystemOptions);
         */
-        FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts);
+        FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts,defaultTimeout);
         return new FtpFileSystem(rootName, ftpClient, fileSystemOptions);
     }
 

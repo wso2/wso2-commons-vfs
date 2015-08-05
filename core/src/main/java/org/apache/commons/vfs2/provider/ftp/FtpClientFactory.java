@@ -56,12 +56,37 @@ public final class FtpClientFactory
      * @param password          The user's password.
      * @param workingDirectory  The base directory.
      * @param fileSystemOptions The FileSystemOptions.
+     * @param defaultTimeout    default Timeout for the client connection
      * @return An FTPClient.
      * @throws FileSystemException if an error occurs while connecting.
      */
-    public static FTPClient createConnection(String hostname, int port, char[] username, char[] password,
-                                             String workingDirectory, FileSystemOptions fileSystemOptions) throws FileSystemException {
-   	 return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null, null, null, null, null, null);
+    public static FTPClient createConnection(String hostname, int port, char[] username,
+                                             char[] password, String workingDirectory,
+                                             FileSystemOptions fileSystemOptions,
+                                             Integer defaultTimeout) throws FileSystemException {
+        return createConnection(hostname, port, username, password, workingDirectory,
+                                fileSystemOptions, null, null, null, null, null, null,
+                                defaultTimeout);
+    }
+
+    /**
+     * Creates a new connection to the server.
+     *
+     * @param hostname          The host name of the server.
+     * @param port              The port to connect to.
+     * @param username          The name of the user for authentication.
+     * @param password          The user's password.
+     * @param workingDirectory  The base directory.
+     * @param fileSystemOptions The FileSystemOptions.
+     * @return An FTPClient.
+     * @throws FileSystemException if an error occurs while connecting.
+     */
+    public static FTPClient createConnection(String hostname, int port, char[] username,
+                                             char[] password, String workingDirectory,
+                                             FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        return createConnection(hostname, port, username, password, workingDirectory,
+                                fileSystemOptions, null, null, null, null, null, null, null);
     }
     
     /**
@@ -77,15 +102,16 @@ public final class FtpClientFactory
      * @param proxyPort         Proxy server port
      * @param proxyUser         Proxy server username
      * @param proxyPassword     Proxy server password
+     * @param defaultTimeout    default Timeout for the connection
      * @return An FTPClient.
      * @throws FileSystemException if an error occurs while connecting.
      */
-	public static FTPClient createConnection(String hostname, int port, char[] username,
-	                                         char[] password, String workingDirectory,
-	                                         FileSystemOptions fileSystemOptions,
-	                                         String proxyServer, String proxyPort,
-	                                         String proxyUser, String proxyPassword,
-	                                         String timeout, String retryCount)
+    public static FTPClient createConnection(String hostname, int port, char[] username,
+                                             char[] password, String workingDirectory,
+                                             FileSystemOptions fileSystemOptions,
+                                             String proxyServer, String proxyPort, String proxyUser,
+                                             String proxyPassword, String timeout,
+                                             String retryCount, Integer defaultTimeout)
         throws FileSystemException
     {
         // Determine the username and password to use
@@ -149,6 +175,10 @@ public final class FtpClientFactory
 
             try
             {
+                if (defaultTimeout != null && (defaultTimeout > 0)) {
+                    client.setDefaultTimeout(defaultTimeout);
+                }
+
             	//Need to enforce this since simethimes if we don't do this thread will hang forever
             	if(proxyMode){
                 	client.setConnectTimeout(lTimeout);
@@ -165,7 +195,11 @@ public final class FtpClientFactory
                 	}  
             	}else{
             		client.connect(hostname, port);
-            	}          	               
+            	}
+
+                if (defaultTimeout != null && (defaultTimeout > 0)) {
+                    client.setSoTimeout(defaultTimeout);
+                }
                 int reply = client.getReplyCode();
                 if (!FTPReply.isPositiveCompletion(reply))
                 {

@@ -44,14 +44,21 @@ class FtpsClientWrapper implements FtpClient
     private static final Log log = LogFactory.getLog(FtpsClientWrapper.class);
     private final GenericFileName root;
     private final FileSystemOptions fileSystemOptions;
+    private Integer connectTimeout = null;
 
     private FTPSClient ftpClient = null;
 
-    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws FileSystemException
-    {
+    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions,
+                      Integer connectTimeout) throws FileSystemException {
         this.root = root;
         this.fileSystemOptions = fileSystemOptions;
+        this.connectTimeout = connectTimeout;
         getFtpsClient(); // fail-fast
+    }
+
+    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        this(root, fileSystemOptions, null);
     }
 
     public GenericFileName getRoot()
@@ -80,7 +87,8 @@ class FtpsClientWrapper implements FtpClient
                 UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
                                                UserAuthenticatorUtils.toChar(rootName.getPassword())),
                 rootName.getPath(),
-                getFileSystemOptions());
+                getFileSystemOptions(),
+                connectTimeout);
         }
         finally
         {
