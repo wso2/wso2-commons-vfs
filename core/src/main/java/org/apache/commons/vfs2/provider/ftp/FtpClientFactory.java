@@ -60,13 +60,12 @@ public final class FtpClientFactory
      * @return An FTPClient.
      * @throws FileSystemException if an error occurs while connecting.
      */
-    public static FTPClient createConnection(String hostname, int port, char[] username,
-                                             char[] password, String workingDirectory,
-                                             FileSystemOptions fileSystemOptions,
+    public static FTPClient createConnection(String hostname, int port, char[] username, char[] password,
+                                             String workingDirectory, FileSystemOptions fileSystemOptions,
                                              Integer defaultTimeout) throws FileSystemException {
-        return createConnection(hostname, port, username, password, workingDirectory,
-                                fileSystemOptions, null, null, null, null, null, null,
-                                defaultTimeout);
+
+        return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null, null,
+                                null, null, null, null, defaultTimeout);
     }
 
     /**
@@ -81,12 +80,12 @@ public final class FtpClientFactory
      * @return An FTPClient.
      * @throws FileSystemException if an error occurs while connecting.
      */
-    public static FTPClient createConnection(String hostname, int port, char[] username,
-                                             char[] password, String workingDirectory,
-                                             FileSystemOptions fileSystemOptions)
+    public static FTPClient createConnection(String hostname, int port, char[] username, char[] password,
+                                             String workingDirectory, FileSystemOptions fileSystemOptions)
             throws FileSystemException {
-        return createConnection(hostname, port, username, password, workingDirectory,
-                                fileSystemOptions, null, null, null, null, null, null, null);
+
+        return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null, null,
+                                null, null, null, null, null);
     }
     
     /**
@@ -106,14 +105,11 @@ public final class FtpClientFactory
      * @return An FTPClient.
      * @throws FileSystemException if an error occurs while connecting.
      */
-    public static FTPClient createConnection(String hostname, int port, char[] username,
-                                             char[] password, String workingDirectory,
-                                             FileSystemOptions fileSystemOptions,
+    public static FTPClient createConnection(String hostname, int port, char[] username, char[] password,
+                                             String workingDirectory, FileSystemOptions fileSystemOptions,
                                              String proxyServer, String proxyPort, String proxyUser,
-                                             String proxyPassword, String timeout,
-                                             String retryCount, Integer defaultTimeout)
-        throws FileSystemException
-    {
+                                             String proxyPassword, String timeout, String retryCount,
+                                             Integer defaultTimeout) throws FileSystemException {
         // Determine the username and password to use
         if (username == null)
         {
