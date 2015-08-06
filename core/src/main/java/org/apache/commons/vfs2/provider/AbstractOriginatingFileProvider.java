@@ -117,7 +117,8 @@ public abstract class AbstractOriginatingFileProvider
     protected FileObject findFile(final FileName name, final FileSystemOptions fileSystemOptions,
                                   Integer timeout) throws FileSystemException {
         // Check in the cache for the file system
-        final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
+        final FileName rootName =
+                getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
 
         FileSystem fs = getFileSystem(rootName, fileSystemOptions,timeout);
 
@@ -134,7 +135,8 @@ public abstract class AbstractOriginatingFileProvider
      * @throws FileSystemException if an error occurs.
      * @since 2.0
      */
-    protected synchronized FileSystem getFileSystem(FileName rootName, final FileSystemOptions fileSystemOptions)
+    protected synchronized FileSystem getFileSystem(FileName rootName,
+                                                    final FileSystemOptions fileSystemOptions)
         throws FileSystemException
     {
         return getFileSystem(rootName, fileSystemOptions, null);
