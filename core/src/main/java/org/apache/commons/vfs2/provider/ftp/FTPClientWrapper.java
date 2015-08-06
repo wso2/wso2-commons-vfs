@@ -88,33 +88,34 @@ class FTPClientWrapper implements FtpClient
 			           UserAuthenticatorUtils.authenticate(fileSystemOptions,
 			                                               FtpFileProvider.AUTHENTICATOR_TYPES);
 
-			if (mParams == null) {
-				return FtpClientFactory.createConnection(rootName.getHostName(),
-				                                         rootName.getPort(),
-				                                         UserAuthenticatorUtils.getData(authData,
-				                                                                        UserAuthenticationData.USERNAME,
-				                                                                        UserAuthenticatorUtils.toChar(rootName.getUserName())),
-				                                         UserAuthenticatorUtils.getData(authData,
-				                                                                        UserAuthenticationData.PASSWORD,
-				                                                                        UserAuthenticatorUtils.toChar(rootName.getPassword())),
+            if (mParams == null) {
+                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
+                                                         UserAuthenticatorUtils.getData(authData,
+                                                                                        UserAuthenticationData.USERNAME,
+                                                                                        UserAuthenticatorUtils
+                                                                                                .toChar(rootName.getUserName())),
+                                                         UserAuthenticatorUtils.getData(authData,
+                                                                                        UserAuthenticationData.PASSWORD,
+                                                                                        UserAuthenticatorUtils
+                                                                                                .toChar(rootName.getPassword())),
                                                          rootName.getPath(), getFileSystemOptions(),
                                                          defaultTimeout);
             } else {
-				return FtpClientFactory.createConnection(rootName.getHostName(),
-				                                         rootName.getPort(),
-				                                         UserAuthenticatorUtils.getData(authData,
-				                                                                        UserAuthenticationData.USERNAME,
-				                                                                        UserAuthenticatorUtils.toChar(rootName.getUserName())),
-				                                         UserAuthenticatorUtils.getData(authData,
-				                                                                        UserAuthenticationData.PASSWORD,
-				                                                                        UserAuthenticatorUtils.toChar(rootName.getPassword())),
-				                                         rootName.getPath(),
-				                                         getFileSystemOptions(),
-				                                         mParams.get(SftpConstants.PROXY_SERVER),
-				                                         mParams.get(SftpConstants.PROXY_PORT),
-				                                         mParams.get(SftpConstants.PROXY_USERNAME),
-				                                         mParams.get(SftpConstants.PROXY_PASSWORD),
-				                                         mParams.get(SftpConstants.TIMEOUT),
+                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
+                                                         UserAuthenticatorUtils.getData(authData,
+                                                                                        UserAuthenticationData.USERNAME,
+                                                                                        UserAuthenticatorUtils
+                                                                                                .toChar(rootName.getUserName())),
+                                                         UserAuthenticatorUtils.getData(authData,
+                                                                                        UserAuthenticationData.PASSWORD,
+                                                                                        UserAuthenticatorUtils
+                                                                                                .toChar(rootName.getPassword())),
+                                                         rootName.getPath(), getFileSystemOptions(),
+                                                         mParams.get(SftpConstants.PROXY_SERVER),
+                                                         mParams.get(SftpConstants.PROXY_PORT),
+                                                         mParams.get(SftpConstants.PROXY_USERNAME),
+                                                         mParams.get(SftpConstants.PROXY_PASSWORD),
+                                                         mParams.get(SftpConstants.TIMEOUT),
                                                          mParams.get(SftpConstants.RETRY_COUNT),
                                                          defaultTimeout);
             }
