@@ -512,6 +512,9 @@
   <profiles>
     <profile>
       <id>apache-release</id>
+      <properties>
+        <javadoc.doclint.none>-Xdoclint:none</javadoc.doclint.none>
+      </properties>
       <build>
         <plugins>
           <plugin>
