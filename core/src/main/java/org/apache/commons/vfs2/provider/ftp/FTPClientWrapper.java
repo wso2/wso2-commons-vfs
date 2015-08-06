@@ -97,14 +97,14 @@ class FTPClientWrapper implements FtpClient
                                                          rootName.getPath(), getFileSystemOptions(), defaultTimeout);
             } else {
 
-	            return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username, password,
-	                                                     rootName.getPath(), getFileSystemOptions(),
-	                                                     mParams.get(SftpConstants.PROXY_SERVER),
-	                                                     mParams.get(SftpConstants.PROXY_PORT),
-	                                                     mParams.get(SftpConstants.PROXY_USERNAME),
-	                                                     mParams.get(SftpConstants.PROXY_PASSWORD),
-	                                                     mParams.get(SftpConstants.TIMEOUT),
-	                                                     mParams.get(SftpConstants.RETRY_COUNT), defaultTimeout);
+                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username, password,
+                                                         rootName.getPath(), getFileSystemOptions(),
+                                                         mParams.get(SftpConstants.PROXY_SERVER),
+                                                         mParams.get(SftpConstants.PROXY_PORT),
+                                                         mParams.get(SftpConstants.PROXY_USERNAME),
+                                                         mParams.get(SftpConstants.PROXY_PASSWORD),
+                                                         mParams.get(SftpConstants.TIMEOUT),
+                                                         mParams.get(SftpConstants.RETRY_COUNT), defaultTimeout);
             }
         }
         finally
