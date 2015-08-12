@@ -44,15 +44,22 @@ class FtpsClientWrapper implements FtpClient
     private static final Log log = LogFactory.getLog(FtpsClientWrapper.class);
     private final GenericFileName root;
     private final FileSystemOptions fileSystemOptions;
+    private Integer connectTimeout = null;
 
     private FTPSClient ftpClient = null;
 
-    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws FileSystemException
-    {
+    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions, Integer connectTimeout)
+            throws FileSystemException {
         this.root = root;
         this.fileSystemOptions = fileSystemOptions;
+        this.connectTimeout = connectTimeout;
         getFtpsClient(); // fail-fast
     }
+
+	FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
+			throws FileSystemException {
+		this(root, fileSystemOptions, null);
+	}
 
     public GenericFileName getRoot()
     {
@@ -73,14 +80,14 @@ class FtpsClientWrapper implements FtpClient
         {
             authData = UserAuthenticatorUtils.authenticate(fileSystemOptions, FtpsFileProvider.AUTHENTICATOR_TYPES);
 
-            return FtpsClientFactory.createConnection(rootName.getHostName(),
-                rootName.getPort(),
-                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                                               UserAuthenticatorUtils.toChar(rootName.getUserName())),
-                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                                               UserAuthenticatorUtils.toChar(rootName.getPassword())),
-                rootName.getPath(),
-                getFileSystemOptions());
+            char[] userName = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
+                                                             UserAuthenticatorUtils.toChar(rootName.getUserName()));
+
+            char[] password = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
+                                                             UserAuthenticatorUtils.toChar(rootName.getPassword()));
+
+            return FtpsClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), userName, password,
+                                                      rootName.getPath(), getFileSystemOptions(), connectTimeout);
         }
         finally
         {

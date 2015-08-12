@@ -127,7 +127,7 @@ public class FtpsFileProvider extends FtpFileProvider
             }
         }
 
-        FtpsClientWrapper ftpClient = new FtpsClientWrapper(rootName, opts);
+        FtpsClientWrapper ftpClient = new FtpsClientWrapper(rootName, opts, defaultTimeout);
 
         return new FtpFileSystem(rootName, ftpClient, fileSystemOptions);
     }

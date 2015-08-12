@@ -77,8 +77,25 @@ public final class FtpsClientFactory
      */
     public static FTPSClient createConnection(String hostname, int port, char[] username, char[] password,
                                               String workingDirectory, FileSystemOptions fileSystemOptions)
-        throws FileSystemException
-    {
+            throws FileSystemException {
+        return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null);
+    }
+
+    /**
+     * Creates a new connection to the server.
+     * @param hostname The host name.
+     * @param port The port.
+     * @param username The user name for authentication.
+     * @param password The user's password.
+     * @param workingDirectory The directory to use.
+     * @param fileSystemOptions The FileSystemOptions.
+     * @param defaultTimeout default timeout for the ftps connection
+     * @return The FTPSClient.
+     * @throws FileSystemException if an error occurs.
+     */
+    public static FTPSClient createConnection(String hostname, int port, char[] username, char[] password,
+                                              String workingDirectory, FileSystemOptions fileSystemOptions,
+                                              Integer defaultTimeout) throws FileSystemException {
         // Determine the username and password to use
         if (username == null)
         {
@@ -168,7 +185,16 @@ public final class FtpsClientFactory
                 try
                 {
                     addSSLParameters(client, fileSystemOptions);
+
+                    if (defaultTimeout != null && (defaultTimeout > 0)) {
+                        client.setDefaultTimeout(defaultTimeout);
+                    }
+
                     client.connect(hostname, port);
+
+                    if (defaultTimeout != null && (defaultTimeout > 0)) {
+                        client.setSoTimeout(defaultTimeout);
+                    }
                     log.info("Successfully connected to the FTP server");
 
                     int reply = client.getReplyCode();
