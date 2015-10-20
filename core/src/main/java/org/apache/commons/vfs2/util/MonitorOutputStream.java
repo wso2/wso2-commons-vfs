@@ -47,50 +47,38 @@ public class MonitorOutputStream
      * @throws IOException if an error occurs.
      */
     @Override
-    public void close() throws IOException
-    {
+    public void close() throws IOException {
         // do not use super.close()
         // on Java 8 it might throw self suppression, see JDK-8042377
         // in older Java it silently ignores flush() errors
-        if (finished.getAndSet(true))
-        {
+        if (finished.getAndSet(true)) {
             return;
         }
 
         IOException exc = null;
 
         // flush the buffer and out stream
-        try
-        {
+        try {
             super.flush();
-        }
-        catch (final IOException ioe)
-        {
+        } catch (final IOException ioe) {
             exc = ioe;
         }
 
         // close the out stream without using super.close()
-        try
-        {
+        try {
             super.out.close();
-        }
-        catch (final IOException ioe)
-        {
+        } catch (final IOException ioe) {
             exc = ioe;
         }
 
         // Notify of end of output
-        try
-        {
+        try {
             onClose();
-        }
-        catch (final IOException ioe)
-        {
+        } catch (final IOException ioe) {
             exc = ioe;
         }
 
-        if (exc != null)
-        {
+        if (exc != null) {
             throw exc;
         }
     }
@@ -152,10 +140,8 @@ public class MonitorOutputStream
      * @throws FileSystemException if already closed.
      * @since 2.0
      */
-    protected void assertOpen() throws FileSystemException
-    {
-        if (finished.get())
-        {
+    protected void assertOpen() throws FileSystemException {
+        if (finished.get()) {
             throw new FileSystemException("vfs.provider/closed.error");
         }
     }
