@@ -62,9 +62,7 @@ public abstract class AbstractOriginatingFileProvider
      */
     public FileObject findFile(final FileObject baseFile, final String uri, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
-
         Integer timeout = null;
-
         final Map<String, String> queryParam = UriParser.extractQueryParams(uri);//Extracting Connect Timeout from uri
         String strConnectTimeout = queryParam.get(CONNECT_TIMEOUT);
         if (strConnectTimeout != null) {
