@@ -49,6 +49,7 @@ public final class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder
             FtpFileSystemConfigBuilder.class.getName() + ".SHORT_MONTH_NAMES";
     private static final String ENCODING =
             FtpFileSystemConfigBuilder.class.getName() + ".ENCODING";
+    private static final String FILE_TYPE = FtpFileSystemConfigBuilder.class.getName() + ".FILE_TYPE";
 
     private FtpFileSystemConfigBuilder()
     {
@@ -332,5 +333,25 @@ public final class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder
     public String getControlEncoding(FileSystemOptions opts)
     {
         return  (String) getParam(opts, ENCODING);
+    }
+
+    /**
+     * Sets the file type of the file being transferred.
+     *
+     * @param opts     The FileSystemOptions.
+     * @param fileType Type of the file being transferred
+     */
+    public void setFileType(FileSystemOptions opts, Integer fileType) {
+        setParam(opts, FILE_TYPE, fileType);
+    }
+
+    /**
+     * Get the file type of the file being transferred.
+     *
+     * @param opts The FileSystemOptions.
+     * @return Type of the file being transferred
+     */
+    public Integer getFileType(FileSystemOptions opts) {
+        return (Integer) getParam(opts, FILE_TYPE);
     }
 }
