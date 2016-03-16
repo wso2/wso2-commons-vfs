@@ -211,10 +211,13 @@ public final class FtpClientFactory
                         new Object[]{hostname, UserAuthenticatorUtils.toString(username)}, null);
                 }
 
-                // Set binary mode
-                if (!client.setFileType(FTP.BINARY_FILE_TYPE))
-                {
-                    throw new FileSystemException("vfs.provider.ftp/set-binary.error", hostname);
+                Integer fileType = FtpFileSystemConfigBuilder.getInstance().getFileType(fileSystemOptions);
+                if (fileType == null) {
+                    // Set binary mode
+                    fileType = FTP.BINARY_FILE_TYPE;
+                }
+                if (!client.setFileType(fileType)) {
+                    throw new FileSystemException("vfs.provider.ftp/set-fileType.error", hostname);
                 }
 
                 // Set dataTimeout value

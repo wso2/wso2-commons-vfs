@@ -67,6 +67,7 @@ public final class FtpsFileSystemConfigBuilder extends FileSystemConfigBuilder
         FtpsFileSystemConfigBuilder.class.getName() + ".SERVER_TIME_ZONE_ID";
     private static final String SHORT_MONTH_NAMES =
         FtpsFileSystemConfigBuilder.class.getName() + ".SHORT_MONTH_NAMES";
+    private static final String FILE_TYPE = FtpsFileSystemConfigBuilder.class.getName() + ".FILE_TYPE";
 
     private static final String PROT = FtpsFileSystemConfigBuilder.class.getName() + ".PROT";
 
@@ -451,4 +452,23 @@ public final class FtpsFileSystemConfigBuilder extends FileSystemConfigBuilder
         return (FtpsDataChannelProtectionLevel)getParam(opts , PROT);
     }
 
+    /**
+     * Sets the file type of the file being transferred.
+     *
+     * @param opts     The FileSystemOptions.
+     * @param fileType Type of the file being transferred
+     */
+    public void setFileType(FileSystemOptions opts, Integer fileType) {
+        setParam(opts, FILE_TYPE, fileType);
+    }
+
+    /**
+     * Get the file type of the file being transferred.
+     *
+     * @param opts The FileSystemOptions.
+     * @return Type of the file being transferred
+     */
+    public Integer getFileType(FileSystemOptions opts) {
+        return (Integer) getParam(opts, FILE_TYPE);
+    }
 }
