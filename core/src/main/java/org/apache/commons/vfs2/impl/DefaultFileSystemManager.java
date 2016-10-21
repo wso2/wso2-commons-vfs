@@ -715,10 +715,19 @@ public class DefaultFileSystemManager implements FileSystemManager
 					}
 					String proxyUser = queryParam.get(SftpConstants.PROXY_USERNAME);
 					String proxyPassword = queryParam.get(SftpConstants.PROXY_PASSWORD);
+                    String proxyType = queryParam.get(SftpConstants.PROXY_TYPE);
 
-					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
-					                                                                           SftpFileSystemConfigBuilder.PROXY_HTTP);
-					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyHost(fileSystemOptions,
+                    if (SftpConstants.SOCKS.equals(proxyType)) {
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder()))
+                                .setProxyType(fileSystemOptions, SftpFileSystemConfigBuilder.PROXY_SOCKS5);
+                    } else {
+                        if (proxyType != null && !proxyType.isEmpty() && !SftpConstants.HTTP.equals(proxyType)) {
+                            log.warn(proxyType + " is not a supported proxy type. Trying with HTTP");
+                        }
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder()))
+                                .setProxyType(fileSystemOptions, SftpFileSystemConfigBuilder.PROXY_HTTP);
+                    }
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyHost(fileSystemOptions,
 					                                                                           proxyHost);
 					((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyPort(fileSystemOptions,
 					                                                                           proxyPort);
