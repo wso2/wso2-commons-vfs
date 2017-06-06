@@ -142,7 +142,7 @@ public class SftpFileSystem
                     catch (SftpException e)
                     {
                         throw new FileSystemException("vfs.provider.sftp/change-work-directory.error",
-                            workingDirectory);
+                            workingDirectory, e);
                     }
                 }
             }
