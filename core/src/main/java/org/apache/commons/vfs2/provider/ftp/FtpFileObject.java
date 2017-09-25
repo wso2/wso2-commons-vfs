@@ -616,7 +616,7 @@ public class FtpFileObject extends AbstractFileObject
             // VFS-210
             if (instr == null)
             {
-                throw new FileNotFoundException(getName().toString());
+                throw new FileNotFoundException(getName().getFriendlyURI());
             }
             return new FtpInputStream(client, instr);
         }
