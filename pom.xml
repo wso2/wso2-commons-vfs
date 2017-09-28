@@ -30,7 +30,7 @@
   <name>Commons VFS</name>
   <description>VFS is a Virtual File System library.</description>
   <packaging>pom</packaging>
-  <version>2.0-wso2v17-SNAPSHOT</version>
+  <version>2.0-wso3v17-SNAPSHOT</version>
 
   <url>http://commons.apache.org/vfs/</url>
   <inceptionYear>2002</inceptionYear>
