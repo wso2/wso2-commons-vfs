@@ -320,51 +320,53 @@ public abstract class AbstractFileSystem
 
     private synchronized FileObject resolveFile(final FileName name, final boolean useCache) throws FileSystemException
     {
-        if (!rootName.getRootURI().equals(name.getRootURI()))
-        {
-            throw new FileSystemException("vfs.provider/mismatched-fs-for-name.error",
-                new Object[]{
-                    name, rootName, name.getRootURI()});
-        }
-
-        // imario@apache.org ==> use getFileFromCache
-        FileObject file;
-        if (useCache)
-        {
-            file = getFileFromCache(name);
-        }
-        else
-        {
-            file = null;
-        }
-        // FileObject file = (FileObject) files.get(name);
-        if (file == null)
-        {
-            try
+        FileObject file = null;
+        if (name != null) {
+            if (!rootName.getRootURI().equals(name.getRootURI()))
             {
-                file = createFile((AbstractFileName) name);
-            }
-            catch (Exception e)
-            {
-                throw new FileSystemException("vfs.provider/resolve-file.error", name, e);
+                throw new FileSystemException("vfs.provider/mismatched-fs-for-name.error",
+                    new Object[]{
+                        name, rootName, name.getRootURI()});
             }
 
-            file = decorateFileObject(file);
-
-            // imario@apache.org ==> use putFileToCache
+            // imario@apache.org ==> use getFileFromCache
             if (useCache)
             {
-                putFileToCache(file);
+                file = getFileFromCache(name);
             }
-            // files.put(name, file);
-        }
+            else
+            {
+                file = null;
+            }
+            // FileObject file = (FileObject) files.get(name);
+            if (file == null)
+            {
+                try
+                {
+                    file = createFile((AbstractFileName) name);
+                }
+                catch (Exception e)
+                {
+                    throw new FileSystemException("vfs.provider/resolve-file.error", name, e);
+                }
 
-        /**
-         * resync the file information if requested
-         */
-        if (getFileSystemManager().getCacheStrategy().equals(CacheStrategy.ON_RESOLVE))
-        {
-            file.refresh();
+                file = decorateFileObject(file);
+
+                // imario@apache.org ==> use putFileToCache
+                if (useCache)
+                {
+                    putFileToCache(file);
+                }
+                // files.put(name, file);
+            }
+
+            /**
+             * resync the file information if requested
+             */
+            if (getFileSystemManager().getCacheStrategy().equals(CacheStrategy.ON_RESOLVE))
+            {
+                file.refresh();
+            }
         }
         return file;
     }
