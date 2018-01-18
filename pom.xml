@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+   Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+  -->
+
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+      <groupId>org.wso2</groupId>
+      <artifactId>wso2</artifactId>
+      <version>1</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.apache.commons</groupId>
+  <artifactId>commons-vfs2-project</artifactId>
+  <name>Commons VFS</name>
+  <description>VFS is a Virtual File System library.</description>
+  <packaging>pom</packaging>
+  <version>2.0-wso2v19-SNAPSHOT</version>
+
+  <url>http://commons.apache.org/vfs/</url>
+  <inceptionYear>2002</inceptionYear>
+
+  <modules>
+    <module>core</module>
+    <module>sandbox</module>
+    <module>orbit</module>
+  </modules>
+
+  <issueManagement>
+    <system>jira</system>
+    <url>https://issues.apache.org/jira/browse/VFS</url>
+  </issueManagement>
+
+  <scm>
+    <connection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</connection>
+    <developerConnection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</developerConnection>
+    <url>https://github.com/wso2/wso2-commons-vfs.git</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <developers>
+    <developer>
+      <name>Adam Murdoch</name>
+      <id>adammurdoch</id>
+      <email>adammurdoch -at- apache.org</email>
+      <organization />
+    </developer>
+    <developer>
+      <name>James Strachan</name>
+      <id>jstrachan</id>
+      <email>jstrachan -at- apache.org</email>
+      <organization>SpiritSoft, Inc.</organization>
+    </developer>
+    <developer>
+      <name>Mario Ivankovits</name>
+      <id>imario</id>
+      <email>imario -at- apache.org</email>
+      <organization>OPS EDV Gmbh</organization>
+    </developer>
+    <developer>
+      <name>Rahul Akolkar</name>
+      <id>rahul</id>
+      <email>rahul -at- apache.org</email>
+      <organization>Apache Software Foundation</organization>
+    </developer>
+    <developer>
+      <name>James Carman</name>
+      <id>jcarman</id>
+      <email>jcarman -at- apache.org</email>
+      <organization>Apache Software Foundation</organization>
+    </developer>
+    <developer>
+      <name>Ralph Goers</name>
+      <id>rgoers</id>
+      <email>rgoers -at- apache.org</email>
+      <organization>Intuit</organization>
+    </developer>
+    <developer>
+      <name>Joerg Schaible</name>
+      <id>joehni</id>
+      <email>joehni -at- apache.org</email>
+    </developer>
+   </developers>
+
+  <contributors>
+    <contributor>
+      <name>Rami Ojares</name>
+      <email>rami.ojares -at- elisa.fi</email>
+    </contributor>
+    <contributor>
+      <name>Anthony Goubard</name>
+      <email>adagoubard -at- chello.nl</email>
+    </contributor>
+    <contributor>
+      <name>Christopher Ottley</name>
+      <email>xknight -at- users.sourceforge.net</email>
+    </contributor>
+  </contributors>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <commons.componentid>vfs</commons.componentid>
+    <commons.release.version>2.0</commons.release.version>
+    <commons.binary.suffix />
+    <commons.jira.id>VFS</commons.jira.id>
+    <commons.jira.pid>12310495</commons.jira.pid>
+    <maven.compile.source>1.7</maven.compile.source>
+    <maven.compile.target>1.7</maven.compile.target>
+    <commons.release.name>commons-vfs-${commons.release.version}</commons.release.name>
+    <vfs.parent.dir>${basedir}</vfs.parent.dir>
+    <project.scm.id>wso2-scm-server</project.scm.id>
+  </properties>
+
+  <build>
+   <extensions>
+      	    <extension>
+        	<groupId>org.apache.maven.wagon</groupId>
+        	<artifactId>wagon-ssh</artifactId>
+        	<version>2.1</version>
+      	    </extension>
+    </extensions>
+    <pluginManagement>
+      <plugins>
+	    <plugin>
+            <artifactId>maven-eclipse-plugin</artifactId>
+            <version>2.6</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>2.6</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>2.1.1</version>
+        </plugin>
+        <!-- Commons parent specifies 2.2-beta-5 which does not work well
+             with multimodule builds. Explicitly update here.
+             Should be removed when commons-parent-18 is released.
+        -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.2</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+            <plugin>
+                <groupId>org.jvnet.maven.incrementalbuild</groupId>
+                <artifactId>incremental-build-plugin</artifactId>
+                <version>1.3</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>incremental-build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>5.3</version>
+            <exclusions>
+              <exclusion>  <!-- exclude older artifacts -->
+                <groupId>checkstyle</groupId>
+                <artifactId>checkstyle</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.sun</groupId>
+                <artifactId>tools</artifactId>
+              </exclusion>
+             </exclusions>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-build-plugin</artifactId>
+        <!-- version inherited from commons-parent -->
+        <configuration>
+            <commons.release.name>commons-${commons.componentid}-${commons.release.version}</commons.release.name>
+        </configuration>
+      </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <configuration>
+                <preparationGoals>clean install</preparationGoals>
+                <autoVersionSubmodules>true</autoVersionSubmodules>
+            </configuration>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-deploy-plugin</artifactId>
+        </plugin>
+    </plugins>
+  </build>
+
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>2.2</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-changes-plugin</artifactId>
+        <version>2.3</version>
+        <configuration>
+          <xmlPath>${basedir}/src/changes/changes.xml</xmlPath>
+          <issueLinkTemplate>%URL%/%ISSUE%</issueLinkTemplate>
+        </configuration>
+        <reportSets>
+          <reportSet>
+            <reports>
+               <report>changes-report</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>2.6</version>
+        <configuration>
+          <!--<propertiesLocation>${vfs.parent.dir}/checkstyle.properties</propertiesLocation> -->
+          <configLocation>${vfs.parent.dir}/checkstyle.xml</configLocation>
+          <suppressionsLocation>${vfs.parent.dir}/checkstyle-suppressions.xml</suppressionsLocation>
+          <enableRulesSummary>false</enableRulesSummary>
+          <propertyExpansion>basedir=${basedir}</propertyExpansion>
+          <propertyExpansion>licensedir=${vfs.parent.dir}/checkstyle-header.txt</propertyExpansion>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jxr-plugin</artifactId>
+        <version>2.1</version>
+        <configuration>
+          <aggregate>false</aggregate>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+           <tags>
+            <tag>
+              <name>todo</name>
+              <!-- todo tag for all places -->
+              <placement>a</placement>
+              <head>To Do:</head>
+            </tag>
+          </tags>
+          <aggregate>true</aggregate>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <version>1.0.0</version>
+        <configuration>
+          <threshold>Normal</threshold>
+          <effort>Default</effort>
+          <excludeFilterFile>findbugs-exclude-filter.xml</excludeFilterFile>
+       </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>2.1.1</version>
+        <configuration>
+          <moduleExcludes>
+            <xdoc>navigation.xml,changes.xml</xdoc>
+          </moduleExcludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- artifacts of project, versions managed by release-plugin -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-vfs2</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-vfs2</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <!--<scope>test</scope>-->
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-vfs-sandbox</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-vfs-examples</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- 3rd party dependencies -->
+      <dependency>
+        <groupId>commons-logging</groupId>
+        <artifactId>commons-logging</artifactId>
+        <version>1.1.1</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-net</groupId>
+        <artifactId>commons-net</artifactId>
+        <version>3.4</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-collections</groupId>
+        <artifactId>commons-collections</artifactId>
+        <version>3.1</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-httpclient</groupId>
+        <artifactId>commons-httpclient</artifactId>
+        <version>3.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>1.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.jackrabbit</groupId>
+        <artifactId>jackrabbit-webdav</artifactId>
+        <version>1.5.2</version>
+      </dependency>
+      <dependency>
+        <groupId>ant</groupId>
+        <artifactId>ant</artifactId>
+        <version>1.6.2</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jdom</groupId>
+        <artifactId>jdom</artifactId>
+        <version>1.1</version>
+      </dependency>
+      <dependency>
+        <groupId>com.jcraft</groupId>
+        <artifactId>jsch</artifactId>
+        <version>0.1.51.wso2v1</version>
+      </dependency>
+      <dependency>
+        <groupId>jcifs</groupId>
+        <artifactId>jcifs</artifactId>
+        <version>1.3.17</version>
+      </dependency>
+      <dependency>
+        <groupId>javax.mail</groupId>
+        <artifactId>mail</artifactId>
+        <version>1.4</version>
+      </dependency>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.8.2</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <repositories>
+    <repository>
+      <id>apache.snapshots.https</id>
+      <name>Apache Snapshot Repository</name>
+      <url>https://repository.apache.org/content/repositories/snapshots</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
+    <repository>
+      <id>apache.snapshots</id>
+      <name>Apache Snapshot Repository</name>
+      <url>http://people.apache.org/repo/m2-snapshot-repository/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
+    <repository>
+      <id>apache.m1</id>
+      <name>Apache Maven 1 Repository</name>
+      <url>http://people.apache.org/repo/m1-snapshot-repository/</url>
+      <layout>legacy</layout>
+    </repository>
+      <repository>
+          <id>wso2-nexus</id>
+          <name>WSO2 internal Repository</name>
+          <url>http://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+          <releases>
+              <enabled>true</enabled>
+              <updatePolicy>daily</updatePolicy>
+              <checksumPolicy>ignore</checksumPolicy>
+          </releases>
+      </repository>
+      <repository>
+          <id>wso2.releases</id>
+          <name>WSO2 internal Repository</name>
+          <url>http://maven.wso2.org/nexus/content/repositories/releases/</url>
+          <releases>
+              <enabled>true</enabled>
+              <updatePolicy>daily</updatePolicy>
+              <checksumPolicy>ignore</checksumPolicy>
+          </releases>
+      </repository>
+      <repository>
+          <id>wso2.snapshots</id>
+          <name>Apache Snapshot Repository</name>
+          <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+          <snapshots>
+              <enabled>true</enabled>
+              <updatePolicy>daily</updatePolicy>
+          </snapshots>
+          <releases>
+              <enabled>false</enabled>
+          </releases>
+      </repository>
+  </repositories>
+
+  <distributionManagement>
+      <repository>
+          <id>nexus-releases</id>
+          <name>WSO2 Release Distribution Repository</name>
+          <url>http://maven.wso2.org/nexus/service/local/staging/deploy/maven2/</url>
+      </repository>
+      <snapshotRepository>
+          <id>wso2.snapshots</id>
+          <name>Apache Snapshot Repository</name>
+          <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+      </snapshotRepository>
+  </distributionManagement>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>repository.dev.java.net-maven2</id>
+            <name>Java.net Repository for Maven</name>
+            <url>http://download.java.net/maven/2/</url>
+            <layout>default</layout>
+        </pluginRepository>
+        <pluginRepository>
+            <id>wso2.releases</id>
+            <name>WSO2 internal Repository</name>
+            <url>http://maven.wso2.org/nexus/content/repositories/releases/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </releases>
+        </pluginRepository>
+        <pluginRepository>
+            <id>wso2.snapshots</id>
+            <name>Apache Snapshot Repository</name>
+            <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </pluginRepository>
+        <pluginRepository>
+            <id>wso2-nexus</id>
+            <name>WSO2 internal Repository</name>
+            <url>http://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>daily</updatePolicy>
+                <checksumPolicy>ignore</checksumPolicy>
+            </releases>
+        </pluginRepository>
+    </pluginRepositories>
+
+  <!-- Releasing VFS as a multi-module build with binary artifacts is somewhat
+       painful. This profile hooks into the commons-parent and the apache-pom to
+       get the build done and then uses the assembly to package it up.
+  -->
+  <profiles>
+    <profile>
+      <id>apache-release</id>
+      <properties>
+        <javadoc.doclint.none>-Xdoclint:none</javadoc.doclint.none>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-changes-plugin</artifactId>
+            <version>2.3</version>
+            <configuration>
+              <template>announcement.vm</template>
+              <templateDirectory>src/changes</templateDirectory>
+              <runOnlyAtExecutionRoot>true</runOnlyAtExecutionRoot>
+            </configuration>
+            <executions>
+              <execution>
+                <id>create-announcement</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>announcement-generate</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- Activate the right profile for the actual release build. Make sure that
+               the release plugin passes this on to the deploy plugin.
+               remove when commons-parent 18 is released.
+          -->
+          <plugin>
+            <artifactId>maven-release-plugin</artifactId>
+            <configuration>
+                <releaseProfiles>apache-release</releaseProfiles>
+            </configuration>
+          </plugin>
+          <!-- Create source for the test jar. This should be in the
+               commons or apache parent pom.
+               remove when commons-parent 18 is released.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-test-sources</id>
+                <goals>
+                  <goal>test-jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- Commons turns checksums on for installs in its
+               parent pom. But vfs does not use the commons release
+               profile. So we turn it on for the vfs release explicitly.
+               remove when commons-parent 18 is released.
+          -->
+          <plugin>
+            <artifactId>maven-install-plugin</artifactId>
+            <configuration>
+              <createChecksum>true</createChecksum>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <executions>
+              <!-- Don't build the source archives here. They are constructed in the dist project
+              -->
+              <execution>
+                <id>source-release-assembly</id>
+                <configuration>
+                  <skipAssembly>true</skipAssembly>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
