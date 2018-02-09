@@ -50,6 +50,16 @@ import org.apache.commons.vfs2.util.MonitorInputStream;
 import org.apache.commons.vfs2.util.MonitorOutputStream;
 import org.apache.commons.vfs2.util.RandomAccessMode;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
  * An FTP file.
  */
@@ -602,7 +612,26 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
     @Override
     protected void onChildrenChanged(final FileName child, final FileType newType) {
         if (childMap != null && newType.equals(FileType.IMAGINARY)) {
-            Uncheck.run(() -> childMap.remove(UriParser.decode(child.getBaseName())));
+
+            if (!(childMap.isEmpty())) {
+
+                try {
+                    if (childMap.containsKey(UriParser.decode(child.getBaseName()))) {
+                        childMap.remove(UriParser.decode(child.getBaseName()));
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Map does not contain the " + child.getBaseName() + "in the map");
+                        }
+                    }
+                } catch (final FileSystemException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
+
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("EMPTY_FTP_FILE_MAP returned empty collection.");
+                }
+            }
         } else {
             // if child was added we have to rescan the children
             // TODO - get rid of this
