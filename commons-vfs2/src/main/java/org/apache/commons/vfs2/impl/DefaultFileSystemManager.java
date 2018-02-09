@@ -689,7 +689,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @return A FileObject representing the target file.
      * @throws FileSystemException if an error occurs accessing the file.
      */
-    public FileObject resolveFile(final FileObject baseFile, final String uri, FileSystemOptions fileSystemOptions)
+    public FileObject resolveFile(  final FileObject baseFile, final String uri, FileSystemOptions fileSystemOptions)
             throws FileSystemException {
         final FileObject realBaseFile;
         if (baseFile != null && VFS.isUriStyle() && baseFile.getName().isFile()) {
