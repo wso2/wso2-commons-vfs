@@ -22,6 +22,9 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.VFS;
 import org.apache.commons.vfs2.util.Os;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Utilities for dealing with URIs. See RFC 2396 for details.
  *
@@ -462,5 +465,29 @@ public final class UriParser {
         }
 
         return null;
+    }
+
+    /**
+     * Extract the query String from the URI.
+     *
+     * @param uri String containing the URI.
+     * @return The query string, if any. null otherwise.
+     */
+    public static Map<String, String> extractQueryParams(final String uri) throws FileSystemException {
+        Map<String, String> sQueryParams = new HashMap<String, String>();
+        if (uri != null) {
+            String[] urlParts = uri.split("\\?");
+            if (urlParts.length > 1) {
+                String query = urlParts[1];
+                query = decode(query);
+                for (String param : query.split("&")) {
+                    String[] pair = param.split("=");
+                    if (pair.length > 1) {
+                        sQueryParams.put(pair[0], pair[1]);
+                    }
+                }
+            }
+        }
+        return sQueryParams;
     }
 }
