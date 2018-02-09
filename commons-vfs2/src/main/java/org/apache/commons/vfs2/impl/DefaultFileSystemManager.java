@@ -58,6 +58,22 @@ import org.apache.commons.vfs2.provider.LocalFileProvider;
 import org.apache.commons.vfs2.provider.TemporaryFileStore;
 import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponent;
+import org.apache.commons.vfs2.provider.sftp.SftpConstants;
+import org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
+import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+
+import java.io.File;
+import java.lang.reflect.Constructor;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The default file system manager implementation.
@@ -770,8 +786,8 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @return A FileObject representing the target file.
      * @throws FileSystemException if an error occurs accessing the file.
      */
-    public FileObject resolveFile(final FileObject baseFile, final String uri,
-            final FileSystemOptions fileSystemOptions) throws FileSystemException {
+    public FileObject resolveFile(final FileObject baseFile, final String uri, FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
         final FileObject realBaseFile;
         if (baseFile != null && VFS.isUriStyle() && baseFile.getName().isFile()) {
             realBaseFile = baseFile.getParent();
@@ -788,9 +804,20 @@ public class DefaultFileSystemManager implements FileSystemManager {
 
         // Extract the scheme
         final String scheme = UriParser.extractScheme(getSchemes(), uri);
+        final Map<String,String> queryParam = UriParser.extractQueryParams(uri);
+
         if (scheme != null) {
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
+            //In the case of SFTP set the path from root if the param is presented in URL
+            if (provider instanceof SftpFileProvider && "true".equals(queryParam.get(SftpConstants
+                    .SFTP_PATH_FROM_ROOT))) {
+                if (fileSystemOptions == null) {
+                    fileSystemOptions = new FileSystemOptions();
+                }
+                ((SftpFileSystemConfigBuilder) ((provider).getConfigBuilder())).setUserDirIsRoot
+                        (fileSystemOptions, false);
+            }
             if (provider != null) {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
             }
