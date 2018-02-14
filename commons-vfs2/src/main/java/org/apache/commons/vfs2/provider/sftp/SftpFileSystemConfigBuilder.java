@@ -120,6 +120,7 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String TIMEOUT = _PREFIX + ".TIMEOUT";
     private static final String USER_DIR_IS_ROOT = _PREFIX + ".USER_DIR_IS_ROOT";
     private static final String ENCODING = _PREFIX + ".ENCODING";
+    private static final String PASS_PHRASE = "identitypassphrase";
 
     private SftpFileSystemConfigBuilder() {
         super("sftp.");
@@ -141,6 +142,22 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public String getCompression(final FileSystemOptions opts) {
         return this.getString(opts, COMPRESSION);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @return the identity pass phrase.
+     */
+    public String getIdentityPassPhrase(FileSystemOptions opts) {
+        return (String) this.getParam(opts, PASS_PHRASE);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @param identityPassPhrase Passphrase which is used with private key
+     */
+    public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
+        setParam(opts, PASS_PHRASE, identityPassPhrase);
     }
 
     @Override
