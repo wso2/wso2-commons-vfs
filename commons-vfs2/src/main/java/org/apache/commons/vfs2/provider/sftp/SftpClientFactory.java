@@ -384,4 +384,21 @@ public final class SftpClientFactory {
 
     private SftpClientFactory() {
     }
+
+    private static void addIndentity(final JSch jsch, final IdentityInfo info, String passPhrase) throws
+            FileSystemException {
+        try {
+            final String privateKeyFile = info.getPrivateKey() != null ? info.getPrivateKey().getAbsolutePath() : null;
+            final String publicKeyFile = info.getPublicKey() != null ? info.getPublicKey().getAbsolutePath() : null;
+
+            if (passPhrase != null) {
+                jsch.addIdentity(privateKeyFile, passPhrase);
+            } else {
+                jsch.addIdentity(privateKeyFile, publicKeyFile, info.getPassPhrase());
+            }
+
+        } catch (final JSchException e) {
+            throw new FileSystemException("vfs.provider.sftp/load-private-key.error", info, e);
+        }
+    }
 }

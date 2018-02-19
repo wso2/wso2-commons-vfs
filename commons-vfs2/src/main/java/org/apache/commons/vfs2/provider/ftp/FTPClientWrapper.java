@@ -120,8 +120,7 @@ public class FTPClientWrapper implements FtpClient {
 
             if (queryParams == null) {
 
-                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username,
-                        password, rootName.getPath(), getFileSystemOptions());
+                return createClient(rootName, authData);
             } else {
 
                 return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username,
