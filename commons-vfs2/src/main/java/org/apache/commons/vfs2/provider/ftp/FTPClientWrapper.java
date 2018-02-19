@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,6 +32,8 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.GenericFileName;
+import org.apache.commons.vfs2.provider.URLFileName;
+import org.apache.commons.vfs2.provider.sftp.SftpConstants;
 import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 /**
@@ -100,33 +104,61 @@ public class FTPClientWrapper implements FtpClient {
 
     private FTPClient createClient() throws FileSystemException {
         final GenericFileName rootName = getRoot();
-
+        Map<String, String> queryParams = null;
+        if (rootName instanceof URLFileName) {
+            queryParams = getQueryParams((URLFileName) rootName);
+        }
         UserAuthenticationData authData = null;
         try {
             authData = UserAuthenticatorUtils.authenticate(fileSystemOptions, FtpFileProvider.AUTHENTICATOR_TYPES);
 
-            return createClient(rootName, authData);
+            char[] username = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
+                    UserAuthenticatorUtils.toChar(rootName.getUserName()));
+
+            char[] password = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
+                    UserAuthenticatorUtils.toChar(rootName.getPassword()));
+
+            if (queryParams == null) {
+
+                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username,
+                        password, rootName.getPath(), getFileSystemOptions());
+            } else {
+
+                return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username,
+                        password, rootName.getPath(), getFileSystemOptions(), queryParams.get(SftpConstants.PROXY_SERVER)
+                        , queryParams.get(SftpConstants.PROXY_PORT), queryParams.get(SftpConstants.PROXY_USERNAME),
+                        queryParams.get(SftpConstants.PROXY_PASSWORD), queryParams.get(SftpConstants.TIMEOUT),
+                        queryParams.get(SftpConstants.RETRY_COUNT));
+            }
         } finally {
             UserAuthenticatorUtils.cleanup(authData);
         }
     }
 
-    /**
-     * Creates an FTPClient.
-     * @param rootFileName the root file name.
-     * @param authData authentication data.
-     * @return an FTPClient.
-     * @throws FileSystemException if a file system error occurs.
-     */
-    protected FTPClient createClient(final GenericFileName rootFileName, final UserAuthenticationData authData)
-        throws FileSystemException {
-        return FtpClientFactory.createConnection(rootFileName.getHostName(), rootFileName.getPort(),
-            UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                UserAuthenticatorUtils.toChar(rootFileName.getUserName())),
-            UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                UserAuthenticatorUtils.toChar(rootFileName.getPassword())),
-            rootFileName.getPath(), getFileSystemOptions());
+    private Map<String, String> getQueryParams(URLFileName urlFileName) {
+        Map<String, String> mQueryParams = new HashMap<>();
+        String strQuery = urlFileName.getQueryString();
+        if (strQuery != null && !strQuery.isEmpty()) {
+            for (String strParam : strQuery.split("&")) {
+                String[] arrParam = strParam.split("=");
+                if (arrParam.length >= 2) {
+                    mQueryParams.put(arrParam[0], arrParam[1]);
+                }
+            }
+        }
+        return mQueryParams;
     }
+
+    protected FTPClient createClient(final GenericFileName rootName, final UserAuthenticationData authData)
+            throws FileSystemException {
+        return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
+                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
+                        UserAuthenticatorUtils.toChar(rootName.getUserName())),
+                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
+                        UserAuthenticatorUtils.toChar(rootName.getPassword())),
+                rootName.getPath(), getFileSystemOptions());
+    }
+
 
     @Override
     public boolean deleteFile(final String relPath) throws IOException {
