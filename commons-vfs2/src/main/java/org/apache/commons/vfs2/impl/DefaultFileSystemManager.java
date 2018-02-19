@@ -728,8 +728,8 @@ public class DefaultFileSystemManager implements FileSystemManager {
                     String proxyPortStr = queryParam.get(SftpConstants.PROXY_PORT);
                     int proxyPort;
                     try {
-                        proxyPort = Integer.valueOf(proxyPortStr);
-                    } catch (NumberFormatException e) {
+                        proxyPort = Integer.parseInt(proxyPortStr);
+                    } catch (NumberFormatException | NullPointerException e) {
                         proxyPort = 8080;
                     }
                     String proxyUser = queryParam.get(SftpConstants.PROXY_USERNAME);

@@ -192,7 +192,7 @@ public final class SftpClientFactory {
             final String publicKeyFile = info.getPublicKey() != null ? info.getPublicKey().getAbsolutePath() : null;
 
             if (passPhrase != null) {
-                jsch.addIdentity(privateKeyFile, publicKeyFile, passPhrase.getBytes());
+                jsch.addIdentity(privateKeyFile, passPhrase);
             } else {
                 jsch.addIdentity(privateKeyFile, publicKeyFile, info.getPassPhrase());
             }
