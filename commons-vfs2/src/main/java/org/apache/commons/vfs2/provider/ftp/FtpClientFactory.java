@@ -158,6 +158,7 @@ public final class FtpClientFactory {
             try {
                 connectionTimeout = Integer.parseInt(timeout);
             } catch (NumberFormatException nfe) {
+                log.warn("Invalid connection timeout " + timeout + ". Set the connectionTimeout as 5000. (default)");
                 connectionTimeout = 5000;
             }
 
@@ -165,6 +166,8 @@ public final class FtpClientFactory {
             try {
                 connectionRetryCount = Integer.parseInt(retryCount);
             } catch (NumberFormatException e) {
+                log.warn("Invalid connection retry count " + retryCount + ". Set the connectionRetryCount as 5. "
+                        + "(default)");
                 connectionRetryCount = 5;
             }
 
