@@ -16,10 +16,6 @@
  */
 package org.apache.commons.vfs2.provider.ftp;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-
 import org.apache.commons.vfs2.Capability;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileSystem;
@@ -29,6 +25,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.apache.commons.vfs2.provider.GenericFileName;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * A provider for FTP file systems.
@@ -67,6 +67,11 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
         // Create the file system
         final GenericFileName rootName = (GenericFileName) name;
 
+        FtpFileSystemConfigBuilder builder = FtpFileSystemConfigBuilder.getInstance();
+        if (this.defaultTimeout != null && (this.defaultTimeout > 0)) {
+            builder.setConnectTimeout(fileSystemOptions, this.defaultTimeout);
+            builder.setSoTimeout(fileSystemOptions, this.defaultTimeout);
+        }
         final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, fileSystemOptions);
         /*
          * FTPClient ftpClient = FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),

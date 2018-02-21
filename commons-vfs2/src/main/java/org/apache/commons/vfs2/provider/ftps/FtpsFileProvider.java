@@ -46,6 +46,12 @@ public class FtpsFileProvider extends FtpFileProvider {
         // Create the file system
         final GenericFileName rootName = (GenericFileName) name;
 
+        FtpsFileSystemConfigBuilder builder = FtpsFileSystemConfigBuilder.getInstance();
+        if (this.defaultTimeout != null && (this.defaultTimeout > 0)) {
+            builder.setConnectTimeout(fileSystemOptions, this.defaultTimeout);
+            builder.setSoTimeout(fileSystemOptions, this.defaultTimeout);
+        }
+
         final FtpsClientWrapper ftpClient = new FtpsClientWrapper(rootName, fileSystemOptions);
 
         return new FtpsFileSystem(rootName, ftpClient, fileSystemOptions);
