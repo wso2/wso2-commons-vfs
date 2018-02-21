@@ -85,10 +85,10 @@ public class FTPClientWrapper implements FtpClient {
             } else {
 
                 return FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username,
-                        password, rootName.getPath(), getFileSystemOptions(), queryParams.get(SftpConstants.PROXY_SERVER)
-                        , queryParams.get(SftpConstants.PROXY_PORT), queryParams.get(SftpConstants.PROXY_USERNAME),
-                        queryParams.get(SftpConstants.PROXY_PASSWORD), queryParams.get(SftpConstants.TIMEOUT),
-                        queryParams.get(SftpConstants.RETRY_COUNT));
+                        password, rootName.getPath(), getFileSystemOptions(),
+                        queryParams.get(SftpConstants.PROXY_SERVER), queryParams.get(SftpConstants.PROXY_PORT),
+                        queryParams.get(SftpConstants.PROXY_USERNAME), queryParams.get(SftpConstants.PROXY_PASSWORD),
+                        queryParams.get(SftpConstants.TIMEOUT), queryParams.get(SftpConstants.RETRY_COUNT));
             }
         } finally {
             UserAuthenticatorUtils.cleanup(authData);
@@ -98,9 +98,13 @@ public class FTPClientWrapper implements FtpClient {
     private Map<String, String> getQueryParams(URLFileName urlFileName) {
         Map<String, String> mQueryParams = new HashMap<>();
         String strQuery = urlFileName.getQueryString();
+
         if (strQuery != null && !strQuery.isEmpty()) {
+
             for (String strParam : strQuery.split("&")) {
+
                 String[] arrParam = strParam.split("=");
+
                 if (arrParam.length >= 2) {
                     mQueryParams.put(arrParam[0], arrParam[1]);
                 }

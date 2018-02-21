@@ -169,8 +169,8 @@ public final class SftpClientFactory {
         return session;
     }
 
-    private static void addIdentities(final JSch jsch, final File sshDir, final IdentityInfo[] identities, String
-            passPhrase)
+    private static void addIdentities(final JSch jsch, final File sshDir, final IdentityInfo[] identities,
+                                      String passPhrase)
             throws FileSystemException {
         if (identities != null) {
             for (final IdentityInfo info : identities) {
