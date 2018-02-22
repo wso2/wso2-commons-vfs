@@ -16,22 +16,24 @@
  */
 package org.apache.commons.vfs2.provider.ftp;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.net.Proxy;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
+import org.apache.commons.net.ftp.FTPHTTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.parser.FTPFileEntryParserFactory;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.Proxy;
+import java.net.SocketTimeoutException;
 
 /**
  * Create a FtpClient instance.
@@ -57,6 +59,30 @@ public final class FtpClientFactory {
             throws FileSystemException {
         final FtpConnectionFactory factory = new FtpConnectionFactory(FtpFileSystemConfigBuilder.getInstance());
         return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions);
+    }
+
+    /**
+     * Creates a new connection to the server.
+     *
+     * @param hostname          The host name of the server.
+     * @param port              The port to connect to.
+     * @param username          The name of the user for authentication.
+     * @param password          The user's password.
+     * @param workingDirectory  The base directory.
+     * @param fileSystemOptions The FileSystemOptions.
+     * @param proxyServer       Proxy server address
+     * @param proxyPort         Proxy server port
+     * @param proxyUser         Proxy server username
+     * @param proxyPassword     Proxy server password
+     * @return An FTPClient.
+     * @throws FileSystemException if an error occurs while connecting.
+     */
+    public static FTPClient createConnection(String hostname, int port, char[] username, char[] password, String
+            workingDirectory, FileSystemOptions fileSystemOptions, String proxyServer, String proxyPort, String
+            proxyUser, String proxyPassword, String timeout, String retryCount) throws FileSystemException {
+        final FtpConnectionFactory factory = new FtpConnectionFactory(FtpFileSystemConfigBuilder.getInstance());
+        return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions,
+                proxyServer, proxyPort, proxyUser, proxyPassword, timeout, retryCount);
     }
 
     /** Connection Factory, used to configure the FTPClient. */
@@ -88,8 +114,16 @@ public final class FtpClientFactory {
             this.builder = builder;
         }
 
-        public C createConnection(final String hostname, final int port, char[] username, char[] password,
-                final String workingDirectory, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+        public C createConnection(final String hostname, final int port, char[] username, char[] password, final
+        String workingDirectory, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+            return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null,
+                    null, null, null, null, null);
+        }
+
+        public C createConnection(String hostname, int port, char[] username, char[] password, String
+                workingDirectory, FileSystemOptions fileSystemOptions, String proxyServer, String proxyPort, String
+                proxyUser, String proxyPassword, String timeout, String retryCount) throws FileSystemException {
+
             // Determine the username and password to use
             if (username == null) {
                 username = ANON_CHAR_ARRAY;
@@ -99,8 +133,48 @@ public final class FtpClientFactory {
                 password = ANON_CHAR_ARRAY;
             }
 
+            Integer connectionTimeout = null;
             try {
-                final C client = createClient(fileSystemOptions);
+                connectionTimeout = Integer.parseInt(timeout);
+            } catch (NumberFormatException nfe) {
+                log.warn("Invalid connection timeout " + timeout + ". Set the connectionTimeout as 5000. (default)");
+                connectionTimeout = 5000;
+            }
+
+            Integer connectionRetryCount = null;
+            try {
+                connectionRetryCount = Integer.parseInt(retryCount);
+            } catch (NumberFormatException e) {
+                log.warn("Invalid connection retry count " + retryCount + ". Set the connectionRetryCount as 5. "
+                        + "(default)");
+                connectionRetryCount = 5;
+            }
+
+            boolean proxyMode = false;
+
+            try {
+
+                final C client;
+
+                //Implement the logic to support FTP over HTTP Proxy
+                if (proxyServer != null && proxyPort != null) {
+                    int parsedProxyPort;
+                    try {
+                        parsedProxyPort = Integer.parseInt(proxyPort);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
+                        parsedProxyPort = 8080;
+                    }
+                    if (proxyUser != null && proxyPassword != null) {
+                        client = (C) new FTPHTTPClient(proxyServer, parsedProxyPort, proxyUser, proxyPassword);
+                        proxyMode = true;
+                    } else {
+                        client = (C) new FTPHTTPClient(proxyServer, parsedProxyPort);
+                        proxyMode = true;
+                    }
+                } else {
+                    client = createClient(fileSystemOptions);
+                }
 
                 if (log.isDebugEnabled()) {
                     final Writer writer = new StringWriter(1024) {
@@ -147,7 +221,23 @@ public final class FtpClientFactory {
                         client.setProxy(proxy);
                     }
 
-                    client.connect(hostname, port);
+                    //Need to enforce this since some times if we don't do this thread will hang forever
+                    if (proxyMode) {
+                        client.setConnectTimeout(connectionTimeout);
+                        boolean connect = false;
+                        while (!connect && (connectionRetryCount > 0)) {
+                            try {
+                                client.connect(hostname, port);
+                                connect = true;
+                            } catch (SocketTimeoutException e) {
+                                connectionRetryCount--;
+                            } catch (IOException e) {
+                                connectionRetryCount--;
+                            }
+                        }
+                    } else {
+                        client.connect(hostname, port);
+                    }
 
                     final int reply = client.getReplyCode();
                     if (!FTPReply.isPositiveCompletion(reply)) {
@@ -155,8 +245,8 @@ public final class FtpClientFactory {
                     }
 
                     // Login
-                    if (!client.login(UserAuthenticatorUtils.toString(username),
-                            UserAuthenticatorUtils.toString(password))) {
+                    if (!client.login(UserAuthenticatorUtils.toString(username), UserAuthenticatorUtils.toString
+                            (password))) {
                         throw new FileSystemException("vfs.provider.ftp/login.error", hostname,
                                 UserAuthenticatorUtils.toString(username));
                     }
@@ -190,7 +280,7 @@ public final class FtpClientFactory {
                     }
 
                     final Boolean passiveMode = builder.getPassiveMode(fileSystemOptions);
-                    if (passiveMode != null && passiveMode.booleanValue()) {
+                    if (proxyMode || (passiveMode != null && passiveMode.booleanValue())) {
                         client.enterLocalPassiveMode();
                     }
 

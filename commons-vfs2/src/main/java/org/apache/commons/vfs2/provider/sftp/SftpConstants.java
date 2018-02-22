@@ -29,4 +29,28 @@ public interface SftpConstants {
     /** Denote HTTP proxy type. */
     String HTTP = "http";
 
+    /** Denote type of proxy whether SOCKS5 or HTTP. */
+    String PROXY_TYPE = "proxyType";
+
+    /** Proxy server address. */
+    String PROXY_SERVER = "proxyServer";
+
+    /** Proxy server port. */
+    String PROXY_PORT = "proxyPort";
+
+    /** Proxy server username. */
+    String PROXY_USERNAME = "proxyUsername";
+
+    /** Proxy server password. */
+    String PROXY_PASSWORD = "proxyPassword";
+
+    /** Default Timeout for the connection. */
+    String TIMEOUT = "timeout";
+
+    /** Number of retries allow to connect to server */
+    String RETRY_COUNT = "retryCount";
+
+    /** Denote SOCKS proxy type. */
+    String SOCKS = "socks";
+
 }

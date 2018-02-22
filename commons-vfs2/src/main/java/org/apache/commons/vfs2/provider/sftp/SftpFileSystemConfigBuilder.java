@@ -16,15 +16,15 @@
  */
 package org.apache.commons.vfs2.provider.sftp;
 
-import java.io.File;
-import java.io.Serializable;
-
+import com.jcraft.jsch.UserInfo;
 import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.UserAuthenticator;
 
-import com.jcraft.jsch.UserInfo;
+import java.io.File;
+import java.io.Serializable;
 
 /**
  * The config builder for various SFTP configuration options.
@@ -120,6 +120,7 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String TIMEOUT = _PREFIX + ".TIMEOUT";
     private static final String USER_DIR_IS_ROOT = _PREFIX + ".USER_DIR_IS_ROOT";
     private static final String ENCODING = _PREFIX + ".ENCODING";
+    private static final String PASS_PHRASE = "identitypassphrase";
 
     private SftpFileSystemConfigBuilder() {
         super("sftp.");
@@ -141,6 +142,22 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public String getCompression(final FileSystemOptions opts) {
         return this.getString(opts, COMPRESSION);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @return the identity pass phrase.
+     */
+    public String getIdentityPassPhrase(FileSystemOptions opts) {
+        return (String) this.getParam(opts, PASS_PHRASE);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @param identityPassPhrase Passphrase which is used with private key
+     */
+    public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
+        setParam(opts, PASS_PHRASE, identityPassPhrase);
     }
 
     @Override
@@ -559,6 +576,14 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
         }
 
         this.setParam(opts, STRICT_HOST_KEY_CHECKING, hostKeyChecking);
+    }
+
+    public void setProxyUserAuthenticator(FileSystemOptions opts, UserAuthenticator proxyUserAuthenticator) {
+        setParam(opts, "proxyUserAuthenticator", proxyUserAuthenticator);
+    }
+
+    public UserAuthenticator getProxyUserAuthenticator(FileSystemOptions opts) {
+        return (UserAuthenticator) getParam(opts, "proxyUserAuthenticator");
     }
 
     /**

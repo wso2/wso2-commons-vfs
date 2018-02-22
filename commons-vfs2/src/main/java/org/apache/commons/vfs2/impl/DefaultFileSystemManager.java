@@ -32,6 +32,7 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.FilesCache;
 import org.apache.commons.vfs2.NameScope;
 import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.auth.StaticUserAuthenticator;
 import org.apache.commons.vfs2.cache.SoftRefFilesCache;
 import org.apache.commons.vfs2.operations.FileOperationProvider;
 import org.apache.commons.vfs2.provider.AbstractFileName;
@@ -712,13 +713,53 @@ public class DefaultFileSystemManager implements FileSystemManager {
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
             //In the case of SFTP set the path from root if the param is presented in URL
-            if (provider instanceof SftpFileProvider && "true".equals(queryParam.get(SftpConstants
-                    .SFTP_PATH_FROM_ROOT))) {
+            if (provider instanceof SftpFileProvider) {
                 if (fileSystemOptions == null) {
                     fileSystemOptions = new FileSystemOptions();
                 }
-                ((SftpFileSystemConfigBuilder) ((provider).getConfigBuilder())).setUserDirIsRoot
-                        (fileSystemOptions, false);
+                if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
+                    ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
+                            .setUserDirIsRoot(fileSystemOptions, false);
+                }
+
+                String proxyHost = queryParam.get(SftpConstants.PROXY_SERVER);
+
+                if (proxyHost != null && !proxyHost.isEmpty()) {
+                    String proxyPortStr = queryParam.get(SftpConstants.PROXY_PORT);
+                    int proxyPort = 8080;
+                    if (proxyPortStr != null) {
+                        try {
+                            proxyPort = Integer.parseInt(proxyPortStr);
+                        } catch (NumberFormatException e) {
+                            log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
+                            proxyPort = 8080;
+                        }
+                    }
+
+                    String proxyUser = queryParam.get(SftpConstants.PROXY_USERNAME);
+                    String proxyPassword = queryParam.get(SftpConstants.PROXY_PASSWORD);
+                    String proxyType = queryParam.get(SftpConstants.PROXY_TYPE);
+
+                    if (SftpConstants.SOCKS.equals(proxyType)) {
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
+                                SftpFileSystemConfigBuilder.PROXY_SOCKS5);
+                    } else {
+                        if (proxyType != null && !proxyType.isEmpty() && !SftpConstants.HTTP.equals(proxyType)) {
+                            log.warn(proxyType + " is not a supported proxy type. Trying with HTTP");
+                        }
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
+                                SftpFileSystemConfigBuilder.PROXY_HTTP);
+                    }
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyHost(fileSystemOptions,
+                            proxyHost);
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyPort(fileSystemOptions,
+                            proxyPort);
+                    if (proxyUser != null && !proxyUser.isEmpty()) {
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyUserAuthenticator
+                                (fileSystemOptions, new StaticUserAuthenticator(null, proxyUser,
+                                        (proxyPassword != null) ? proxyPassword : ""));
+                    }
+                }
             }
             if (provider != null) {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
