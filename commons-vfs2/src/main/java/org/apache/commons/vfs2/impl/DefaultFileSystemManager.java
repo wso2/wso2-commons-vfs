@@ -731,6 +731,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
                         try {
                             proxyPort = Integer.parseInt(proxyPortStr);
                         } catch (NumberFormatException e) {
+                            log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
                             proxyPort = 8080;
                         }
                     }
