@@ -139,14 +139,13 @@ public class FTPClientWrapper implements FtpClient {
         String strQuery = urlFileName.getQueryString();
 
         if (strQuery != null && !strQuery.isEmpty()) {
-
             for (String strParam : strQuery.split("&")) {
 
                 String[] arrParam = strParam.split("=");
-
                 if (arrParam.length >= 2) {
                     mQueryParams.put(arrParam[0], arrParam[1]);
                 }
+
             }
         }
         return mQueryParams;
