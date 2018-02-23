@@ -503,7 +503,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
             final InputStream instr = client.retrieveFileStream(relPath);
             // VFS-210
             if (instr == null) {
-                throw new FileNotFoundException(getName().toString());
+                throw new FileNotFoundException(getName().getFriendlyURI());
             }
             return new FtpInputStream(client, instr);
         } catch (final Exception e) {
