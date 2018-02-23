@@ -41,7 +41,6 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
 
     private final static String CONNECT_TIMEOUT = "transport.vfs.ConnectTimeout";
 
-
     public AbstractOriginatingFileProvider() {
         super();
     }
