@@ -532,6 +532,10 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         final FtpClient client = getAbstractFileSystem().getClient();
         try {
             final InputStream instr = client.retrieveFileStream(relPath, filePointer);
+            // VFS-210
+            if (instr == null) {
+                throw new FileNotFoundException(getName().getFriendlyURI());
+            }
             FileSystemException.requireNonNull(instr, "vfs.provider.ftp/input-error.debug", getName(),
                     client.getReplyString());
             return new FtpInputStream(client, instr);
