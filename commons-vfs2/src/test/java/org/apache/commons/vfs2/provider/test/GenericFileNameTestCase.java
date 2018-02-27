@@ -41,6 +41,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/file", name.getPath());
         assertEquals("ftp://hostname/", name.getRootURI());
         assertEquals("ftp://hostname/file", name.getURI());
+        assertEquals("ftp://hostname/file", name.getFriendlyURI());
 
         // Name with port
         name = (GenericFileName) urlParser.parseUri(null, null, "ftp://hostname:9090/file");
@@ -52,6 +53,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/file", name.getPath());
         assertEquals("ftp://hostname:9090/", name.getRootURI());
         assertEquals("ftp://hostname:9090/file", name.getURI());
+        assertEquals("ftp://hostname:9090/file", name.getFriendlyURI());
 
         // Name with no path
         name = (GenericFileName) urlParser.parseUri(null, null, "ftp://hostname");
@@ -63,6 +65,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/", name.getPath());
         assertEquals("ftp://hostname/", name.getRootURI());
         assertEquals("ftp://hostname/", name.getURI());
+        assertEquals("ftp://hostname/", name.getFriendlyURI());
 
         // Name with username
         name = (GenericFileName) urlParser.parseUri(null, null, "ftp://user@hostname/file");
@@ -74,6 +77,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/file", name.getPath());
         assertEquals("ftp://user@hostname/", name.getRootURI());
         assertEquals("ftp://user@hostname/file", name.getURI());
+        assertEquals("ftp://user@hostname/file", name.getFriendlyURI());
 
         // Name with username and password
         name = (GenericFileName) urlParser.parseUri(null, null, "ftp://user:password@hostname/file");
@@ -85,6 +89,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/file", name.getPath());
         assertEquals("ftp://user:password@hostname/", name.getRootURI());
         assertEquals("ftp://user:password@hostname/file", name.getURI());
+        assertEquals("ftp://user:***@hostname/file", name.getFriendlyURI());
 
         // Encoded username and password
         name = (GenericFileName) urlParser.parseUri(null, null, "ftp://%75ser%3A:%40@hostname");
@@ -96,6 +101,7 @@ public class GenericFileNameTestCase extends AbstractVfsTestCase {
         assertEquals("/", name.getPath());
         assertEquals("ftp://user%3a:%40@hostname/", name.getRootURI());
         assertEquals("ftp://user%3a:%40@hostname/", name.getURI());
+        assertEquals("ftp://user%3a:***@hostname/", name.getFriendlyURI());
     }
 
     /**
