@@ -171,6 +171,11 @@ public class HostFileNameParser extends AbstractFileNameParser {
     }
 
     private final int defaultPort;
+    private static final HostFileNameParser INSTANCE = new HostFileNameParser(21);
+
+    public static FileNameParser getInstance() {
+        return INSTANCE;
+    }
 
     /**
      * Constructs a new instance.
