@@ -22,6 +22,7 @@ import org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.GenericFileName;
+import org.apache.commons.vfs2.provider.HostFileNameParser;
 import org.apache.commons.vfs2.provider.ftp.FtpFileProvider;
 
 /**
@@ -35,6 +36,7 @@ import org.apache.commons.vfs2.provider.ftp.FtpFileProvider;
 public class FtpsFileProvider extends FtpFileProvider {
     public FtpsFileProvider() {
         super();
+        setFileNameParser(HostFileNameParser.getInstance());
     }
 
     /**
