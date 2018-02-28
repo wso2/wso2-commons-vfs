@@ -31,6 +31,11 @@ import org.apache.commons.vfs2.util.CryptorFactory;
  */
 public class HostFileNameParser extends AbstractFileNameParser {
     private final int defaultPort;
+    private static final HostFileNameParser INSTANCE = new HostFileNameParser(21);
+
+    public static FileNameParser getInstance() {
+        return INSTANCE;
+    }
 
     public HostFileNameParser(final int defaultPort) {
         this.defaultPort = defaultPort;

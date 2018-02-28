@@ -16,8 +16,14 @@
  */
 package org.apache.commons.vfs2.provider.ftp;
 
+import org.apache.commons.vfs2.FileName;
+import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.provider.FileNameParser;
 import org.apache.commons.vfs2.provider.HostFileNameParser;
+import org.apache.commons.vfs2.provider.URLFileName;
+import org.apache.commons.vfs2.provider.UriParser;
+import org.apache.commons.vfs2.provider.VfsComponentContext;
 
 /**
  * Implementation for ftp. set default port to 21
@@ -33,5 +39,37 @@ public class FtpFileNameParser extends HostFileNameParser {
 
     public static FileNameParser getInstance() {
         return INSTANCE;
+    }
+
+    @Override
+    public FileName parseUri(VfsComponentContext context, FileName base, String filename) throws FileSystemException {
+        // FTP URIs are generic URIs as per RFC 2396
+        StringBuilder name = new StringBuilder();
+
+        // Extract the scheme and authority parts
+        final Authority auth = extractToPath(filename, name);
+        // Extract the queuString
+        String queuString = UriParser.extractQueryString(name);
+        if(queuString == null && base instanceof URLFileName){
+            queuString = ((URLFileName) base).getQueryString();
+        }
+
+        // Decode and normalise the file name
+        UriParser.canonicalizePath(name, 0, name.length(), this);
+        UriParser.fixSeparators(name);
+        FileType fileType = UriParser.normalisePath(name);
+        final String path = name.toString();
+
+        return new URLFileName(
+                auth.getScheme(),
+                auth.getHostName(),
+                auth.getPort(),
+                getDefaultPort(),
+                auth.getUserName(),
+                auth.getPassword(),
+                path,
+                fileType,
+                queuString);
+
     }
 }
