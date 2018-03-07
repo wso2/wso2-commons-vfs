@@ -16,13 +16,10 @@
  */
 package org.apache.commons.vfs2.provider.sftp;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Vector;
-
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.SftpATTRS;
+import com.jcraft.jsch.SftpException;
 import org.apache.commons.vfs2.FileNotFoundException;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -39,10 +36,12 @@ import org.apache.commons.vfs2.util.MonitorOutputStream;
 import org.apache.commons.vfs2.util.PosixPermissions;
 import org.apache.commons.vfs2.util.RandomAccessMode;
 
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.ChannelSftp.LsEntry;
-import com.jcraft.jsch.SftpATTRS;
-import com.jcraft.jsch.SftpException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Vector;
 
 /**
  * An SFTP file.
@@ -52,7 +51,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     private SftpATTRS attrs;
     private final String relPath;
-
     private boolean inRefresh;
 
     protected SftpFileObject(final AbstractFileName name, final SftpFileSystem fileSystem) throws FileSystemException {
@@ -262,7 +260,21 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     @Override
     protected boolean doIsReadable() throws Exception {
-        return getPermissions(true).isReadable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isReadable();
+        } else {
+            return true;
+        }
+    }
+
+    private boolean isPermissionCheckRequired() throws Exception {
+        String permissionCheck = SftpFileSystemConfigBuilder.getInstance().getAvoidPermissionCheck
+                (getAbstractFileSystem().getFileSystemOptions());
+        if (permissionCheck != null && permissionCheck.equalsIgnoreCase("true")) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     @Override
@@ -281,7 +293,11 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     @Override
     protected boolean doIsWriteable() throws Exception {
-        return getPermissions(true).isWritable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isWritable();
+        } else {
+            return true;
+        }
     }
 
     @Override
@@ -300,7 +316,11 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     @Override
     protected boolean doIsExecutable() throws Exception {
-        return getPermissions(true).isExecutable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isExecutable();
+        } else {
+            return true;
+        }
     }
 
     @Override
