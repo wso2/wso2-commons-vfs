@@ -133,6 +133,9 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String SESSION_TIMEOUT = PREFIX + ".TIMEOUT";
     private static final String STRICT_HOST_KEY_CHECKING = PREFIX + ".STRICT_HOST_KEY_CHECKING";
     private static final String USER_DIR_IS_ROOT = PREFIX + ".USER_DIR_IS_ROOT";
+    private static final String PASS_PHRASE = "identitypassphrase";
+    private static final String PERMISSION_CHECK = "avoidpermissioncheck";
+
 
     /**
      * Gets the singleton builder.
@@ -156,6 +159,26 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public String getCompression(final FileSystemOptions options) {
         return this.getString(options, COMPRESSION);
+    }
+
+    /**
+     * Get the avoid permission check parameter for sftp servers.
+     *
+     * @param opts The FileSystem options.
+     * @return the permissionCheck.
+     */
+    public String getAvoidPermissionCheck(FileSystemOptions opts) {
+        return (String) this.getParam(opts, PERMISSION_CHECK);
+    }
+
+    /**
+     * Set the avoid permission check parameter for sftp servers.
+     *
+     * @param opts            The FileSystem options.
+     * @param permissionCheck Avoid permission check parameter.
+     */
+    public void setAvoidPermissionCheck(FileSystemOptions opts, String permissionCheck) {
+        setParam(opts, PERMISSION_CHECK, permissionCheck);
     }
 
     @Override
@@ -843,6 +866,22 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setUserInfo(final FileSystemOptions options, final UserInfo info) {
         this.setParam(options, UserInfo.class.getName(), info);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @return the identity pass phrase.
+     */
+    public String getIdentityPassPhrase(FileSystemOptions opts) {
+        return (String) this.getParam(opts, PASS_PHRASE);
+    }
+
+    /**
+     * @param opts The FileSystem options.
+     * @param identityPassPhrase Passphrase which is used with private key
+     */
+    public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
+        setParam(opts, PASS_PHRASE, identityPassPhrase);
     }
 
 }
