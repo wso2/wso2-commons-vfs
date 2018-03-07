@@ -121,6 +121,8 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String USER_DIR_IS_ROOT = _PREFIX + ".USER_DIR_IS_ROOT";
     private static final String ENCODING = _PREFIX + ".ENCODING";
     private static final String PASS_PHRASE = "identitypassphrase";
+    private static final String PERMISSION_CHECK = "avoidpermissioncheck";
+
 
     private SftpFileSystemConfigBuilder() {
         super("sftp.");
@@ -158,6 +160,26 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
         setParam(opts, PASS_PHRASE, identityPassPhrase);
+    }
+
+    /**
+     * Get the avoid permission check parameter for sftp servers.
+     *
+     * @param opts The FileSystem options.
+     * @return the permissionCheck.
+     */
+    public String getAvoidPermissionCheck(FileSystemOptions opts) {
+        return (String) this.getParam(opts, PERMISSION_CHECK);
+    }
+
+    /**
+     * Set the avoid permission check parameter for sftp servers.
+     *
+     * @param opts            The FileSystem options.
+     * @param permissionCheck Avoid permission check parameter.
+     */
+    public void setAvoidPermissionCheck(FileSystemOptions opts, String permissionCheck) {
+        setParam(opts, PERMISSION_CHECK, permissionCheck);
     }
 
     @Override

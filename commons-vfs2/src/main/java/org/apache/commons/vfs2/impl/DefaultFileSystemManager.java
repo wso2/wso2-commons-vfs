@@ -101,6 +101,12 @@ public class DefaultFileSystemManager implements FileSystemManager {
     private FileProvider defaultProvider;
 
     /**
+     * This constant holds the avoid permission check parameter for sftp servers.
+     * e.g:  sftp://admin":password@"localhost/in2\?transport.vfs.AvoidPermissionCheck=true
+     */
+    private final static String PERMISSION_CHECK = "transport.vfs.AvoidPermissionCheck";
+
+    /**
      * The file replicator to use.
      */
     private FileReplicator fileReplicator;
@@ -717,6 +723,13 @@ public class DefaultFileSystemManager implements FileSystemManager {
                 if (fileSystemOptions == null) {
                     fileSystemOptions = new FileSystemOptions();
                 }
+
+                String permissionCheck = queryParam.get(PERMISSION_CHECK);
+                SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
+                if (builder.getAvoidPermissionCheck(fileSystemOptions) == null) {
+                    builder.setAvoidPermissionCheck(fileSystemOptions, permissionCheck);
+                }
+
                 if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
                     ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
                             .setUserDirIsRoot(fileSystemOptions, false);
