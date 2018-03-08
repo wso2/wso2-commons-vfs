@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -131,17 +132,39 @@ class FtpsClientWrapper implements FtpClient
         }
     }
 
-    public FTPFile[] listFiles(String relPath) throws IOException
-    {
-        try
-        {
-            return getFtpsClient().listFiles(relPath);
+    public FTPFile[] listFiles(String relPath) throws IOException {
+        try {
+            FTPFile[] files = listFilesInDirectory(relPath);
+            return files;
         }
-        catch (IOException e)
-        {
+        catch (IOException e) {
             disconnect();
-            return getFtpsClient().listFiles(relPath);
+
+            FTPFile[] files = listFilesInDirectory(relPath);
+            return files;
         }
+    }
+
+    private FTPFile[] listFilesInDirectory(String relPath) throws IOException {
+        FTPFile[] files;
+        // VFS-307: now try the hard way by cd'ing into the directory, list and cd back
+        // if VFS is required to fallback here the user might experience a real bad FTP performance
+        // as then every list requires 4 ftp commands.
+        String workingDirectory = null;
+        if (relPath != null) {
+            workingDirectory = getFtpsClient().printWorkingDirectory();
+            if (!getFtpsClient().changeWorkingDirectory(relPath)) {
+                return null;
+            }
+        }
+
+        files = getFtpsClient().listFiles();
+
+        if (relPath != null && !getFtpsClient().changeWorkingDirectory(workingDirectory)) {
+            throw new FileSystemException("vfs.provider.ftp.wrapper/change-work-directory-back.error",
+                    workingDirectory);
+        }
+        return files;
     }
 
     public boolean removeDirectory(String relPath) throws IOException
