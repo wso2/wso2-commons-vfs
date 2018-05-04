@@ -39,6 +39,7 @@
     <module>commons-vfs2</module>
     <module>commons-vfs2-examples</module>
     <module>commons-vfs2-distribution</module>
+    <module>commons-vfs2-sandbox</module>
     <module>orbit</module>
   </modules>
 

@@ -43,12 +43,12 @@
             <version>${project.version}</version>
             <optional>true</optional>
         </dependency>
-        <!--<dependency>-->
-            <!--<groupId>org.apache.commons</groupId>-->
-            <!--<artifactId>commons-vfs2-sandbox</artifactId>-->
-            <!--<version>${project.version}</version>-->
-            <!--<optional>true</optional>-->
-        <!--</dependency>-->
+        <dependency>
+            <groupId>org.wso2.org.apache.commons</groupId>
+            <artifactId>commons-vfs2-sandbox</artifactId>
+            <version>${project.version}</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
