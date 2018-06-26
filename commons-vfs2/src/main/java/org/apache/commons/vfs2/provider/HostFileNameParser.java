@@ -54,14 +54,25 @@ public class HostFileNameParser extends AbstractFileNameParser {
         // Extract the scheme and authority parts
         final Authority auth = extractToPath(filename, name);
 
+        // Extract the queuString
+        String queuString = UriParser.extractQueryString(name);
+        if (queuString == null && base instanceof URLFileName) {
+            queuString = ((URLFileName) base).getQueryString();
+        }
+
         // Decode and normalise the file name
         UriParser.canonicalizePath(name, 0, name.length(), this);
         UriParser.fixSeparators(name);
         final FileType fileType = UriParser.normalisePath(name);
         final String path = name.toString();
 
-        return new GenericFileName(auth.scheme, auth.hostName, auth.port, defaultPort, auth.userName, auth.password,
-                path, fileType);
+        if (queuString == null) {
+            return new GenericFileName(auth.scheme, auth.hostName, auth.port, defaultPort, auth.userName, auth
+                    .password, path, fileType);
+        } else {
+            return new URLFileName(auth.scheme, auth.hostName, auth.port, defaultPort, auth.userName, auth.password,
+                    path, fileType, queuString);
+        }
     }
 
     /**
