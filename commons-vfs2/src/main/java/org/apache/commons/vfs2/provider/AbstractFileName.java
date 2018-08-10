@@ -300,7 +300,6 @@ public abstract class AbstractFileName implements FileName {
         if (decodedAbsPath == null) {
             decodedAbsPath = UriParser.decode(getPath());
         }
-
         return decodedAbsPath;
     }
 

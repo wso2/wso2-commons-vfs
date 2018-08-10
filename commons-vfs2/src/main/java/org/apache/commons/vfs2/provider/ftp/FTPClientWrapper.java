@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
+import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
@@ -42,7 +43,7 @@ import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
  * I decided to not to use eg. noop() to determine the state of the connection to avoid unnecessary server round-trips.
  * </p>
  */
-public class FTPClientWrapper implements FtpClient {
+public abstract class FTPClientWrapper implements FtpClient {
 
     private static final Log LOG = LogFactory.getLog(FTPClientWrapper.class);
 
@@ -102,7 +103,9 @@ public class FTPClientWrapper implements FtpClient {
         return true;
     }
 
-    private FTPClient createClient() throws FileSystemException {
+    protected abstract FTPSClient getFtpClient() throws FileSystemException;
+
+    protected FTPClient createClient() throws FileSystemException {
         final GenericFileName rootName = getRoot();
         Map<String, String> queryParams = null;
         if (rootName instanceof URLFileName) {
@@ -134,7 +137,7 @@ public class FTPClientWrapper implements FtpClient {
         }
     }
 
-    private Map<String, String> getQueryParams(URLFileName urlFileName) {
+    protected Map<String, String> getQueryParams(URLFileName urlFileName) {
         Map<String, String> mQueryParams = new HashMap<>();
         String strQuery = urlFileName.getQueryString();
 
