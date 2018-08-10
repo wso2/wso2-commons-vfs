@@ -179,7 +179,7 @@ public class HostFileNameParser extends AbstractFileNameParser {
      *
      * @param defaultPort The default port.
      */
-     public HostFileNameParser(final int defaultPort) {
+    public HostFileNameParser(final int defaultPort) {
         this.defaultPort = defaultPort;
     }
 
@@ -202,13 +202,13 @@ public class HostFileNameParser extends AbstractFileNameParser {
         if (pos == 0) {
             return null;
         }
-    public static FileNameParser getInstance() {
-        return INSTANCE;
-    }
+        public static FileNameParser getInstance() {
+            return INSTANCE;
+        }
 
-    public int getDefaultPort() {
-        return defaultPort;
-    }
+        public int getDefaultPort() {
+            return defaultPort;
+        }
 
         if (isIPv6Host && pos < maxlen) {
             if (pos == 1) {

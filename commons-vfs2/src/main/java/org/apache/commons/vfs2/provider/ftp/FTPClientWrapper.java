@@ -164,7 +164,6 @@ public abstract class FTPClientWrapper implements FtpClient {
                 rootName.getPath(), getFileSystemOptions());
     }
 
-
     @Override
     public boolean deleteFile(final String relPath) throws IOException {
         try {

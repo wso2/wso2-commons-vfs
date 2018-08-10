@@ -38,7 +38,7 @@ import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
  * @since 2.0
  */
 final class FtpsClientWrapper extends FTPClientWrapper {
-    private static final Log log = LogFactory.getLog(FtpsClientWrapper.class);
+
     private FTPSClient ftpsClient;
     FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws
             FileSystemException {

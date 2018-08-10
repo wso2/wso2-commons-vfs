@@ -33,6 +33,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPHTTPClient;
 import org.apache.commons.net.ftp.FTPReply;
+import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.net.ftp.parser.FTPFileEntryParserFactory;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -44,6 +45,7 @@ import java.net.SocketTimeoutException;
  * Creates {@link FtpClient} instances.
  */
 public final class FtpClientFactory {
+    private final Log log = LogFactory.getLog(getClass());
 
     /**
      * Abstract Factory, used to configure different FTPClients.
@@ -222,6 +224,7 @@ public final class FtpClientFactory {
                 }
 
                 try {
+                    // Set connect timeout
                     preConfigureClient(fileSystemOptions);
                     final Duration connectTimeout = builder.getConnectTimeoutDuration(fileSystemOptions);
                     if (connectTimeout != null) {
@@ -334,20 +337,12 @@ public final class FtpClientFactory {
             }
         }
 
-        /**
-         * Sets up a new client.
-         *
-         * @param client            the client.
-         * @param fileSystemOptions the file system options.
-         * @throws IOException if an IO error occurs.
-         */
-        protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws
-                Exception {
-            // nothing to do for FTP
-        }
+        protected abstract void setupOpenConnection(FTPClient client, FileSystemOptions fileSystemOptions);
 
-        protected abstract void setupOpenConnection(C client, FileSystemOptions fileSystemOptions) throws IOException;
+        protected abstract void preConfigureClient(FileSystemOptions fileSystemOptions) throws Exception;
 
+        protected abstract void setupOpenConnection(FTPSClient client, FileSystemOptions fileSystemOptions)
+                throws IOException;
 
         /**
          * Connection Factory, used to configure the FTPClient.
@@ -411,6 +406,10 @@ public final class FtpClientFactory {
             return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions,
                     proxyServer, proxyPort, proxyUser, proxyPassword, timeout, retryCount);
         }
+    }
+    protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws
+            Exception {
+        // nothing to do for FTP
     }
 
     private FtpClientFactory() {

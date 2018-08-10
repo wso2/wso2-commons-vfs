@@ -18,6 +18,7 @@ package org.apache.commons.vfs2.provider.ftps;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
@@ -73,6 +74,11 @@ public final class FtpsClientFactory {
                 client.setKeyManager(keyManager);
             }
             return client;
+        }
+
+        @Override
+        protected void setupOpenConnection(FTPClient client, FileSystemOptions fileSystemOptions) {
+
         }
 
         @Override
