@@ -205,6 +205,7 @@ public final class FtpClientFactory {
                 }
 
                 try {
+                    preConfigureClient(fileSystemOptions);
                     // Set connect timeout
                     final Integer connectTimeout = builder.getConnectTimeout(fileSystemOptions);
                     if (connectTimeout != null) {
@@ -298,11 +299,16 @@ public final class FtpClientFactory {
             }
         }
 
+        protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws
+                Exception {
+            // nothing to do for FTP
+        }
+
         protected abstract C createClient(FileSystemOptions fileSystemOptions) throws FileSystemException;
 
         protected abstract void setupOpenConnection(C client, FileSystemOptions fileSystemOptions) throws IOException;
 
-        private void configureClient(final FileSystemOptions fileSystemOptions, final C client) {
+        protected void configureClient(final FileSystemOptions fileSystemOptions, final C client) throws Exception {
             final String key = builder.getEntryParser(fileSystemOptions);
             if (key != null) {
                 final FTPClientConfig config = new FTPClientConfig(key);

@@ -25,10 +25,12 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.apache.commons.vfs2.provider.GenericFileName;
+import org.apache.commons.vfs2.provider.URLFileName;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.StringTokenizer;
 
 /**
  * A provider for FTP file systems.
@@ -38,6 +40,18 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
      * File Entry Parser.
      */
     public static final String ATTR_FILE_ENTRY_PARSER = "FEP";
+
+    /**
+     * Passive mode
+     */
+    public static final String PASSIVE_MODE = "vfs.passive";
+
+    /**
+     * FTPS implicit mode
+     */
+    public static final String IMPLICIT_MODE = "vfs.implicit";
+
+    public static final String PROTECTION_MODE = "vfs.protection";
 
     /**
      * Authenticator types.
@@ -72,7 +86,24 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
             builder.setConnectTimeout(fileSystemOptions, this.defaultTimeout);
             builder.setSoTimeout(fileSystemOptions, this.defaultTimeout);
         }
-        final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, fileSystemOptions);
+
+        String queryString = ((URLFileName)(rootName)).getQueryString();
+        FileSystemOptions opts = fileSystemOptions;
+        if (opts == null) {
+            opts = new FileSystemOptions();
+        }
+        if (queryString != null && !queryString.isEmpty()) {
+            FtpFileSystemConfigBuilder cfgBuilder = FtpFileSystemConfigBuilder.getInstance();
+            StringTokenizer st = new StringTokenizer(queryString, "?&!=");
+            while (st.hasMoreTokens()) {
+                if (PASSIVE_MODE.equalsIgnoreCase(st.nextToken()) &&
+                        st.hasMoreTokens() && "true".equalsIgnoreCase(st.nextToken())) {
+                    cfgBuilder.setPassiveMode(opts, true);
+                }
+            }
+        }
+
+        final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts);
         /*
          * FTPClient ftpClient = FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
          * rootName.getUserName(), rootName.getPassword(), rootName.getPath(), fileSystemOptions);

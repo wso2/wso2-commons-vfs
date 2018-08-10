@@ -16,16 +16,26 @@
  */
 package org.apache.commons.vfs2.provider.ftps;
 
-import java.io.IOException;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManager;
-
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.ftp.FtpClientFactory;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 
 /**
  * Create FTPSClient instances.
@@ -33,6 +43,7 @@ import org.apache.commons.vfs2.provider.ftp.FtpClientFactory;
  * @since 2.0
  */
 public final class FtpsClientFactory {
+
     private FtpsClientFactory() {
     }
 
@@ -59,6 +70,7 @@ public final class FtpsClientFactory {
     private static final class FtpsConnectionFactory
             extends FtpClientFactory.ConnectionFactory<FTPSClient, FtpsFileSystemConfigBuilder> {
 
+        private final Log log = LogFactory.getLog(getClass());
         private FtpsConnectionFactory(final FtpsFileSystemConfigBuilder builder) {
             super(builder);
         }
@@ -82,6 +94,59 @@ public final class FtpsClientFactory {
                 client.setKeyManager(keyManager);
             }
             return client;
+        }
+
+        @Override
+        protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws Exception {
+
+            String KEYSTORE = builder.getKeyStore(fileSystemOptions);
+            String TRUSTSTORE = builder.getTrustStore(fileSystemOptions);
+            String KS_PASSWD = builder.getKeyStorePW(fileSystemOptions);
+            String TS_PASSWD = builder.getTrustStorePW(fileSystemOptions);
+            String KEY_PASSWD = builder.getKeyPW(fileSystemOptions);
+
+            KeyManagerFactory keyManagerFactory = null;
+            TrustManagerFactory trustManagerFactory = null;
+            try {
+                if (KEYSTORE != null && !KEYSTORE.trim().isEmpty()) {
+                    FileInputStream keystorePath = new FileInputStream(new File(KEYSTORE));
+                    KeyStore keyStore = KeyStore.getInstance("jks");
+
+                    //load key store.
+                    keyStore.load(keystorePath, KS_PASSWD.toCharArray());
+                    keystorePath.close();
+
+                    // initialize key manager factory
+                    keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                    keyManagerFactory.init(keyStore, KEY_PASSWD.toCharArray());
+                }
+                if (TRUSTSTORE != null && !TRUSTSTORE.trim().isEmpty()) {
+                    FileInputStream truststorePath = new FileInputStream(new File(TRUSTSTORE));
+                    KeyStore trustStore = KeyStore.getInstance("jks");
+                    //load trust store.
+                    trustStore.load(truststorePath, TS_PASSWD.toCharArray());
+                    truststorePath.close();
+                    // initialize trust manager factory
+                    trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    trustManagerFactory.init(trustStore);
+                }
+
+            } catch (KeyStoreException e) {
+                log.error("Error occurred when initializing keystores",e);
+                throw e;
+            } catch (IOException e) {
+                log.error("Error occurred while retrieving the keystore paths",e);
+                throw e;
+            } catch (NoSuchAlgorithmException e) {
+                log.error("Error when getting the default algorithm",e);
+                throw e;
+            } catch (CertificateException e) {
+                log.error("Certificate exception occurred when loading the KeyStores ",e);
+                throw e;
+            } catch (UnrecoverableKeyException e) {
+                log.error("Unrecoverable Key exception occurred",e);
+                throw e;
+            }
         }
 
         @Override

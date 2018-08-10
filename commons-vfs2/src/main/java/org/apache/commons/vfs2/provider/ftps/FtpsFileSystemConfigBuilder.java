@@ -16,12 +16,12 @@
  */
 package org.apache.commons.vfs2.provider.ftps;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.TrustManager;
-
 import org.apache.commons.net.util.TrustManagerUtils;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.TrustManager;
 
 /**
  * The configuration builder for various FTPS configuration options.
@@ -37,6 +37,12 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
     private static final String PROT = _PREFIX + ".PROT";
     private static final String KEY_MANAGER = _PREFIX + ".KEY_MANAGER";
     private static final String TRUST_MANAGER = _PREFIX + ".TRUST_MANAGER";
+
+    private static final String KEY_STORE = _PREFIX + ".KEY_STORE";
+    private static final String TRUST_STORE = _PREFIX + ".TRUST_STORE";
+    private static final String KS_PASSWD = _PREFIX + ".KS_PASSWD";
+    private static final String TS_PASSWD = _PREFIX + ".KS_PASSWD";
+    private static final String KEY_PASSWD = _PREFIX + ".KEY_PASSWD";
 
     private FtpsFileSystemConfigBuilder() {
         super("ftps.");
@@ -78,6 +84,106 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
      */
     public FtpsMode getFtpsMode(final FileSystemOptions opts) {
         return getEnum(FtpsMode.class, opts, FTPS_MODE, FtpsMode.EXPLICIT);
+    }
+
+    /**
+     * Set the key store.
+     *
+     * @param opts     The FileSystemOptions.
+     * @param keyStore The path for the keyStore.
+     */
+    public void setKeyStore(FileSystemOptions opts, String keyStore) {
+        setParam(opts, KEY_STORE, keyStore);
+    }
+
+    /**
+     * get the keyStore path.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the key store path.
+     */
+    public String getKeyStore(FileSystemOptions opts) {
+        return getString(opts, KEY_STORE, "");
+    }
+
+    /**
+     * Set the key store.
+     *
+     * @param opts       The FileSystemOptions.
+     * @param trustStore The path for the keyStore.
+     */
+    public void setTrustStore(FileSystemOptions opts, String trustStore) {
+        setParam(opts, TRUST_STORE, trustStore);
+    }
+
+    /**
+     * get the keyStore path.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the key store path.
+     */
+    public String getTrustStore(FileSystemOptions opts) {
+        return getString(opts, TRUST_STORE, "");
+    }
+
+    /**
+     * Set the key store password.
+     *
+     * @param opts       The FileSystemOptions.
+     * @param keyStorePW The keyStore password.
+     */
+    public void setKeyStorePW(FileSystemOptions opts, String keyStorePW) {
+        setParam(opts, KS_PASSWD, keyStorePW);
+    }
+
+    /**
+     * get the keyStore password.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the key store password.
+     */
+    public String getKeyStorePW(FileSystemOptions opts) {
+        return getString(opts, KS_PASSWD, "");
+    }
+
+    /**
+     * Set the trust store password.
+     *
+     * @param opts         The FileSystemOptions.
+     * @param trustStorePW The trustStore password.
+     */
+    public void setTrustStorePW(FileSystemOptions opts, String trustStorePW) {
+        setParam(opts, TS_PASSWD, trustStorePW);
+    }
+
+    /**
+     * get the trustStore password.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the trust store password.
+     */
+    public String getTrustStorePW(FileSystemOptions opts) {
+        return getString(opts, TS_PASSWD, "");
+    }
+
+    /**
+     * Set the Key password.
+     *
+     * @param opts  The FileSystemOptions.
+     * @param keyPW The key password.
+     */
+    public void setKeyPW(FileSystemOptions opts, String keyPW) {
+        setParam(opts, KEY_PASSWD, keyPW);
+    }
+
+    /**
+     * get the key password.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the key password.
+     */
+    public String getKeyPW(FileSystemOptions opts) {
+        return getString(opts, KEY_PASSWD, "");
     }
 
     /**
