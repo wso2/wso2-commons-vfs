@@ -30,15 +30,15 @@ import org.apache.commons.vfs2.util.CryptorFactory;
  * @see URLFileNameParser URLFileNameParser for the implementation which also handles the query string too
  */
 public class HostFileNameParser extends AbstractFileNameParser {
-    private final int defaultPort;
     private static final HostFileNameParser INSTANCE = new HostFileNameParser(21);
-
-    public static FileNameParser getInstance() {
-        return INSTANCE;
-    }
+    private final int defaultPort;
 
     public HostFileNameParser(final int defaultPort) {
         this.defaultPort = defaultPort;
+    }
+
+    public static FileNameParser getInstance() {
+        return INSTANCE;
     }
 
     public int getDefaultPort() {
@@ -46,8 +46,8 @@ public class HostFileNameParser extends AbstractFileNameParser {
     }
 
     @Override
-    public FileName parseUri(final VfsComponentContext context, final FileName base, final String filename)
-            throws FileSystemException {
+    public FileName parseUri(final VfsComponentContext context, final FileName base, final String filename) throws
+            FileSystemException {
         // FTP URI are generic URI (as per RFC 2396)
         final StringBuilder name = new StringBuilder();
 
@@ -78,7 +78,7 @@ public class HostFileNameParser extends AbstractFileNameParser {
     /**
      * Extracts the scheme, userinfo, hostname and port components of a generic URI.
      *
-     * @param uri The absolute URI to parse.
+     * @param uri  The absolute URI to parse.
      * @param name Used to return the remainder of the URI.
      * @return Authority extracted host authority, never null.
      * @throws FileSystemException if authority cannot be extracted.
@@ -197,10 +197,10 @@ public class HostFileNameParser extends AbstractFileNameParser {
      * Extracts the port from a URI.
      *
      * @param name string buffer with the "scheme://[userinfo@]hostname" part has been removed already. Will be
-     *            modified.
-     * @param uri full URI for error reporting.
+     *             modified.
+     * @param uri  full URI for error reporting.
      * @return The port, or -1 if the URI does not contain a port.
-     * @throws FileSystemException if URI is malformed.
+     * @throws FileSystemException   if URI is malformed.
      * @throws NumberFormatException if port number cannot be parsed.
      */
     protected int extractPort(final StringBuilder name, final String uri) throws FileSystemException {

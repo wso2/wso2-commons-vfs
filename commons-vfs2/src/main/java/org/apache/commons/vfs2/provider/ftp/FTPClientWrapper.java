@@ -63,7 +63,7 @@ public class FTPClientWrapper implements FtpClient {
         return fileSystemOptions;
     }
 
-    private FTPClient createClient() throws FileSystemException {
+    protected FTPClient createClient() throws FileSystemException {
         final GenericFileName rootName = getRoot();
         Map<String, String> queryParams = null;
         if (rootName instanceof URLFileName) {
@@ -95,7 +95,7 @@ public class FTPClientWrapper implements FtpClient {
         }
     }
 
-    private Map<String, String> getQueryParams(URLFileName urlFileName) {
+    protected Map<String, String> getQueryParams(URLFileName urlFileName) {
         Map<String, String> mQueryParams = new HashMap<>();
         String strQuery = urlFileName.getQueryString();
 
@@ -122,7 +122,7 @@ public class FTPClientWrapper implements FtpClient {
                 rootName.getPath(), getFileSystemOptions());
     }
 
-    private FTPClient getFtpClient() throws FileSystemException {
+    protected FTPClient getFtpClient() throws FileSystemException {
         if (ftpClient == null) {
             ftpClient = createClient();
         }
