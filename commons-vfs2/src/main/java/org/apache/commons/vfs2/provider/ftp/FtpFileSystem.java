@@ -16,10 +16,6 @@
  */
 package org.apache.commons.vfs2.provider.ftp;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.Capability;
@@ -31,33 +27,33 @@ import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileSystem;
 import org.apache.commons.vfs2.provider.GenericFileName;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * An FTP file system.
  */
 public class FtpFileSystem extends AbstractFileSystem {
     private static final Log LOG = LogFactory.getLog(FtpFileSystem.class);
 
-    // private final String hostname;
-    // private final int port;
-    // private final String username;
-    // private final String password;
-
     // An idle client
     private final AtomicReference<FtpClient> idleClient = new AtomicReference<>();
 
+    private final ClientWrapperFactory clientWrapperFactory;
+
     /**
      * @param rootName The root of the file system.
-     * @param ftpClient The FtpClient.
+     * @param clientWrapperFactory The {@link FtpClientWrapperFactory}.
      * @param fileSystemOptions The FileSystemOptions.
      * @since 2.0 (was protected)
      */
-    public FtpFileSystem(final GenericFileName rootName, final FtpClient ftpClient,
-            final FileSystemOptions fileSystemOptions) {
+    public FtpFileSystem(final GenericFileName rootName, final ClientWrapperFactory clientWrapperFactory,
+                         final FileSystemOptions fileSystemOptions) throws FileSystemException {
         super(rootName, null, fileSystemOptions);
-        // hostname = rootName.getHostName();
-        // port = rootName.getPort();
 
-        idleClient.set(ftpClient);
+        this.clientWrapperFactory = clientWrapperFactory;
+        idleClient.set(clientWrapperFactory.create());
     }
 
     @Override
@@ -89,7 +85,6 @@ public class FtpFileSystem extends AbstractFileSystem {
                 client.disconnect();
             }
         } catch (final IOException e) {
-            // getLogger().warn("vfs.provider.ftp/close-connection.error", e);
             VfsLog.warn(getLogger(), LOG, "vfs.provider.ftp/close-connection.error", e);
         }
     }
@@ -104,21 +99,10 @@ public class FtpFileSystem extends AbstractFileSystem {
         FtpClient client = idleClient.getAndSet(null);
 
         if (client == null || !client.isConnected()) {
-            client = createWrapper();
+            client = clientWrapperFactory.create();
         }
 
         return client;
-    }
-
-    /**
-     * Get the wrapper to access this file system.
-     *
-     * @return new instance.
-     * @throws FileSystemException if any error occurs.
-     * @since 2.1
-     */
-    protected FTPClientWrapper createWrapper() throws FileSystemException {
-        return new FTPClientWrapper((GenericFileName) getRoot().getName(), getFileSystemOptions());
     }
 
     /**
@@ -126,7 +110,7 @@ public class FtpFileSystem extends AbstractFileSystem {
      *
      * @param client The FTPClient.
      */
-    public void putClient(final FtpClient client) {
+    void putClient(final FtpClient client) {
         // Save client for reuse if none is idle.
         if (!idleClient.compareAndSet(null, client)) {
             // An idle client is already present so close the connection.
