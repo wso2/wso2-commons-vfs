@@ -25,44 +25,28 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.apache.commons.vfs2.provider.GenericFileName;
-import org.apache.commons.vfs2.provider.URLFileName;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.StringTokenizer;
 
 /**
  * A provider for FTP file systems.
  */
 public class FtpFileProvider extends AbstractOriginatingFileProvider {
-    /**
-     * File Entry Parser.
-     */
-    public static final String ATTR_FILE_ENTRY_PARSER = "FEP";
-
-    /**
-     * Passive mode
-     */
-    public static final String PASSIVE_MODE = "vfs.passive";
-
-    /**
-     * FTPS implicit mode
-     */
-    public static final String IMPLICIT_MODE = "vfs.implicit";
-
-    public static final String PROTECTION_MODE = "vfs.protection";
 
     /**
      * Authenticator types.
      */
-    public static final UserAuthenticationData.Type[] AUTHENTICATOR_TYPES = new UserAuthenticationData.Type[] {
-            UserAuthenticationData.USERNAME, UserAuthenticationData.PASSWORD };
+    public static final UserAuthenticationData.Type[] AUTHENTICATOR_TYPES = new UserAuthenticationData.Type[]{
+            UserAuthenticationData.USERNAME, UserAuthenticationData.PASSWORD};
 
-    static final Collection<Capability> capabilities = Collections.unmodifiableCollection(Arrays
-            .asList(new Capability[] { Capability.CREATE, Capability.DELETE, Capability.RENAME, Capability.GET_TYPE,
-                    Capability.LIST_CHILDREN, Capability.READ_CONTENT, Capability.GET_LAST_MODIFIED, Capability.URI,
-                    Capability.WRITE_CONTENT, Capability.APPEND_CONTENT, Capability.RANDOM_ACCESS_READ, }));
+    static final Collection<Capability> capabilities =
+            Collections.unmodifiableCollection(Arrays.asList(Capability.CREATE, Capability.DELETE, Capability.RENAME,
+                                                             Capability.GET_TYPE, Capability.LIST_CHILDREN,
+                                                             Capability.READ_CONTENT, Capability.GET_LAST_MODIFIED,
+                                                             Capability.URI, Capability.WRITE_CONTENT,
+                                                             Capability.APPEND_CONTENT, Capability.RANDOM_ACCESS_READ));
 
     /**
      * Constructs a new provider.
@@ -78,38 +62,11 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
     @Override
     protected FileSystem doCreateFileSystem(final FileName name, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
-        // Create the file system
+
         final GenericFileName rootName = (GenericFileName) name;
-
-        FtpFileSystemConfigBuilder builder = FtpFileSystemConfigBuilder.getInstance();
-        if (this.defaultTimeout != null && (this.defaultTimeout > 0)) {
-            builder.setConnectTimeout(fileSystemOptions, this.defaultTimeout);
-            builder.setSoTimeout(fileSystemOptions, this.defaultTimeout);
-        }
-
-        String queryString = ((URLFileName)(rootName)).getQueryString();
-        FileSystemOptions opts = fileSystemOptions;
-        if (opts == null) {
-            opts = new FileSystemOptions();
-        }
-        if (queryString != null && !queryString.isEmpty()) {
-            FtpFileSystemConfigBuilder cfgBuilder = FtpFileSystemConfigBuilder.getInstance();
-            StringTokenizer st = new StringTokenizer(queryString, "?&!=");
-            while (st.hasMoreTokens()) {
-                if (PASSIVE_MODE.equalsIgnoreCase(st.nextToken()) &&
-                        st.hasMoreTokens() && "true".equalsIgnoreCase(st.nextToken())) {
-                    cfgBuilder.setPassiveMode(opts, true);
-                }
-            }
-        }
-
-        final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts);
-        /*
-         * FTPClient ftpClient = FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
-         * rootName.getUserName(), rootName.getPassword(), rootName.getPath(), fileSystemOptions);
-         */
-
-        return new FtpFileSystem(rootName, ftpClient, fileSystemOptions);
+        ClientWrapperFactory clientWrapperFactory = new FtpClientWrapperFactory(rootName, fileSystemOptions,
+                                                                                defaultTimeout);
+        return new FtpFileSystem(rootName, clientWrapperFactory, fileSystemOptions);
     }
 
     @Override
