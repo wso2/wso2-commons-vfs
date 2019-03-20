@@ -17,6 +17,7 @@
 package org.apache.commons.vfs2.provider.sftp;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * Structure for an identity.
@@ -99,5 +100,24 @@ public class IdentityInfo {
      */
     public byte[] getPassPhrase() {
         return passPhrase;
+    }
+
+    @Override
+    public int hashCode() {
+        // path of key file is considered instead of the file object because the hashes of 2 file objects
+        // are different even if the file objects are pointing to the same key file.
+        String[] identityData = {(privateKey != null ? privateKey.getAbsolutePath() : null),
+                                 (publicKey != null ? publicKey.getAbsolutePath() : null),
+                                 Arrays.toString(passPhrase)};
+        return Arrays.hashCode(identityData);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj != null) {
+            return (hashCode() == obj.hashCode());
+        } else {
+            return false;
+        }
     }
 }
