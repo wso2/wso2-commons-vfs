@@ -243,7 +243,7 @@
             <groupId>com.puppycrawl.tools</groupId>
             <artifactId>checkstyle</artifactId>
             <!--  version 7.0 requires Java 8 -->
-            <version>6.19</version>
+            <version>8.19</version>
           </dependency>
         </dependencies>        
         <!-- Keep build/reporting in sync -->
