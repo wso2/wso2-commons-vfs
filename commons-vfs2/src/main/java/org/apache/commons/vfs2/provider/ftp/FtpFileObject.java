@@ -39,17 +39,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * An FTP file.
  */
 public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
-    private static final Map<String, FTPFile> EMPTY_FTP_FILE_MAP = Collections
-            .unmodifiableMap(new TreeMap<String, FTPFile>());
+    private static final ConcurrentSkipListMap<String, FTPFile> EMPTY_FTP_FILE_MAP =
+            new ConcurrentSkipListMap<>();
     private static final FTPFile UNKNOWN = new FTPFile();
     private static final Log log = LogFactory.getLog(FtpFileObject.class);
 
@@ -57,7 +55,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
 
     // Cached info
     private FTPFile fileInfo;
-    private Map<String, FTPFile> children;
+    private ConcurrentSkipListMap<String, FTPFile> children;
     private FileObject linkDestination;
 
     private boolean inRefresh;
@@ -66,6 +64,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
             throws FileSystemException {
         super(name, fileSystem);
         final String relPath = UriParser.decode(rootName.getRelativeName(name));
+        children = new ConcurrentSkipListMap<>();
         if (".".equals(relPath)) {
             // do not use the "." as path against the ftp-server
             // e.g. the uu.net ftp-server do a recursive listing then
@@ -90,7 +89,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
          * calling getChildFile() for themselves from within getInfo(). See getChildren().
          */
         if (flush && !inRefresh) {
-            children = null;
+            children.clear();
         }
 
         // List the children of this file
@@ -110,7 +109,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
      * Fetches the children of this file, if not already cached.
      */
     private void doGetChildren() throws IOException {
-        if (children != null) {
+        if (!children.isEmpty()) {
             return;
         }
 
@@ -124,7 +123,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
             if (tmpChildren == null || tmpChildren.length == 0) {
                 children = EMPTY_FTP_FILE_MAP;
             } else {
-                children = new TreeMap<>();
+                children = new ConcurrentSkipListMap<>();
 
                 // Remove '.' and '..' elements
                 for (int i = 0; i < tmpChildren.length; i++) {
@@ -207,7 +206,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
     protected void doDetach() {
         synchronized (getFileSystem()) {
             this.fileInfo = null;
-            children = null;
+            children.clear();
         }
     }
 
@@ -216,7 +215,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
      */
     @Override
     protected void onChildrenChanged(final FileName child, final FileType newType) {
-        if (children != null && newType.equals(FileType.IMAGINARY)) {
+        if (FileType.IMAGINARY.equals(newType)) {
 
             if (!(children.isEmpty())) {
 
@@ -240,7 +239,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         } else {
             // if child was added we have to rescan the children
             // TODO - get rid of this
-            children = null;
+            children.clear();
         }
     }
 
@@ -249,7 +248,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
      */
     @Override
     protected void onChange() throws IOException {
-        children = null;
+        children.clear();
 
         if (getType().equals(FileType.IMAGINARY)) {
             // file is deleted, avoid server lookup
@@ -370,7 +369,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         doGetChildren();
 
         // VFS-210
-        if (children == null) {
+        if (children.isEmpty()) {
             return null;
         }
 
