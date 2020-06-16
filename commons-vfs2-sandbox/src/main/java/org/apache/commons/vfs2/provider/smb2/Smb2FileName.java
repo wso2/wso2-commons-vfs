@@ -80,12 +80,12 @@ public class Smb2FileName extends GenericFileName {
             sb.append('/');
         }
         sb.append(shareName);
-
-        if (!(getPath() == null || getPath().equals("/"))) {
-            if (!getPath().startsWith("/")) {
+        String path = getPath();
+        if (!(path == null || path.equals("/"))) {
+            if (!path.startsWith("/")) {
                 sb.append('/');
             }
-            sb.append(getPath());
+            sb.append(path);
         }
         return sb.toString();
     }
@@ -106,13 +106,13 @@ public class Smb2FileName extends GenericFileName {
         if (this.rootUri == null) {
             getRootURI();
         }
-
-        if (getPath().replaceAll("/", "").equals(shareName) || getPath().equals("/") || getPath().equals("")) {
+        String path = getPath();
+        if (path.replaceAll("/", "").equals(shareName) || path.equals("/") || path.equals("")) {
             return null; //if this method is called from the root name, return null because there is no parent
         } else {
             return new Smb2FileName(this.getScheme(), this.getHostName(), this.getPort(),
                     this.getDefaultPort(), this.getUserName(), this.getPassword(),
-                    getPath().substring(0, getPath().lastIndexOf("/")), this.getType(), shareName);
+                    path.substring(0, path.lastIndexOf("/")), this.getType(), shareName);
         }
     }
 }

@@ -50,8 +50,9 @@ public class Smb2FileNameParser extends HostFileNameParser {
      */
     protected String extractShareName(URI uri) throws FileSystemException {
 
-        String s = uri.getPath().startsWith("/") ? uri.getPath().substring(1) : uri.getPath();
-        String[] pathParts = s.split("/");
+        String path = uri.getPath();
+        path = path.startsWith("/") ? path.substring(1) : path;
+        String[] pathParts = path.split("/");
         String share = pathParts[0];
         if (share == null || share.isEmpty()) {
             throw new FileSystemException("vfs.provider.smb2/missing-share-name.error", uri.toString());
