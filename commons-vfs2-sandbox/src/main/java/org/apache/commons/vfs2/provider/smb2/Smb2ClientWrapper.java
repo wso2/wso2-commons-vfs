@@ -123,6 +123,9 @@ public class Smb2ClientWrapper extends SMBClient {
         try {
             return diskShare.getFileInformation(relativePath);
         } catch (Exception e) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Could not get information for file: " + relativePath);
+            }
             return null;
         }
     }
