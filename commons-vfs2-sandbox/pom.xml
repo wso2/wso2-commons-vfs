@@ -50,6 +50,11 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>com.hierynomus.wso2</groupId>
+      <artifactId>smbj</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>commons-httpclient</groupId>
       <artifactId>commons-httpclient</artifactId>
       <optional>true</optional>
