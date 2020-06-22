@@ -176,7 +176,7 @@
     <hadoop.version>2.6.0</hadoop.version>
     <checkstyle.skip>true</checkstyle.skip>
     <findbugs.skip>true</findbugs.skip>
-    <hierynomus.wso2.smbj.version>0.10.0.wso2v1</hierynomus.wso2.smbj.version>
+    <hierynomus.smbj.version>0.10.0</hierynomus.smbj.version>
   </properties>
 
   <build>
@@ -387,9 +387,9 @@
         <version>1.3.17</version>
       </dependency>
       <dependency>
-        <groupId>com.hierynomus.wso2</groupId>
+        <groupId>com.hierynomus</groupId>
         <artifactId>smbj</artifactId>
-        <version>${hierynomus.wso2.smbj.version}</version>
+        <version>${hierynomus.smbj.version}</version>
       </dependency>
       <dependency>
         <groupId>javax.mail</groupId>

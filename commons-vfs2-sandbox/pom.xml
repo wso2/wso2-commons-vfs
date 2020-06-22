@@ -50,7 +50,7 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>com.hierynomus.wso2</groupId>
+      <groupId>com.hierynomus</groupId>
       <artifactId>smbj</artifactId>
       <optional>true</optional>
     </dependency>
