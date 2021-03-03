@@ -371,6 +371,8 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         // VFS-210
         if (children.isEmpty()) {
             return null;
+        } else if (children.isEmpty()) {
+            return new String[0];
         }
 
         // TODO - get rid of this children stuff
