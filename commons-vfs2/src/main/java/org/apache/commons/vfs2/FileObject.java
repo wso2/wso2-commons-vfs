@@ -82,9 +82,16 @@ public interface FileObject extends Comparable<FileObject>, Iterable<FileObject>
      */
     boolean canRenameTo(FileObject newfile);
 
+    /**
+     * Set flag to manage setting last modified timestamo
+     * @param updateLastModified boolean. True if last modified needs to be updated.
+     */
+    void setUpdateLastModified(boolean updateLastModified);
 
-    void setUpdateLastModified(boolean value);
-
+    /**
+     * Returns the true if last modified timestamp has to be updated
+     * @return boolean
+     */
     boolean getUpdateLastModified();
 
     /**

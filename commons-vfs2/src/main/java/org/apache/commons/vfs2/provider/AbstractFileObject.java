@@ -110,8 +110,8 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
         return updateLastModified;
     }
 
-    public void setUpdateLastModified(boolean setLastModified) {
-        this.updateLastModified = setLastModified;
+    public void setUpdateLastModified(boolean updateLastModified) {
+        this.updateLastModified = updateLastModified;
     }
 
     /**

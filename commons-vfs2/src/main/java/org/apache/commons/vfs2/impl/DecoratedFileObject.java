@@ -48,12 +48,12 @@ public class DecoratedFileObject implements FileObject {
 
     @Override
     public void setUpdateLastModified(boolean value) {
-        // do nothing
+        decoratedFileObject.setUpdateLastModified(value);
     }
 
     @Override
     public boolean getUpdateLastModified() {
-        return false;
+        return decoratedFileObject.getUpdateLastModified();
     }
 
     @Override
