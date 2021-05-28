@@ -82,6 +82,11 @@ public interface FileObject extends Comparable<FileObject>, Iterable<FileObject>
      */
     boolean canRenameTo(FileObject newfile);
 
+
+    void setUpdateLastModified(boolean value);
+
+    boolean getUpdateLastModified();
+
     /**
      * Closes this file, and its content. This method is a hint to the implementation that it can release any resources
      * associated with the file.

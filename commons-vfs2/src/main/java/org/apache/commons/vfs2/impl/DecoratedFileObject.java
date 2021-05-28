@@ -47,6 +47,16 @@ public class DecoratedFileObject implements FileObject {
     }
 
     @Override
+    public void setUpdateLastModified(boolean value) {
+        // do nothing
+    }
+
+    @Override
+    public boolean getUpdateLastModified() {
+        return false;
+    }
+
+    @Override
     public void close() throws FileSystemException {
         decoratedFileObject.close();
     }
