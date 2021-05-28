@@ -75,8 +75,14 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
     public static final int DEFAULT_BUFFER_SIZE = 8192;
 
     private static final int INITIAL_LIST_SIZE = 5;
-
     private static final String DO_GET_INPUT_STREAM_INT = "doGetInputStream(int)";
+    public boolean getUpdateLastModified() {
+        return updateLastModified;
+    }
+
+    public void setUpdateLastModified(boolean setLastModified) {
+        this.updateLastModified = setLastModified;
+    }
 
     /**
      * Traverses a file.
@@ -130,7 +136,7 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
     private FileName[] children;
 
     private List<Object> objects;
-
+    private boolean updateLastModified;
     /**
      * FileServices instance.
      */
@@ -146,6 +152,7 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
         this.fileName = fileName;
         this.fileSystem = fileSystem;
         fileSystem.fileObjectHanded(this);
+        this.updateLastModified = true;
     }
 
     /**
