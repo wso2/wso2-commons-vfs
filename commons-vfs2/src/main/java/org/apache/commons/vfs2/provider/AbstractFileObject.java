@@ -86,6 +86,8 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
 
     private List<Object> objects;
 
+    private boolean updateLastModified;
+
     /**
      * FileServices instance.
      */
@@ -100,7 +102,16 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
     protected AbstractFileObject(final AbstractFileName name, final AFS fs) {
         this.fileName = name;
         this.fs = fs;
+        this.updateLastModified = true;
         fs.fileObjectHanded(this);
+    }
+
+    public boolean getUpdateLastModified() {
+        return updateLastModified;
+    }
+
+    public void setUpdateLastModified(boolean updateLastModified) {
+        this.updateLastModified = updateLastModified;
     }
 
     /**
@@ -1608,7 +1619,7 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
 
             destFile.copyFrom(this, Selectors.SELECT_SELF);
 
-            if ((destFile.getType().hasContent()
+            if (destFile.getUpdateLastModified() && (destFile.getType().hasContent()
                     && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FILE)
                     || destFile.getType().hasChildren()
                             && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FOLDER))
