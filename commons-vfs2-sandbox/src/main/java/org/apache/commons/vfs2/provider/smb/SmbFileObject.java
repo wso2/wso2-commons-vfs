@@ -16,10 +16,8 @@
  */
 package org.apache.commons.vfs2.provider.smb;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.MalformedURLException;
-
+import jcifs.CIFSContext;
+import jcifs.context.SingletonContext;
 import jcifs.smb.NtlmPasswordAuthentication;
 import jcifs.smb.SmbException;
 import jcifs.smb.SmbFile;
@@ -38,6 +36,10 @@ import org.apache.commons.vfs2.provider.AbstractFileObject;
 import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.util.RandomAccessMode;
 import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.MalformedURLException;
 
 /**
  * A file in an SMB file system.
@@ -76,11 +78,12 @@ public class SmbFileObject extends AbstractFileObject<SmbFileSystem> {
 
         UserAuthenticationData authData = null;
         SmbFile file;
+        CIFSContext context = SingletonContext.getInstance();
         try {
             authData = UserAuthenticatorUtils.authenticate(getFileSystem().getFileSystemOptions(),
                     SmbFileProvider.AUTHENTICATOR_TYPES);
 
-            NtlmPasswordAuthentication auth = new NtlmPasswordAuthentication(
+            NtlmPasswordAuthentication auth = new NtlmPasswordAuthentication(context,
                     UserAuthenticatorUtils.toString(
                             UserAuthenticatorUtils.getData(
                                     authData,
@@ -96,10 +99,11 @@ public class SmbFileObject extends AbstractFileObject<SmbFileSystem> {
                                     authData,
                                     UserAuthenticationData.PASSWORD,
                                     UserAuthenticatorUtils.toChar(smbFileName.getPassword()))));
-            file = new SmbFile(path, auth);
+            context = context.withCredentials(auth);
+            file = new SmbFile(path, context);
 
             if (file.isDirectory() && !file.toString().endsWith("/")) {
-                file = new SmbFile(path + "/", auth);
+                file = new SmbFile(path + "/", context);
             }
             return file;
         } finally {

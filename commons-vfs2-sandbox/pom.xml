@@ -44,11 +44,10 @@
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
     </dependency>
-    <dependency>
-      <groupId>jcifs</groupId>
-      <artifactId>jcifs</artifactId>
-      <optional>true</optional>
-    </dependency>
+      <dependency>
+        <groupId>org.codelibs</groupId>
+        <artifactId>jcifs</artifactId>
+      </dependency>
     <dependency>
       <groupId>com.hierynomus</groupId>
       <artifactId>smbj</artifactId>

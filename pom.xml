@@ -369,7 +369,7 @@
       <dependency>
         <groupId>org.apache.jackrabbit</groupId>
         <artifactId>jackrabbit-webdav</artifactId>
-        <version>1.6.5</version>
+        <version>2.14.9</version>
       </dependency>
       <dependency>
         <groupId>ant</groupId>
@@ -382,9 +382,9 @@
         <version>0.1.54</version>
       </dependency>
       <dependency>
-        <groupId>jcifs</groupId>
+        <groupId>org.codelibs</groupId>
         <artifactId>jcifs</artifactId>
-        <version>1.3.17</version>
+        <version>2.1.26</version>
       </dependency>
       <dependency>
         <groupId>com.hierynomus</groupId>
@@ -396,6 +396,13 @@
         <artifactId>mail</artifactId>
         <version>1.4.7</version>
       </dependency>
+      <!-- https://mvnrepository.com/artifact/javax.jcr/jcr -->
+      <dependency>
+        <groupId>javax.jcr</groupId>
+        <artifactId>jcr</artifactId>
+        <version>2.0</version>
+      </dependency>
+
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-common</artifactId>

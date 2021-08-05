@@ -26,10 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.HttpMethodBase;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.URIException;
+import org.apache.commons.httpclient.*;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.RequestEntity;
 import org.apache.commons.httpclient.params.HttpMethodParams;
@@ -63,6 +60,7 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 import org.apache.jackrabbit.webdav.client.methods.UncheckoutMethod;
 import org.apache.jackrabbit.webdav.client.methods.VersionControlMethod;
 import org.apache.jackrabbit.webdav.property.DavProperty;
+import org.apache.jackrabbit.webdav.property.DavPropertyIterator;
 import org.apache.jackrabbit.webdav.property.DavPropertyName;
 import org.apache.jackrabbit.webdav.property.DavPropertyNameSet;
 import org.apache.jackrabbit.webdav.property.DavPropertySet;
@@ -262,14 +260,14 @@ public class WebdavFileObject extends HttpFileObject<WebdavFileSystem> {
             DavPropertySet properties = getProperties(fileName, DavConstants.PROPFIND_ALL_PROP,
                     new DavPropertyNameSet(), false);
             @SuppressWarnings("unchecked") // iterator() is documented to return DavProperty instances
-            final Iterator<DavProperty> iter = properties.iterator();
+            final DavPropertyIterator iter = properties.iterator();
             while (iter.hasNext()) {
                 final DavProperty property = iter.next();
                 attributes.put(property.getName().toString(), property.getValue());
             }
             properties = getPropertyNames(fileName);
             @SuppressWarnings("unchecked") // iterator() is documented to return DavProperty instances
-            final Iterator<DavProperty> iter2 = properties.iterator();
+            final DavPropertyIterator iter2 = properties.iterator();
             while (iter2.hasNext()) {
                 DavProperty property = iter2.next();
                 if (!attributes.containsKey(property.getName().getName())) {
@@ -461,6 +459,12 @@ public class WebdavFileObject extends HttpFileObject<WebdavFileSystem> {
             final int status = fileSystem.getClient().executeMethod(method);
             if (status == HttpURLConnection.HTTP_NOT_FOUND || status == HttpURLConnection.HTTP_GONE) {
                 throw new FileNotFoundException(method.getURI());
+            }
+            if (status == HttpURLConnection.HTTP_MOVED_PERM || status == HttpURLConnection.HTTP_MOVED_TEMP) {
+                String location = method.getResponseHeader("Location").getValue();
+                URI uri = new URI(location, false);
+                method.setURI(uri);
+                fileSystem.getClient().executeMethod(method);
             }
             method.checkSuccess();
         } catch (final FileSystemException fse) {

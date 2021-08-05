@@ -44,7 +44,7 @@ public final class ExceptionConverter {
         String msg = davExc.getMessage();
         if (davExc.hasErrorCondition()) {
             try {
-                final Element error = davExc.toXml(DomUtil.BUILDER_FACTORY.newDocumentBuilder().newDocument());
+                final Element error = davExc.toXml(DomUtil.createDocument());
                 if (DomUtil.matches(error, DavException.XML_ERROR, DavConstants.NAMESPACE)) {
                     if (DomUtil.hasChildElement(error, "exception", null)) {
                         final Element exc = DomUtil.getChildElement(error, "exception", null);
