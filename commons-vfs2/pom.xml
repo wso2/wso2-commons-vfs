@@ -163,6 +163,11 @@
       <artifactId>jsr311-api</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>javax.jcr</groupId>
+      <artifactId>jcr</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <properties>
