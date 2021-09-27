@@ -48,6 +48,8 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
     private DiskEntry diskEntryRead;
     private DiskEntry diskEntryFolderWrite;
 
+    private static final char[] RESERVED_FILE_CHARS = { ' ', '#' };
+
     /**
      * @param name the file name - muse be an instance of {@link AbstractFileName}
      * @param fileSystem the file system
@@ -292,7 +294,8 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
             }
 
             for (String child : childrenNames) {
-                children.add(fileSystem.getFileSystemManager().resolveFile(this, UriParser.encode(child)));
+                children.add(fileSystem.getFileSystemManager()
+                        .resolveFile(this, UriParser.encode(child, RESERVED_FILE_CHARS)));
             }
             return children.toArray(new FileObject[children.size()]);
         }
