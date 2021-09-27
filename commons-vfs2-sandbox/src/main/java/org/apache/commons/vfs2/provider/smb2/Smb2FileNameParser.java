@@ -41,6 +41,11 @@ public class Smb2FileNameParser extends HostFileNameParser {
         return INSTANCE;
     }
 
+    @Override
+    public boolean encodeCharacter(final char ch) {
+        return super.encodeCharacter(ch) || ch == '?' || ch == ' ' || ch == '#';
+    }
+
     /**
      * Extracts the share share name from URI.
      *
