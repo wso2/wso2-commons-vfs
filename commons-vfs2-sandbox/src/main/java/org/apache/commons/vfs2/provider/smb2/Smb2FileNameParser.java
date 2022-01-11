@@ -21,6 +21,7 @@ package org.apache.commons.vfs2.provider.smb2;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.provider.HostFileNameParser;
+import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponentContext;
 
 import java.net.URI;
@@ -30,6 +31,8 @@ public class Smb2FileNameParser extends HostFileNameParser {
     private static final Smb2FileNameParser INSTANCE = new Smb2FileNameParser();
     // default port for smb newer versions
     private static final int PORT = 445;
+
+    private static final char[] RESERVED_CHARS = { '#' };
 
     protected Smb2FileNameParser() {
 
@@ -109,6 +112,7 @@ public class Smb2FileNameParser extends HostFileNameParser {
     public URI parseURIString(String uriString) throws FileSystemException {
 
         try {
+            uriString = UriParser.encode(uriString, RESERVED_CHARS);
             return new URI(uriString);
         } catch (Exception e) {
             throw new FileSystemException("vfs.provider.url/badly-formed-uri.error", uriString, e.getCause());
