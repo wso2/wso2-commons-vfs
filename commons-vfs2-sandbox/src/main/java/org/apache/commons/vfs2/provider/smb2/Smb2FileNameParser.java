@@ -25,6 +25,9 @@ import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponentContext;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Smb2FileNameParser extends HostFileNameParser {
 
@@ -34,9 +37,25 @@ public class Smb2FileNameParser extends HostFileNameParser {
 
     private static final char[] RESERVED_CHARS = { '#' };
 
+    List<Character> validPasswordChars;
+
     protected Smb2FileNameParser() {
 
         super(PORT);
+
+        // rfc3986
+        validPasswordChars = new ArrayList<Character>(
+                Arrays.asList('/', '-', '.', '_', '~', '%', '!', '$', '&', '\'', '(', ')',
+                        '*', '+', ',', ';', '=', ':', '@'));
+        for (char c = 'a'; c <= 'z'; c++) {
+            validPasswordChars.add(c);
+        }
+        for (char c = 'A'; c <= 'Z'; c++) {
+            validPasswordChars.add(c);
+        }
+        for (char c = '0'; c <= '9'; c++) {
+            validPasswordChars.add(c);
+        }
     }
 
     public static Smb2FileNameParser getInstance() {
@@ -46,7 +65,7 @@ public class Smb2FileNameParser extends HostFileNameParser {
 
     @Override
     public boolean encodeCharacter(final char ch) {
-        return super.encodeCharacter(ch) || ch == '?' || ch == ' ' || ch == '#';
+        return super.encodeCharacter(ch) || !validPasswordChars.contains(ch);
     }
 
     /**
