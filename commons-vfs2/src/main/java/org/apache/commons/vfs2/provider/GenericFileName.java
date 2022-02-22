@@ -24,8 +24,14 @@ import org.apache.commons.vfs2.FileType;
  * password), hostname, port, and path.
  */
 public class GenericFileName extends AbstractFileName {
-    private static final char[] USERNAME_RESERVED = { ':', '@', '/' };
-    private static final char[] PASSWORD_RESERVED = { '@', '/', '?' };
+    private static final char[] USERNAME_RESERVED = {
+            0x20, 0x22, 0x23, 0x2D, 0x2E, 0x2F, 0x3C, 0x3E, 0x3F, 0x40,
+            0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x7B, 0x7C, 0x7D, 0x7E
+    };
+    private static final char[] PASSWORD_RESERVED = {
+            0x20, 0x22, 0x23, 0x2D, 0x2E, 0x2F, 0x3C, 0x3E, 0x3F, 0x40,
+            0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x7B, 0x7C, 0x7D, 0x7E
+    };
     private final String userName;
     private final String hostName;
     private final int defaultPort;
