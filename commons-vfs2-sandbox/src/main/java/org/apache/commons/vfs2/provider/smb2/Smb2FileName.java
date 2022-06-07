@@ -25,7 +25,6 @@ import org.apache.commons.vfs2.provider.GenericFileName;
 public class Smb2FileName extends GenericFileName {
 
     private final String shareName;
-    private String rootUri;
     private String uri;
 
     protected Smb2FileName(String scheme, String hostName, int port, int defaultPort,
@@ -76,10 +75,6 @@ public class Smb2FileName extends GenericFileName {
 
         StringBuilder sb = new StringBuilder();
         appendRootUri(sb, usePassword);
-        if (sb.charAt(sb.length() - 1) != '/') {
-            sb.append('/');
-        }
-        sb.append(shareName);
         String path = getPath();
         if (!(path == null || path.equals("/"))) {
             if (!path.startsWith("/")) {
@@ -91,21 +86,7 @@ public class Smb2FileName extends GenericFileName {
     }
 
     @Override
-    public String getRootURI() {
-
-        if (this.rootUri == null) {
-            String uri = super.getRootURI();
-            this.rootUri = uri + shareName;
-        }
-        return this.rootUri;
-    }
-
-    @Override
     public FileName getParent() {
-
-        if (this.rootUri == null) {
-            getRootURI();
-        }
         String path = getPath();
         if (path.replaceAll("/", "").equals(shareName) || path.equals("/") || path.equals("")) {
             return null; //if this method is called from the root name, return null because there is no parent
@@ -114,5 +95,18 @@ public class Smb2FileName extends GenericFileName {
                     this.getDefaultPort(), this.getUserName(), this.getPassword(),
                     path.substring(0, path.lastIndexOf("/")), this.getType(), shareName);
         }
+    }
+
+    /**
+     * Builds the root URI for this file name.
+     */
+    @Override
+    protected void appendRootUri(final StringBuilder buffer, final boolean addPassword) {
+
+        super.appendRootUri(buffer, addPassword);
+        if (buffer.charAt(buffer.length() - 1) != '/') {
+            buffer.append('/');
+        }
+        buffer.append(shareName);
     }
 }
