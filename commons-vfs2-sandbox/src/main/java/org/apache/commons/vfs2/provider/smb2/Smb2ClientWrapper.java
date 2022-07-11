@@ -39,6 +39,7 @@ import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.GenericFileName;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -102,6 +103,12 @@ public class Smb2ClientWrapper extends SMBClient {
         } catch (Exception e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Error while creating connection to " + rootName.getHostName());
+            }
+            try {
+                session.close();
+                connection.close();
+            } catch (IOException ignored) {
+
             }
             throw new FileSystemException("vfs.provider.smb2/connect.error", rootName.getHostName(), e);
         }
