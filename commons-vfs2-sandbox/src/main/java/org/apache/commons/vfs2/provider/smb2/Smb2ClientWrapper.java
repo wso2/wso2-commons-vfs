@@ -105,8 +105,12 @@ public class Smb2ClientWrapper extends SMBClient {
                 LOG.debug("Error while creating connection to " + rootName.getHostName());
             }
             try {
-                session.close();
-                connection.close();
+                if (session != null) {
+                    session.close();
+                }
+                if (connection != null) {
+                    connection.close();
+                }
             } catch (IOException ignored) {
 
             }
