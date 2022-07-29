@@ -44,6 +44,11 @@ public class Smb2FileSystem extends AbstractFileSystem {
     }
 
     @Override
+    public void doCloseCommunicationLink() {
+        client.getAndSet(null).close();
+    }
+
+    @Override
     protected FileObject createFile(AbstractFileName name) {
 
         return new Smb2FileObject(name, this, getRootName());

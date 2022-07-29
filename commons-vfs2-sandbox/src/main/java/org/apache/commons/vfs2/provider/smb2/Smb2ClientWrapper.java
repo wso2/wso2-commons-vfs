@@ -242,4 +242,10 @@ public class Smb2ClientWrapper extends SMBClient {
             diskShare.rm(path);
         }
     }
+
+    @Override
+    public void close() {
+        smbClient.close();
+        super.close();
+    }
 }
