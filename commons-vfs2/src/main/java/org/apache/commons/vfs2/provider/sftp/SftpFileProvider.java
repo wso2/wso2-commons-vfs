@@ -88,7 +88,7 @@ public class SftpFileProvider extends AbstractOriginatingFileProvider {
             UserAuthenticatorUtils.cleanup(authData);
         }
 
-        return new SftpFileSystem(rootName, session, fileSystemOptions);
+        return new SftpFileSystem(rootName, fileSystemOptions);
     }
 
     /**

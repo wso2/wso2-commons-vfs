@@ -1236,4 +1236,53 @@ public class DefaultFileSystemManager implements FileSystemManager {
             throw new FileSystemException(e);
         }
     }
+
+    /**
+     * Close file system by URI if existed
+     *
+     * @param uri               The URI of the file to locate file system.
+     * @param fileSystemOptions The options for the FileSystem.
+     */
+    public void closeCachedFileSystem(String uri, FileSystemOptions fileSystemOptions) {
+        final String scheme = UriParser.extractScheme(uri);
+        if (scheme != null) {
+            // An absolute URI - locate the provider
+            final FileProvider provider = providers.get(scheme);
+            if (provider instanceof AbstractFileProvider) {
+                AbstractFileProvider abstractFileProvider = (AbstractFileProvider) provider;
+                // Parse the URI
+                FileName name = null;
+                try {
+                    name = abstractFileProvider.parseUri(baseFile != null ? baseFile.getName() : null, uri);
+                } catch (final FileSystemException ignore) {
+                }
+                FileSystem fs = abstractFileProvider.findFileSystem(name, fileSystemOptions);
+                if (fs != null) {
+                    // inform the cache ...
+                    getFilesCache().clear(fs);
+
+                    // just in case the cache didn't call _closeFileSystem
+                    _closeFileSystem(fs);
+                }
+            }
+        }
+
+    }
+
+    /**
+     * Checks whether the given file system is cached in the File Provider.
+     *
+     * @param filesystem        The filesystem to check whether cached in the provider .
+     * @param fileSystemOptions The options for the FileSystem.
+     */
+    public boolean isFileSystemCached(final FileSystem filesystem, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        FileProvider provider = this.providers.get(filesystem.getRootName().getScheme());
+        if (provider != null) {
+            return ((AbstractFileProvider) provider).isFileSystemCached(filesystem.getRootName(), fileSystemOptions);
+        }
+        // TODO: implement virtual file system scenarios
+        return false;
+    }
+
 }

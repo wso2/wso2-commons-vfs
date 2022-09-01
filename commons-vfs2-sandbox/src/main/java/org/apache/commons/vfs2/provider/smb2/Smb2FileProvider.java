@@ -54,8 +54,8 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider {
     protected FileSystem doCreateFileSystem(FileName name, FileSystemOptions fileSystemOptions) throws FileSystemException {
 
         final GenericFileName rootName = (GenericFileName) name;
-        final Smb2ClientWrapper smbClient = new Smb2ClientWrapper(rootName, fileSystemOptions);
-        return new Smb2FileSystem(rootName, fileSystemOptions, smbClient);
+        final Smb2WrapperClientFactory wrapperClientFactory = new Smb2WrapperClientFactory(rootName, fileSystemOptions);
+        return new Smb2FileSystem(rootName, fileSystemOptions, wrapperClientFactory);
     }
 
     @Override

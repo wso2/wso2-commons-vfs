@@ -42,6 +42,8 @@ public class FtpFileSystem extends AbstractFileSystem {
 
     private final ClientWrapperFactory clientWrapperFactory;
 
+    private volatile boolean isFileSystemClosed = false;
+
     /**
      * @param rootName The root of the file system.
      * @param clientWrapperFactory The {@link FtpClientWrapperFactory}.
@@ -58,6 +60,7 @@ public class FtpFileSystem extends AbstractFileSystem {
 
     @Override
     protected void doCloseCommunicationLink() {
+        isFileSystemClosed = true;
         final FtpClient idle = idleClient.getAndSet(null);
         // Clean up the connection
         if (idle != null) {
@@ -112,7 +115,9 @@ public class FtpFileSystem extends AbstractFileSystem {
      */
     void putClient(final FtpClient client) {
         // Save client for reuse if none is idle.
-        if (!idleClient.compareAndSet(null, client)) {
+        if (isFileSystemClosed) {
+            closeConnection(client);
+        } else if (!idleClient.compareAndSet(null, client)) {
             // An idle client is already present so close the connection.
             closeConnection(client);
         }
