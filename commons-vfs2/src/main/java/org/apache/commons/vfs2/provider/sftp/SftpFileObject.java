@@ -121,10 +121,11 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      *
      * @throws IOException
      */
-    private void statSelf() throws IOException {
+    private void statSelf() throws Exception {
         SftpClient sftpClient = getAbstractFileSystem().getClient();
-        ChannelSftp channel = sftpClient.getChannel();
+        ChannelSftp channel = null;
         try {
+            channel = sftpClient.getChannel();
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
             try {
@@ -144,9 +145,12 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                 // However, sometimes the exception has the correct id, and
                 // sometimes
                 // it does not. Need to look into why.
-
-                // Does not exist
-                attrs = null;
+                if(innerEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+                    // Does not exist
+                    attrs = null;
+                } else {
+                    throw innerEx;
+                }
             }
         } finally {
             getAbstractFileSystem().putClient(sftpClient);
@@ -166,8 +170,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     @Override
     protected void doCreateFolder() throws Exception {
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
         try {
+            final ChannelSftp channel = sftpClient.getChannel();
             channel.mkdir(relPath);
         } finally {
             getAbstractFileSystem().putClient(sftpClient);
@@ -199,8 +203,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     private void flushStat() throws IOException, SftpException {
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
         try {
+            final ChannelSftp channel = sftpClient.getChannel();
             channel.setStat(relPath, attrs);
         } finally {
             getAbstractFileSystem().putClient(sftpClient);
@@ -213,8 +217,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     @Override
     protected void doDelete() throws Exception {
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
         try {
+            final ChannelSftp channel = sftpClient.getChannel();
             if (isFile()) {
                 channel.rm(relPath);
             } else {
@@ -231,8 +235,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     @Override
     protected void doRename(final FileObject newFile) throws Exception {
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
         try {
+            final ChannelSftp channel = sftpClient.getChannel();
             final SftpFileObject newSftpFileObject = (SftpFileObject) FileObjectUtils.getAbstractFileObject(newFile);
             channel.rename(relPath, newSftpFileObject.relPath);
         } finally {
@@ -354,15 +358,15 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         // List the contents of the folder
         Vector<?> vector = null;
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
-
+        ChannelSftp channel = null;
         try {
+            channel = sftpClient.getChannel();
             // try the direct way to list the directory on the server to avoid too many roundtrips
             vector = channel.ls(relPath);
         } catch (final SftpException e) {
             String workingDirectory = null;
             try {
-                if (relPath != null) {
+                if (channel != null && relPath != null) {
                     workingDirectory = channel.pwd();
                     channel.cd(relPath);
                 }
@@ -454,15 +458,19 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      */
     InputStream getInputStream(final long filePointer) throws IOException {
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
+        final ChannelSftp channel;
         // Using InputStream directly from the channel
         // is much faster than the memory method.
         try {
+            channel = sftpClient.getChannel();
             final InputStream is = channel.get(getName().getPathDecoded(), null, filePointer);
             return new SftpInputStream(sftpClient, is);
         } catch (final SftpException e) {
             getAbstractFileSystem().putClient(sftpClient);
             throw new FileSystemException(e);
+        } catch (Exception e){
+            getAbstractFileSystem().putClient(sftpClient);
+            throw e;
         }
     }
 
@@ -474,41 +482,40 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         // VFS-113: avoid npe
         synchronized (getAbstractFileSystem()) {
             final SftpClient client = getAbstractFileSystem().getClient();
-            final ChannelSftp channel = client.getChannel();
+            // return channel.get(getName().getPath());
+            // hmmm - using the in memory method is soooo much faster ...
+
+            // TODO - Don't read the entire file into memory. Use the
+            // stream-based methods on ChannelSftp once they work properly
+
+            /*
+             * final ByteArrayOutputStream outstr = new ByteArrayOutputStream(); channel.get(relPath, outstr);
+             * outstr.close(); return new ByteArrayInputStream(outstr.toByteArray());
+             */
+
+            InputStream is;
             try {
-                // return channel.get(getName().getPath());
-                // hmmm - using the in memory method is soooo much faster ...
-
-                // TODO - Don't read the entire file into memory. Use the
-                // stream-based methods on ChannelSftp once they work properly
-
-                /*
-                 * final ByteArrayOutputStream outstr = new ByteArrayOutputStream(); channel.get(relPath, outstr);
-                 * outstr.close(); return new ByteArrayInputStream(outstr.toByteArray());
-                 */
-
-                InputStream is;
-                try {
-                    // VFS-210: sftp allows to gather an input stream even from a directory and will
-                    // fail on first read. So we need to check the type anyway
-                    if (!getType().hasContent()) {
-                        throw new FileSystemException("vfs.provider/read-not-file.error", getName());
-                    }
-
-                    is = channel.get(relPath);
-                } catch (final SftpException e) {
-                    if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                        throw new FileNotFoundException(getName());
-                    }
+                final ChannelSftp channel = client.getChannel();
+                // VFS-210: sftp allows to gather an input stream even from a directory and will
+                // fail on first read. So we need to check the type anyway
+                if (!getType().hasContent()) {
                     getAbstractFileSystem().putClient(client);
-                    throw new FileSystemException(e);
+                    throw new FileSystemException("vfs.provider/read-not-file.error", getName());
                 }
 
-                return new SftpInputStream(client, is);
-
-            } finally {
-                // getAbstractFileSystem().putChannel(channel);
+                is = channel.get(relPath);
+            } catch (final SftpException e) {
+                if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+                    getAbstractFileSystem().putClient(client);
+                    throw new FileNotFoundException(getName());
+                }
+                getAbstractFileSystem().putClient(client);
+                throw new FileSystemException(e);
+            } catch (Exception e){
+                getAbstractFileSystem().putClient(client);
+                throw e;
             }
+            return new SftpInputStream(client, is);
         }
     }
 
@@ -524,8 +531,15 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
          */
 
         final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = sftpClient.getChannel();
-        return new SftpOutputStream(sftpClient, channel.put(relPath));
+        SftpOutputStream outputStream;
+        try {
+            final ChannelSftp channel = sftpClient.getChannel();
+             outputStream = new SftpOutputStream(sftpClient, channel.put(relPath));
+        } catch (Exception e){
+            getAbstractFileSystem().putClient(sftpClient);
+            throw e;
+        }
+        return outputStream;
     }
 
     /**

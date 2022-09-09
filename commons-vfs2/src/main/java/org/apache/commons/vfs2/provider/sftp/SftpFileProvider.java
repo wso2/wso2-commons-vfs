@@ -66,28 +66,8 @@ public class SftpFileProvider extends AbstractOriginatingFileProvider {
     @Override
     protected FileSystem doCreateFileSystem(final FileName name, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
-        // JSch jsch = createJSch(fileSystemOptions);
-
         // Create the file system
         final GenericFileName rootName = (GenericFileName) name;
-
-        Session session;
-        UserAuthenticationData authData = null;
-        try {
-            authData = UserAuthenticatorUtils.authenticate(fileSystemOptions, AUTHENTICATOR_TYPES);
-
-            session = SftpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
-                    UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                            UserAuthenticatorUtils.toChar(rootName.getUserName())),
-                    UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                            UserAuthenticatorUtils.toChar(rootName.getPassword())),
-                    fileSystemOptions);
-        } catch (final Exception e) {
-            throw new FileSystemException("vfs.provider.sftp/connect.error", name, e);
-        } finally {
-            UserAuthenticatorUtils.cleanup(authData);
-        }
-
         return new SftpFileSystem(rootName, fileSystemOptions);
     }
 
