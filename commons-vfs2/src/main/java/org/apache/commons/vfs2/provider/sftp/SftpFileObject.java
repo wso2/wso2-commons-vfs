@@ -313,15 +313,18 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         }
         // List the contents of the folder
         Vector<?> vector = null;
-        final ChannelSftp channel = getAbstractFileSystem().getChannel();
 
+        final SftpClient sftpClient = getAbstractFileSystem().getClient();
+        ChannelSftp channel = null;
         try {
             // try the direct way to list the directory on the server to avoid too many round trips
+            channel = sftpClient.getChannel();
+            // try the direct way to list the directory on the server to avoid too many roundtrips
             vector = channel.ls(relPath);
         } catch (final SftpException e) {
             String workingDirectory = null;
             try {
-                if (relPath != null) {
+                if (channel != null && relPath != null) {
                     workingDirectory = channel.pwd();
                     channel.cd(relPath);
                 }
@@ -465,14 +468,20 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      * file.
      */
     InputStream getInputStream(final long filePointer) throws IOException {
-        final ChannelSftp channel = getAbstractFileSystem().getChannel();
+        final SftpClient sftpClient = getAbstractFileSystem().getClient();
+        final ChannelSftp channel = null;
         // Using InputStream directly from the channel
         // is much faster than the memory method.
         try {
+            channel = sftpClient.getChannel();
+            final InputStream is = channel.get(getName().getPathDecoded(), null, filePointer);
             return new SftpInputStream(channel, channel.get(getName().getPathDecoded(), null, filePointer));
         } catch (final SftpException e) {
             putChannel(channel);
             throw new FileSystemException(e);
+        } catch (Exception e){
+            getAbstractFileSystem().putClient(sftpClient);
+            throw e;
         }
     }
 
