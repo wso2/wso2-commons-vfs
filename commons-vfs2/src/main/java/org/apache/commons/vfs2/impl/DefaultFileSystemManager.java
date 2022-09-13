@@ -1243,7 +1243,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @param uri               The URI of the file to locate file system.
      * @param fileSystemOptions The options for the FileSystem.
      */
-    public void closeCachedFileSystem(String uri, FileSystemOptions fileSystemOptions) {
+    public void closeCachedFileSystem(String uri, FileSystemOptions fileSystemOptions) throws FileSystemException {
         final String scheme = UriParser.extractScheme(uri);
         if (scheme != null) {
             // An absolute URI - locate the provider
@@ -1256,7 +1256,9 @@ public class DefaultFileSystemManager implements FileSystemManager {
                     name = abstractFileProvider.parseUri(baseFile != null ? baseFile.getName() : null, uri);
                 } catch (final FileSystemException ignore) {
                 }
-                FileSystem fs = abstractFileProvider.findFileSystem(name, fileSystemOptions);
+                final FileName rootName = abstractFileProvider.getContext().getFileSystemManager().resolveName(name,
+                        FileName.ROOT_PATH);
+                FileSystem fs = abstractFileProvider.findFileSystem(rootName, fileSystemOptions);
                 if (fs != null) {
                     // inform the cache ...
                     getFilesCache().clear(fs);
@@ -1266,7 +1268,6 @@ public class DefaultFileSystemManager implements FileSystemManager {
                 }
             }
         }
-
     }
 
     /**
