@@ -312,7 +312,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
     protected long doGetLastModifiedTime() throws Exception {
 
         getFileInfo();
-        return fileInfo.getBasicInformation().getChangeTime().getWindowsTimeStamp();
+        return fileInfo.getBasicInformation().getChangeTime().toEpochMillis();
     }
 
     @Override
