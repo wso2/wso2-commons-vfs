@@ -110,7 +110,7 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
      * @param fileSystemProps file system options the file system instance must have.
      * @return The file system instance, or null if it is not cached.
      */
-    protected FileSystem findFileSystem(final Comparable<?> key, final FileSystemOptions fileSystemProps) {
+    public FileSystem findFileSystem(final Comparable<?> key, final FileSystemOptions fileSystemProps) {
         final FileSystemKey treeKey = new FileSystemKey(key, fileSystemProps);
 
         synchronized (fileSystems) {
@@ -180,5 +180,15 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
         }
 
         throw new FileSystemException("vfs.provider/filename-parser-missing.error");
+    }
+
+    public boolean isFileSystemCached(final FileName name, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        // Check in the cache for the file system
+        final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
+
+        final FileSystem fs = findFileSystem(rootName, fileSystemOptions);
+
+        return (fs != null);
     }
 }

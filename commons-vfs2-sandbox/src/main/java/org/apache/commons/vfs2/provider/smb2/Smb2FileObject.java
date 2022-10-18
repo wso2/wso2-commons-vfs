@@ -21,7 +21,6 @@ package org.apache.commons.vfs2.provider.smb2;
 import com.hierynomus.msfscc.fileinformation.FileAllInformation;
 import com.hierynomus.smbj.share.DiskEntry;
 import com.hierynomus.smbj.share.File;
-import jcifs.smb.SmbFileOutputStream;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -29,7 +28,10 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileObject;
 import org.apache.commons.vfs2.provider.UriParser;
+import org.apache.commons.vfs2.util.MonitorInputStream;
+import org.apache.commons.vfs2.util.MonitorOutputStream;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -41,17 +43,13 @@ import java.util.List;
  */
 public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
 
+    private static final char[] RESERVED_FILE_CHARS = {' ', '#'};
     private final String relPathToShare;
     private FileAllInformation fileInfo;
     private FileName rootName;
-    private DiskEntry diskEntryWrite;
-    private DiskEntry diskEntryRead;
-    private DiskEntry diskEntryFolderWrite;
-
-    private static final char[] RESERVED_FILE_CHARS = { ' ', '#' };
 
     /**
-     * @param name the file name - muse be an instance of {@link AbstractFileName}
+     * @param name       the file name - muse be an instance of {@link AbstractFileName}
      * @param fileSystem the file system
      * @throws ClassCastException if {@code name} is not an instance of {@link AbstractFileName}
      */
@@ -77,13 +75,8 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
         if (!getType().hasContent()) {
             throw new FileSystemException("vfs.provider/read-not-file.error", getName());
         }
-        if (diskEntryRead == null) {
-            getDiskEntryRead();
-        }
-        InputStream is = ((File) diskEntryRead).getInputStream();
+        return getDiskEntryReadInputStream();
 
-        // Wrapper will close the file object and input stream
-        return new Smb2InputStreamWrapper(is, this);
     }
 
     @Override
@@ -109,7 +102,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
         return null;
     }
 
-    private void getFileInfo() {
+    private void getFileInfo() throws FileSystemException {
 
         if (fileInfo == null) {
             synchronized (getFileSystem()) {
@@ -146,11 +139,21 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
 
     @Override
     protected OutputStream doGetOutputStream(final boolean bAppend) throws Exception {
-
-        if (diskEntryWrite == null) {
-            getDiskEntryWrite(bAppend);
+        DiskEntry diskEntryWrite;
+        Smb2ClientWrapper smb2ClientWrapper;
+        OutputStream os;
+        Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+        smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+        try {
+            synchronized (getFileSystem()) {
+                diskEntryWrite = smb2ClientWrapper.getDiskEntryWrite(getRelPathToShare(), bAppend);
+                os = ((File) diskEntryWrite).getOutputStream(bAppend);
+            }
+        } catch (Exception e) {
+            fileSystem.putClient(smb2ClientWrapper);
+            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
         }
-        return ((File) diskEntryWrite).getOutputStream(bAppend);
+        return new Smb2OutputStream(smb2ClientWrapper, os, diskEntryWrite);
     }
 
     @Override
@@ -171,64 +174,31 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
         }
     }
 
-    @Override
-    protected void endOutput() throws Exception {
-
-        super.endOutput();
-        closeAllHandles();
-    }
-
-    /**
-     * Get file write handle.
-     *
-     * @param bAppend append to file or not
-     * @throws FileSystemException handle create error
-     */
-    private void getDiskEntryWrite(boolean bAppend) throws FileSystemException {
-
-        closeAllHandles();
-        try {
-            synchronized (getFileSystem()) {
-                Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
-                diskEntryWrite = fileSystem.getDiskEntryWrite(getRelPathToShare(), bAppend);
-            }
-        } catch (Exception e) {
-            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
-        }
-    }
-
     /**
      * Get file read handle.
      *
      * @throws FileSystemException handle create error
      */
-    private void getDiskEntryRead() throws FileSystemException {
+    private Smb2InputStream getDiskEntryReadInputStream() throws FileSystemException {
 
+        InputStream is;
+        Smb2ClientWrapper smb2ClientWrapper = null;
+        DiskEntry diskEntry;
+        Smb2FileSystem fileSystem = null;
         try {
             synchronized (getFileSystem()) {
-                Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
-                diskEntryRead = fileSystem.getDiskEntryRead(getRelPathToShare());
+                fileSystem = (Smb2FileSystem) getFileSystem();
+
+                smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+                diskEntry = smb2ClientWrapper.getDiskEntryRead(getRelPathToShare());
+                is = ((File) diskEntry).getInputStream();
+
             }
         } catch (Exception e) {
+            fileSystem.putClient(smb2ClientWrapper);
             throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
         }
-    }
-
-    /**
-     * Get directory write handle.
-     *
-     * @throws FileSystemException handle create error
-     */
-    private void getDiskEntryFolderWrite() throws FileSystemException {
-
-        try {
-            synchronized (getFileSystem()) {
-                Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
-                diskEntryFolderWrite = fileSystem.getDiskEntryFolderWrite(getRelPathToShare());
-            }
-        } catch (Exception e) {
-            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
-        }
+        return new Smb2InputStream(smb2ClientWrapper, is, this, diskEntry);
     }
 
     /**
@@ -258,19 +228,42 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
 
     @Override
     protected void doRename(final FileObject newFile) throws Exception {
+        synchronized (getFileSystem()) {
 
-        Smb2FileObject fileObject = (Smb2FileObject) newFile;
-        if (doGetType() == FileType.FOLDER) {
-            if (diskEntryFolderWrite == null) {
-                getDiskEntryFolderWrite();
+            Smb2FileObject fileObject = (Smb2FileObject) newFile;
+            if (doGetType() == FileType.FOLDER) {
+                DiskEntry diskEntryFolderWrite;
+                Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+                Smb2ClientWrapper smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+                try {
+                    diskEntryFolderWrite = smb2ClientWrapper.getDiskEntryFolderWrite(getRelPathToShare());
+                    diskEntryFolderWrite.rename(fileObject.getRelPathToShare());
+                    diskEntryFolderWrite.close();
+                } catch (Exception e) {
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                } finally {
+                    fileSystem.putClient(smb2ClientWrapper);
+                }
+
+            } else {
+                try {
+                    synchronized (getFileSystem()) {
+                        Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+                        Smb2ClientWrapper smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+                        DiskEntry diskEntry;
+
+                        try {
+                            diskEntry = smb2ClientWrapper.getDiskEntryWrite(getRelPathToShare(), true);
+                            diskEntry.rename(fileObject.getRelPathToShare());
+                            diskEntry.close();
+                        } finally {
+                            fileSystem.putClient(smb2ClientWrapper);
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                }
             }
-            diskEntryFolderWrite.rename(fileObject.getRelPathToShare());
-        } else {
-            if (diskEntryWrite == null) {
-                getDiskEntryWrite(false);
-            }
-            diskEntryWrite.rename(fileObject.getRelPathToShare());
-            closeAllHandles();
         }
     }
 
@@ -305,11 +298,6 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
     protected void doDelete() throws Exception {
 
         synchronized (getFileSystem()) {
-            if (diskEntryRead != null) {
-                diskEntryRead.close();
-            }
-            endOutput();
-
             Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
             Smb2ClientWrapper client = (Smb2ClientWrapper) fileSystem.getClient();
             try {
@@ -324,29 +312,13 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
     protected long doGetLastModifiedTime() throws Exception {
 
         getFileInfo();
-        return fileInfo.getBasicInformation().getChangeTime().getWindowsTimeStamp();
+        return fileInfo.getBasicInformation().getChangeTime().toEpochMillis();
     }
 
     @Override
     public void close() throws FileSystemException {
 
         super.close();
-        closeAllHandles();
-    }
-
-    /**
-     * Closes DiskEntry Objects.
-     */
-    private void closeAllHandles() {
-
-        if (diskEntryRead != null) {
-            diskEntryRead.close();
-            diskEntryRead = null;
-        }
-        if (diskEntryWrite != null) {
-            diskEntryWrite.close();
-            diskEntryWrite = null;
-        }
     }
 
     @Override
@@ -367,5 +339,68 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
         // Cannot create a FileAllInformation object to override information.
         // Hence do nothing and return true
         return true;
+    }
+
+    /**
+     * An InputStream that monitors for end-of-file.
+     */
+    class Smb2InputStream extends MonitorInputStream {
+        private final Smb2ClientWrapper client;
+        private final FileObject fileObject;
+        private final DiskEntry diskEntry;
+
+        public Smb2InputStream(final Smb2ClientWrapper client, final InputStream in, FileObject fileObject, DiskEntry diskEntry) {
+            super(in);
+            this.client = client;
+            this.fileObject = fileObject;
+            this.diskEntry = diskEntry;
+
+        }
+
+        /**
+         * Called after the stream has been closed.
+         */
+        @Override
+        protected void onClose() throws IOException {
+            super.close();
+            try {
+                if (in != null) {
+                    in.close();
+                }
+                fileObject.close();
+                diskEntry.close();
+            } finally {
+                getAbstractFileSystem().putClient(client);
+            }
+        }
+    }
+
+    /**
+     * An InputStream that monitors for end-of-file.
+     */
+    class Smb2OutputStream extends MonitorOutputStream {
+        private final Smb2ClientWrapper client;
+        private final DiskEntry diskEntry;
+
+        public Smb2OutputStream(final Smb2ClientWrapper client, final OutputStream out, DiskEntry diskEntry) {
+            super(out);
+            this.client = client;
+            this.diskEntry = diskEntry;
+        }
+
+        /**
+         * Called after the stream has been closed.
+         */
+        @Override
+        protected void onClose() throws IOException {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+                diskEntry.close();
+            } finally {
+                getAbstractFileSystem().putClient(client);
+            }
+        }
     }
 }

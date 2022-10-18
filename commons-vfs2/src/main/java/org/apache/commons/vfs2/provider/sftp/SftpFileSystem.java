@@ -19,22 +19,18 @@ package org.apache.commons.vfs2.provider.sftp;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.vfs2.Capability;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.AbstractFileName;
 import org.apache.commons.vfs2.provider.AbstractFileSystem;
 import org.apache.commons.vfs2.provider.GenericFileName;
-import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.SftpException;
 
 /**
  * Represents the files on an SFTP server.
@@ -46,12 +42,9 @@ public class SftpFileSystem extends AbstractFileSystem {
 
     private static final long LAST_MOD_TIME_ACCURACY = 1000L;
 
-    private Session session;
+    AtomicReference<SftpClient> sftpClientAtomicReference = new AtomicReference<>();
 
-    // private final JSch jSch;
-
-    private ChannelSftp idleChannel;
-
+    private volatile boolean isFileSystemClosed;
     /**
      * Cache for the user ID (-1 when not set)
      */
@@ -62,22 +55,17 @@ public class SftpFileSystem extends AbstractFileSystem {
      */
     private int[] groupsIds;
 
-    protected SftpFileSystem(final GenericFileName rootName, final Session session,
-            final FileSystemOptions fileSystemOptions) {
+    protected SftpFileSystem(final GenericFileName rootName, final FileSystemOptions fileSystemOptions) throws FileSystemException {
         super(rootName, null, fileSystemOptions);
-        this.session = session;
+        sftpClientAtomicReference.set(new SftpClient(fileSystemOptions, rootName));
     }
 
     @Override
     protected void doCloseCommunicationLink() {
-        if (idleChannel != null) {
-            idleChannel.disconnect();
-            idleChannel = null;
-        }
-
-        if (session != null) {
-            session.disconnect();
-            session = null;
+        isFileSystemClosed = true;
+        SftpClient existingSftpClient = sftpClientAtomicReference.getAndSet(null);
+        if (existingSftpClient != null) {
+            existingSftpClient.close();
         }
     }
 
@@ -88,92 +76,24 @@ public class SftpFileSystem extends AbstractFileSystem {
      * @throws FileSystemException if a session cannot be created.
      * @throws IOException if an I/O error is detected.
      */
-    protected ChannelSftp getChannel() throws IOException {
-        ensureSession();
-        try {
-            // Use the pooled channel, or create a new one
-            final ChannelSftp channel;
-            if (idleChannel != null) {
-                channel = idleChannel;
-                idleChannel = null;
-            } else {
-                channel = (ChannelSftp) session.openChannel("sftp");
-                channel.connect();
-                final Boolean userDirIsRoot = SftpFileSystemConfigBuilder.getInstance()
-                        .getUserDirIsRoot(getFileSystemOptions());
-                final String workingDirectory = getRootName().getPath();
-                if (workingDirectory != null && (userDirIsRoot == null || !userDirIsRoot.booleanValue())) {
-                    try {
-                        channel.cd(workingDirectory);
-                    } catch (final SftpException e) {
-                        throw new FileSystemException("vfs.provider.sftp/change-work-directory.error", workingDirectory,
-                                e);
-                    }
-                }
-            }
-
-            final String fileNameEncoding = SftpFileSystemConfigBuilder.getInstance()
-                    .getFileNameEncoding(getFileSystemOptions());
-
-            if (fileNameEncoding != null) {
-                try {
-                    channel.setFilenameEncoding(fileNameEncoding);
-                } catch (final SftpException e) {
-                    throw new FileSystemException("vfs.provider.sftp/filename-encoding.error", fileNameEncoding);
-                }
-            }
-            return channel;
-        } catch (final JSchException e) {
-            throw new FileSystemException("vfs.provider.sftp/connect.error", getRootName(), e);
+    protected synchronized SftpClient getClient() throws IOException {
+        SftpClient existingSftpClient = sftpClientAtomicReference.getAndSet(null);
+        if (existingSftpClient == null) {
+            existingSftpClient = new SftpClient(getFileSystemOptions(), (GenericFileName) getRootName());
         }
-    }
-
-    /**
-     * Ensures that the session link is established.
-     *
-     * @throws FileSystemException if a session cannot be created.
-     */
-    private void ensureSession() throws FileSystemException {
-        if (this.session == null || !this.session.isConnected()) {
-            doCloseCommunicationLink();
-
-            // channel closed. e.g. by freeUnusedResources, but now we need it again
-            Session session;
-            UserAuthenticationData authData = null;
-            try {
-                final GenericFileName rootName = (GenericFileName) getRootName();
-
-                authData = UserAuthenticatorUtils.authenticate(getFileSystemOptions(),
-                        SftpFileProvider.AUTHENTICATOR_TYPES);
-
-                session = SftpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
-                        UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                                UserAuthenticatorUtils.toChar(rootName.getUserName())),
-                        UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                                UserAuthenticatorUtils.toChar(rootName.getPassword())),
-                        getFileSystemOptions());
-            } catch (final Exception e) {
-                throw new FileSystemException("vfs.provider.sftp/connect.error", getRootName(), e);
-            } finally {
-                UserAuthenticatorUtils.cleanup(authData);
-            }
-            this.session = session;
-        }
+        return existingSftpClient;
     }
 
     /**
      * Returns a channel to the pool.
      *
-     * @param channel the used channel.
+     * @param sftpClient the used channel.
      */
-    protected void putChannel(final ChannelSftp channel) {
-        if (idleChannel == null) {
-            // put back the channel only if it is still connected
-            if (channel.isConnected() && !channel.isClosed()) {
-                idleChannel = channel;
-            }
-        } else {
-            channel.disconnect();
+    protected void putClient(final SftpClient sftpClient) {
+        if (isFileSystemClosed) {
+            sftpClient.close();
+        } else if (!sftpClientAtomicReference.compareAndSet(null, sftpClient)) {
+            sftpClient.close();
         }
     }
 
@@ -264,32 +184,36 @@ public class SftpFileSystem extends AbstractFileSystem {
      * @throws IOException if an I/O error is detected.
      */
     private int executeCommand(final String command, final StringBuilder output) throws JSchException, IOException {
-        ensureSession();
-        final ChannelExec channel = (ChannelExec) session.openChannel("exec");
+        SftpClient sftpClient = getClient();
+        try {
+            final ChannelExec channel = (ChannelExec) sftpClient.getChannel("exec");
 
-        channel.setCommand(command);
-        channel.setInputStream(null);
-        try (final InputStreamReader stream = new InputStreamReader(channel.getInputStream())) {
-            channel.setErrStream(System.err, true);
-            channel.connect();
+            channel.setCommand(command);
+            channel.setInputStream(null);
+            try (final InputStreamReader stream = new InputStreamReader(channel.getInputStream())) {
+                channel.setErrStream(System.err, true);
+                channel.connect();
 
-            // Read the stream
-            final char[] buffer = new char[EXEC_BUFFER_SIZE];
-            int read;
-            while ((read = stream.read(buffer, 0, buffer.length)) >= 0) {
-                output.append(buffer, 0, read);
+                // Read the stream
+                final char[] buffer = new char[EXEC_BUFFER_SIZE];
+                int read;
+                while ((read = stream.read(buffer, 0, buffer.length)) >= 0) {
+                    output.append(buffer, 0, read);
+                }
             }
-        }
 
-        // Wait until the command finishes (should not be long since we read the output stream)
-        while (!channel.isClosed()) {
-            try {
-                Thread.sleep(SLEEP_MILLIS);
-            } catch (final Exception ee) {
-                // TODO: swallow exception, really?
+            // Wait until the command finishes (should not be long since we read the output stream)
+            while (!channel.isClosed()) {
+                try {
+                    Thread.sleep(SLEEP_MILLIS);
+                } catch (final Exception ee) {
+                    // TODO: swallow exception, really?
+                }
             }
+            channel.disconnect();
+            return channel.getExitStatus();
+        } finally {
+            putClient(sftpClient);
         }
-        channel.disconnect();
-        return channel.getExitStatus();
     }
 }
