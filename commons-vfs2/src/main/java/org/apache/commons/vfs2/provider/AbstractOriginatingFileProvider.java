@@ -21,6 +21,7 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 
 import java.util.Map;
 
@@ -108,11 +109,19 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
         // Check in the cache for the file system
         final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
 
-        final FileSystem fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+        FileSystem fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+        FileObject testFile = fs.resolveFile(name);
+        try {
+            testFile.exists();
+        } catch (FileSystemException e) {
+            ((DefaultFileSystemManager) getContext().getFileSystemManager()).closeCachedFileSystem(name.getURI(), fileSystemOptions);
+            fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+            testFile = fs.resolveFile(name);
+        }
 
         // Locate the file
         // return fs.resolveFile(name.getPath());
-        return fs.resolveFile(name);
+        return testFile;
     }
 
     /**
