@@ -64,6 +64,13 @@ public final class SftpClientFactory {
      */
     public static Session createConnection(final String hostname, final int port, final char[] username,
             final char[] password, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+        JSch.setConfig("kex", JSch.getConfig("kex") + ",diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1");
+        JSch.setConfig("server_host_key", JSch.getConfig("server_host_key") + ",ssh-rsa,ssh-dss");
+        JSch.setConfig("cipher.s2c", JSch.getConfig("cipher.s2c") + ",aes128-cbc,3des-ctr,3des-cbc,blowfish-cbc,aes192-cbc,aes256-cbc");
+        JSch.setConfig("cipher.c2s", JSch.getConfig("cipher.c2s") + ",aes128-cbc,3des-ctr,3des-cbc,blowfish-cbc,aes192-cbc,aes256-cbc");
+        JSch.setConfig("mac.s2c", JSch.getConfig("mac.s2c") + ",hmac-md5,hmac-sha1,hmac-sha1-96,hmac-md5-96");
+        JSch.setConfig("mac.c2s", JSch.getConfig("mac.c2s") + ",hmac-md5,hmac-sha1,hmac-sha1-96,hmac-md5-96");
+        JSch.setConfig("PubkeyAcceptedAlgorithms", JSch.getConfig("PubkeyAcceptedAlgorithms") + ",ssh-rsa,ssh-dss");
         final JSch jsch = new JSch();
 
         File sshDir = null;
