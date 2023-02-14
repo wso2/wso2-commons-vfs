@@ -53,4 +53,9 @@ public interface SftpConstants {
     /** Denote SOCKS proxy type. */
     String SOCKS = "socks";
 
+    /**
+     * Specifies whether the Host key should be checked. If set to 'yes', the connector (JSch) will always verify
+     * the public key (fingerprint) of the SSH/SFTP server.
+     **/
+    String STRICT_HOST_KEY_CHECKING = "transport.vfs.StrictHostKeyChecking";
 }
