@@ -735,6 +735,13 @@ public class DefaultFileSystemManager implements FileSystemManager {
                             .setUserDirIsRoot(fileSystemOptions, false);
                 }
 
+                String strictHostKeyChecking = queryParam.get(SftpConstants.STRICT_HOST_KEY_CHECKING);
+
+                if (strictHostKeyChecking != null) {
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder()))
+                            .setStrictHostKeyChecking(fileSystemOptions, strictHostKeyChecking);
+                }
+
                 String proxyHost = queryParam.get(SftpConstants.PROXY_SERVER);
 
                 if (proxyHost != null && !proxyHost.isEmpty()) {
