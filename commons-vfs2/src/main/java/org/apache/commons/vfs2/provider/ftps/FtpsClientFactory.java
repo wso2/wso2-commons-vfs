@@ -79,9 +79,9 @@ public final class FtpsClientFactory {
         protected FTPSClient createClient(final FileSystemOptions fileSystemOptions) throws FileSystemException {
             final FTPSClient client;
             if (builder.getFtpsMode(fileSystemOptions) == FtpsMode.IMPLICIT) {
-                client = new FTPSClient(true);
+                client = new FTPSClientWithSessionResumption(true);
             } else {
-                client = new FTPSClient();
+                client = new FTPSClientWithSessionResumption();
             }
 
             final TrustManager trustManager = builder.getTrustManager(fileSystemOptions);
