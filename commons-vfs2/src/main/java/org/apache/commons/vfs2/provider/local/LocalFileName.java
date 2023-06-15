@@ -37,9 +37,18 @@ public class LocalFileName extends AbstractFileName {
      * @param path the absolute path, maybe empty or null.
      * @param type the file type.
      */
+    private String queryString;
+
     protected LocalFileName(final String scheme, final String rootFile, final String path, final FileType type) {
         super(scheme, path, type);
         this.rootFile = rootFile;
+    }
+
+    protected LocalFileName(final String scheme, final String rootFile, final String path, final FileType type,
+                            final String queryString) {
+
+        this(scheme, rootFile, path, type);
+        this.queryString = queryString;
     }
 
     /**
@@ -71,6 +80,19 @@ public class LocalFileName extends AbstractFileName {
      */
     public String getRootFile() {
         return rootFile;
+    }
+
+    @Override
+    protected String createURI() {
+
+        if (queryString != null) {
+            final StringBuilder sb = new StringBuilder();
+            sb.append(super.createURI());
+            sb.append("?");
+            sb.append(queryString);
+            return sb.toString();
+        }
+        return super.createURI();
     }
 
     /**

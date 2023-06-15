@@ -24,6 +24,11 @@ import org.apache.commons.vfs2.FileType;
  */
 public class WindowsFileName extends LocalFileName {
 
+    protected WindowsFileName(final String scheme, final String rootFile, final String path, final FileType type,
+                              final String queryString) {
+        super(scheme, rootFile, path, type, queryString);
+    }
+
     /**
      * Constructs a new instance.
      *
