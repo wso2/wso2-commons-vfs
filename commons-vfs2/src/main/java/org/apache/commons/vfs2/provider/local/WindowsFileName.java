@@ -27,6 +27,11 @@ public class WindowsFileName extends LocalFileName {
         super(scheme, rootFile, path, type);
     }
 
+    protected WindowsFileName(final String scheme, final String rootFile, final String path, final FileType type,
+                              final String queryString) {
+        super(scheme, rootFile, path, type, queryString);
+    }
+
     /**
      * Factory method for creating name instances.
      *

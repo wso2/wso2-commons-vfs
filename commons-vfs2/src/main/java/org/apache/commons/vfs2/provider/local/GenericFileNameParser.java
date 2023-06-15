@@ -60,4 +60,11 @@ public class GenericFileNameParser extends LocalFileNameParser {
             final FileType type) {
         return new LocalFileName(scheme, "", path, type);
     }
+
+    @Override
+    protected FileName createFileName(String scheme, String rootFile, String path, FileType type,
+                                      String queryString) {
+
+        return new LocalFileName(scheme, "", path, type, queryString);
+    }
 }
