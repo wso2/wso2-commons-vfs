@@ -38,6 +38,13 @@ public class WindowsFileNameParser extends LocalFileNameParser {
         return new WindowsFileName(scheme, rootFile, path, type);
     }
 
+    @Override
+    protected FileName createFileName(String scheme, String rootFile, String path, FileType type,
+                                      String queryString) {
+
+        return new WindowsFileName(scheme, rootFile, path, type, queryString);
+    }
+
     /**
      * Extracts a Windows root prefix from a name.
      */
