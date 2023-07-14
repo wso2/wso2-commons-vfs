@@ -133,21 +133,30 @@ public final class FtpClientFactory {
                 password = ANON_CHAR_ARRAY;
             }
 
-            Integer connectionTimeout = null;
-            try {
-                connectionTimeout = Integer.parseInt(timeout);
-            } catch (NumberFormatException nfe) {
-                log.warn("Invalid connection timeout " + timeout + ". Set the connectionTimeout as 5000. (default)");
-                connectionTimeout = 5000;
+            Integer connectionTimeout;
+
+            if (timeout == null) {
+                connectionTimeout = builder.getConnectTimeout(fileSystemOptions);
+            } else {
+                try {
+                    connectionTimeout = Integer.parseInt(timeout);
+                } catch (NumberFormatException nfe) {
+                    log.warn("Invalid connection timeout " + timeout + ". Set the connectionTimeout as 5000. (default)");
+                    connectionTimeout = 5000;
+                }
             }
 
-            Integer connectionRetryCount = null;
-            try {
-                connectionRetryCount = Integer.parseInt(retryCount);
-            } catch (NumberFormatException e) {
-                log.warn("Invalid connection retry count " + retryCount + ". Set the connectionRetryCount as 5. "
-                        + "(default)");
-                connectionRetryCount = 5;
+            Integer connectionRetryCount;
+            if (retryCount == null) {
+                connectionRetryCount = builder.getRetryCount(fileSystemOptions);
+            } else {
+                try {
+                    connectionRetryCount = Integer.parseInt(retryCount);
+                } catch (NumberFormatException nfe) {
+                    log.warn("Invalid connection retry count " + retryCount + ". Set the connectionRetryCount as 5. "
+                            + "(default)");
+                    connectionRetryCount = 5;
+                }
             }
 
             boolean proxyMode = false;
