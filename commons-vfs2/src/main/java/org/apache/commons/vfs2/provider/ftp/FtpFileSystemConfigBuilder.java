@@ -39,11 +39,11 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
 
     private static final FtpFileSystemConfigBuilder BUILDER = new FtpFileSystemConfigBuilder();
 
+    private static final String CONNECT_TIMEOUT = _PREFIX + ".CONNECT_TIMEOUT";
+    private static final String DATA_TIMEOUT = _PREFIX + ".DATA_TIMEOUT";
+    private static final String DEFAULT_DATE_FORMAT = _PREFIX + ".DEFAULT_DATE_FORMAT";
+    private static final String ENCODING = _PREFIX + ".ENCODING";
     private static final String AUTODETECT_UTF8 = PREFIX + ".AUTODETECT_UTF8";
-    private static final String CONNECT_TIMEOUT = PREFIX + ".CONNECT_TIMEOUT";
-    private static final String DATA_TIMEOUT = PREFIX + ".DATA_TIMEOUT";
-    private static final String DEFAULT_DATE_FORMAT = PREFIX + ".DEFAULT_DATE_FORMAT";
-    private static final String ENCODING = PREFIX + ".ENCODING";
     private static final String FACTORY_KEY = FTPFileEntryParserFactory.class.getName() + ".KEY";
     private static final String FILE_TYPE = PREFIX + ".FILE_TYPE";
     private static final String PASSIVE_MODE = PREFIX + ".PASSIVE";
@@ -145,6 +145,17 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public Duration getConnectTimeoutDuration(final FileSystemOptions options) {
         return getDuration(options, CONNECT_TIMEOUT);
+    }
+
+    /**
+     * Gets the retry count.
+     *
+     * @param opts The FileSystemOptions.
+     * @return The retry count.
+     * @since 2.1
+     */
+    public Integer getRetryCount(final FileSystemOptions opts) {
+        return getInteger(opts, RETRY_COUNT);
     }
 
     /**
@@ -433,6 +444,17 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     @Deprecated
     public void setConnectTimeout(final FileSystemOptions options, final Integer duration) {
         setConnectTimeout(options, Duration.ofMillis(duration));
+    }
+
+    /**
+     * Sets the number of retries.
+     *
+     * @param opts The FileSystemOptions.
+     * @param retryCount the retryCount value.
+     * @since 2.1
+     */
+    public void setRetryCount(final FileSystemOptions opts, final Integer retryCount) {
+        setParam(opts, RETRY_COUNT, retryCount);
     }
 
     /**
