@@ -32,6 +32,7 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final FtpFileSystemConfigBuilder BUILDER = new FtpFileSystemConfigBuilder();
 
     private static final String CONNECT_TIMEOUT = _PREFIX + ".CONNECT_TIMEOUT";
+    private static final String RETRY_COUNT = _PREFIX + ".RETRY_COUNT";
     private static final String DATA_TIMEOUT = _PREFIX + ".DATA_TIMEOUT";
     private static final String DEFAULT_DATE_FORMAT = _PREFIX + ".DEFAULT_DATE_FORMAT";
     private static final String ENCODING = _PREFIX + ".ENCODING";
@@ -84,6 +85,17 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public Integer getConnectTimeout(final FileSystemOptions opts) {
         return getInteger(opts, CONNECT_TIMEOUT);
+    }
+
+    /**
+     * Gets the retry count.
+     *
+     * @param opts The FileSystemOptions.
+     * @return The retry count.
+     * @since 2.1
+     */
+    public Integer getRetryCount(final FileSystemOptions opts) {
+        return getInteger(opts, RETRY_COUNT);
     }
 
     /**
@@ -249,6 +261,17 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setConnectTimeout(final FileSystemOptions opts, final Integer connectTimeout) {
         setParam(opts, CONNECT_TIMEOUT, connectTimeout);
+    }
+
+    /**
+     * Sets the number of retries.
+     *
+     * @param opts The FileSystemOptions.
+     * @param retryCount the retryCount value.
+     * @since 2.1
+     */
+    public void setRetryCount(final FileSystemOptions opts, final Integer retryCount) {
+        setParam(opts, RETRY_COUNT, retryCount);
     }
 
     /**
