@@ -34,7 +34,7 @@
     <description>
         org.wso2.carbon.commons.vfs. This bundle will export packages from commons-vfs.jar
     </description>
-    <url>http://wso2.org</url>
+    <url>https://wso2.org</url>
 
     <dependencies>
         <dependency>
