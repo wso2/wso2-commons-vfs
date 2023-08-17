@@ -529,6 +529,19 @@
     <!--</site>-->
   <!--</distributionManagement>-->
 
+  <distributionManagement>
+    <repository>
+      <id>nexus-releases</id>
+      <name>WSO2 Release Distribution Repository</name>
+      <url>http://maven.wso2.org/nexus/service/local/staging/deploy/maven2/</url>
+    </repository>
+    <snapshotRepository>
+      <id>wso2.snapshots</id>
+      <name>Apache Snapshot Repository</name>
+      <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+  
   <!-- Releasing VFS as a multi-module build with binary artifacts is somewhat painful. This profile hooks into the commons-parent
     and the apache-pom to get the build done and then uses the assembly to package it up. -->
   <profiles>
