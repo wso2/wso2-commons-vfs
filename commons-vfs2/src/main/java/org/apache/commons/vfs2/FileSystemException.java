@@ -32,7 +32,7 @@ public class FileSystemException extends IOException {
     private static final long serialVersionUID = 20101208L;
 
     /** URL pattern */
-    private static final Pattern URL_PATTERN = Pattern.compile("[a-z]+://.*");
+    private static final Pattern URL_PATTERN = Pattern.compile("[a-zA-Z0-9]+://.*");
 
     /** Password pattern */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");

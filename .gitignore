@@ -13,3 +13,5 @@
 
 # ignore target directories
 target/
+
+.DS_Store
