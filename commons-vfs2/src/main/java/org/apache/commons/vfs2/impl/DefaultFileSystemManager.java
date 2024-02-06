@@ -730,6 +730,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
                     builder.setAvoidPermissionCheck(fileSystemOptions, permissionCheck);
                 }
 
+                String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
+                Integer timeout = null;
+                if (timeoutStr != null && builder.getTimeout(fileSystemOptions) == null) {
+                    try {
+                        timeout = Integer.parseInt(timeoutStr);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid timeout " + timeoutStr + " specified in FileURI.");
+                    }
+                    builder.setTimeout(fileSystemOptions, timeout);
+                }
+
                 if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
                     ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
                             .setUserDirIsRoot(fileSystemOptions, false);
