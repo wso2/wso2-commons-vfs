@@ -104,16 +104,7 @@ public class Smb2ClientWrapper extends SMBClient {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Error while creating connection to " + rootName.getHostName());
             }
-            try {
-                if (session != null) {
-                    session.close();
-                }
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (IOException ignored) {
-
-            }
+            close();
             throw new FileSystemException("vfs.provider.smb2/connect.error", rootName.getHostName(), e);
         }
     }
@@ -240,6 +231,33 @@ public class Smb2ClientWrapper extends SMBClient {
             diskShare.rmdir(path, true);
         } else {
             diskShare.rm(path);
+        }
+    }
+
+    public void close() {
+        try {
+            if (diskShare != null) {
+                diskShare.close();
+            }
+            if (session != null) {
+                session.close();
+            }
+            if (connection != null) {
+                connection.close(true);
+            }
+        } catch (Exception e) {
+            LOG.debug("Error while closing the connection.", e);
+        } finally {
+            if (connection != null) {
+                try {
+                    LOG.debug("Connection closed forcefully for : " + smbClient);
+                    connection.close(true);
+                } catch (IOException e) {
+                    //Ignore
+                }
+            }
+            // Close the client
+            super.close();
         }
     }
 }
