@@ -124,6 +124,18 @@ public interface FileObject extends Comparable<FileObject>, Iterable<FileObject>
     boolean getUpdateLastModified();
 
     /**
+     * Set volume mounted
+     * @param isMounted
+     */
+    void setIsMounted(boolean isMounted);
+
+    /**
+     * Check if volume mounted
+     * @return boolean
+     */
+    boolean getIsMounted();
+
+    /**
      * Closes this file, and its content. This method is a hint to the implementation that it can release any resources
      * associated with the file.
      * <p>

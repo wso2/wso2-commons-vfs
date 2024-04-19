@@ -62,6 +62,15 @@ public class DecoratedFileObject implements FileObject {
     }
 
     @Override
+    public boolean getIsMounted() {
+        return decoratedFileObject.getIsMounted();
+    }
+
+    @Override
+    public void setIsMounted(boolean isMounted) {
+        decoratedFileObject.setIsMounted(isMounted);
+    }
+    @Override
     public void close() throws FileSystemException {
         fileObject.close();
     }
