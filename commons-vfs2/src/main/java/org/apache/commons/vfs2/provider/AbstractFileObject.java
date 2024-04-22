@@ -204,7 +204,7 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
     @Override
     public boolean canRenameTo(final FileObject newfile) {
         // If volume mounted, it is considered as two different file systems, hence cannot rename.
-        if (newfile.getIsMounted()) {
+        if (this.getIsMounted() || newfile.getIsMounted()) {
             return false;
         }
         return fileSystem == newfile.getFileSystem();
