@@ -80,16 +80,29 @@ public class Smb2ClientWrapper extends SMBClient {
         final String userString = rootName.getUserName();
         String userName = "";
         if (userString != null && !userString.isEmpty()) {
+
             if (userString.contains(";")) {
                 userName = userString.substring(userString.indexOf(";") + 1, userString.length());
+                LOG.info("userName in setupClient(): " + userName);
+            } else if (userString.contains("\\")) {
+                userName = userString.substring(userString.indexOf("\\") + 1, userString.length());
             } else {
                 userName = userString;
+                LOG.info("userName in setupClient(): " + userName);
             }
         }
 
         String password = rootName.getPassword();
-        String authDomain = (userString.contains(";") ?
-                userString.substring(0, userString.indexOf(";")) : null);
+
+        String authDomain = null;
+
+        if((userString.contains(";"))){
+            authDomain = userString.substring(0, userString.indexOf(";"));
+        }else if((userString.contains("\\"))){
+            authDomain = userString.substring(0, userString.indexOf("\\"));
+        }else{
+            authDomain = null;
+        }
 
         //if username == "" the client tries to authenticate "anonymously". It's also possible to submit "guest" as username
         AuthenticationContext authContext = new AuthenticationContext(userName, password.toCharArray(), authDomain);
