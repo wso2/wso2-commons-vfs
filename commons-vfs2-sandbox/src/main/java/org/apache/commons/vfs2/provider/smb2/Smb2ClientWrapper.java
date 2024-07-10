@@ -83,12 +83,10 @@ public class Smb2ClientWrapper extends SMBClient {
 
             if (userString.contains(";")) {
                 userName = userString.substring(userString.indexOf(";") + 1, userString.length());
-                LOG.info("userName in setupClient(): " + userName);
             } else if (userString.contains("\\")) {
                 userName = userString.substring(userString.indexOf("\\") + 1, userString.length());
             } else {
                 userName = userString;
-                LOG.info("userName in setupClient(): " + userName);
             }
         }
 
