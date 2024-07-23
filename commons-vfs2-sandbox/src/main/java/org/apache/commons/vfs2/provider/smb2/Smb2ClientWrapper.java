@@ -94,11 +94,11 @@ public class Smb2ClientWrapper extends SMBClient {
 
         String authDomain = null;
 
-        if((userString.contains(";"))){
+        if (userString.contains(";")) {
             authDomain = userString.substring(0, userString.indexOf(";"));
-        }else if((userString.contains("\\"))){
+        } else if (userString.contains("\\")) {
             authDomain = userString.substring(0, userString.indexOf("\\"));
-        }else{
+        } else {
             authDomain = null;
         }
 
