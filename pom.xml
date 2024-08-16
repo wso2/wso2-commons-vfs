@@ -145,6 +145,7 @@
 
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.javadoc.plugin.version>3.4.1</maven.javadoc.plugin.version>
 
     <!-- bare ID without major version or commons- prefix -->
     <commons.componentid>vfs2</commons.componentid>
@@ -277,7 +278,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.5</version>
+        <version>${maven.javadoc.plugin.version}</version>
         <configuration>
           <tags>
             <tag>
