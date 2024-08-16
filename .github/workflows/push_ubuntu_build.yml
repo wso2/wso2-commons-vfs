@@ -2,7 +2,7 @@ name: CI - Push request - Ubuntu
 
 on:
   push:
-    branches: ["2.2.x", "master"]
+    branches: ["2.2.x", "master", "workflow-test"]
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
-          java-version: "11"
+          java-version: "8"
           distribution: "temurin"
           cache: maven
       - name: Build with Maven
