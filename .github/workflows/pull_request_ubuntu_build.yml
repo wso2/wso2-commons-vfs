@@ -2,7 +2,7 @@ name: CI - Pull request - Ubuntu
 
 on:
   pull_request:
-    branches: ["2.2.x", "master"]
+    branches: ["2.2.x"]
 
 jobs:
   build:

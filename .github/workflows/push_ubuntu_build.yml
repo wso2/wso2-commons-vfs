@@ -2,7 +2,7 @@ name: CI - Push request - Ubuntu
 
 on:
   push:
-    branches: ["2.2.x", "master"]
+    branches: ["2.2.x"]
 
 jobs:
   build:
