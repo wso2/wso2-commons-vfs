@@ -125,6 +125,10 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
         <!-- surfire do not honor suite(), see MSUREFIRE-131 why our tests wont work with maven 2 -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -133,6 +137,7 @@
             <test.basedir>../core/target/test-classes/test-data</test.basedir>
             <test.basedir.res>test-data</test.basedir.res>
           </systemPropertyVariables>
+          <argLine>${argLine}</argLine>
         </configuration>
       </plugin>
     </plugins>

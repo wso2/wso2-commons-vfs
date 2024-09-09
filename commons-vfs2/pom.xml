@@ -242,7 +242,10 @@
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -260,6 +263,7 @@
             <!-- inner classes -->
             <exclude>**/*$*</exclude>
           </excludes>
+          <argLine>${argLine}</argLine>
         </configuration>
       </plugin>
     </plugins>
