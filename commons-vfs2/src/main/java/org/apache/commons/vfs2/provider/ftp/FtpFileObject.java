@@ -369,7 +369,7 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         doGetChildren();
 
         // VFS-210
-        if (children.isEmpty()) {
+        if (children == null) {
             return null;
         } else if (children.isEmpty()) {
             return new String[0];
