@@ -177,7 +177,7 @@
     <hadoop.version>2.6.0</hadoop.version>
     <checkstyle.skip>true</checkstyle.skip>
     <findbugs.skip>true</findbugs.skip>
-    <hierynomus.smbj.version>0.10.0</hierynomus.smbj.version>
+    <hierynomus.smbj.version>0.11.3</hierynomus.smbj.version>
   </properties>
 
   <build>
