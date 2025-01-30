@@ -50,12 +50,10 @@ import java.util.List;
 public class Smb2ClientWrapper extends SMBClient {
 
     private static final Log LOG = LogFactory.getLog(Smb2ClientWrapper.class);
-
-    private static final SmbConfig CONFIG = SmbConfig.builder()
+    private static SmbConfig config = SmbConfig.builder()
             .withDfsEnabled(true)
             .withMultiProtocolNegotiate(true)
             .build();
-
     protected final FileSystemOptions fileSystemOptions;
     private final GenericFileName root;
     private SMBClient smbClient;
@@ -68,7 +66,16 @@ public class Smb2ClientWrapper extends SMBClient {
 
         this.root = root;
         this.fileSystemOptions = fileSystemOptions;
-        smbClient = new SMBClient(CONFIG);
+        boolean encryptionEnabled = Smb2FileSystemConfigBuilder.getInstance().getEncryptionEnabled(fileSystemOptions);
+
+        if (encryptionEnabled) {
+            config = SmbConfig.builder()
+                    .withDfsEnabled(true)
+                    .withEncryptData(true)
+                    .withMultiProtocolNegotiate(true)
+                    .build();
+        }
+        smbClient = new SMBClient(config);
         setupClient();
     }
 
