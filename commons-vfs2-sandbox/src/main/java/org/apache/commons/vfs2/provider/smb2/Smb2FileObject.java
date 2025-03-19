@@ -146,9 +146,22 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
 
     @Override
     protected OutputStream doGetOutputStream(final boolean bAppend) throws Exception {
-
-        if (diskEntryWrite == null) {
-            getDiskEntryWrite(bAppend);
+        DiskEntry diskEntryWrite;
+        Smb2ClientWrapper smb2ClientWrapper;
+        OutputStream os;
+        Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+        smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+        try {
+            synchronized (getFileSystem()) {
+                diskEntryWrite = smb2ClientWrapper.getDiskEntryWrite(getRelPathToShare(), bAppend);
+                if (diskEntryWrite == null) {
+                    getDiskEntryWrite(bAppend);
+                }
+                os = ((File) diskEntryWrite).getOutputStream(bAppend);
+            }
+        } catch (Exception e) {
+            fileSystem.putClient(smb2ClientWrapper);
+            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
         }
         return ((File) diskEntryWrite).getOutputStream(bAppend);
     }
@@ -227,6 +240,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
                 diskEntryFolderWrite = fileSystem.getDiskEntryFolderWrite(getRelPathToShare());
             }
         } catch (Exception e) {
+            fileSystem.putClient(smb2ClientWrapper);
             throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
         }
     }
@@ -259,15 +273,39 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
     @Override
     protected void doRename(final FileObject newFile) throws Exception {
 
-        Smb2FileObject fileObject = (Smb2FileObject) newFile;
-        if (doGetType() == FileType.FOLDER) {
-            if (diskEntryFolderWrite == null) {
-                getDiskEntryFolderWrite();
-            }
-            diskEntryFolderWrite.rename(fileObject.getRelPathToShare());
-        } else {
-            if (diskEntryWrite == null) {
-                getDiskEntryWrite(false);
+            Smb2FileObject fileObject = (Smb2FileObject) newFile;
+            if (doGetType() == FileType.FOLDER) {
+                DiskEntry diskEntryFolderWrite;
+                Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+                Smb2ClientWrapper smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+                try {
+                    diskEntryFolderWrite = smb2ClientWrapper.getDiskEntryFolderWrite(getRelPathToShare());
+                    diskEntryFolderWrite.rename(fileObject.getRelPathToShare());
+                    diskEntryFolderWrite.close();
+                } catch (Exception e) {
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                } finally {
+                    fileSystem.putClient(smb2ClientWrapper);
+                }
+
+            } else {
+                try {
+                    synchronized (getFileSystem()) {
+                        Smb2FileSystem fileSystem = (Smb2FileSystem) getFileSystem();
+                        Smb2ClientWrapper smb2ClientWrapper = (Smb2ClientWrapper) fileSystem.getClient();
+                        DiskEntry diskEntry;
+
+                        try {
+                            diskEntry = smb2ClientWrapper.getDiskEntryWrite(getRelPathToShare(), true);
+                            diskEntry.rename(fileObject.getRelPathToShare());
+                            diskEntry.close();
+                        } finally {
+                            fileSystem.putClient(smb2ClientWrapper);
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                }
             }
             diskEntryWrite.rename(fileObject.getRelPathToShare());
             closeAllHandles();
