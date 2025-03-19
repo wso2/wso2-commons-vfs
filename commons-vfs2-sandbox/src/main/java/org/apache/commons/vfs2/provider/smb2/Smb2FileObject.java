@@ -151,7 +151,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
             }
         } catch (Exception e) {
             fileSystem.putClient(smb2ClientWrapper);
-            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e);
         }
         return new Smb2OutputStream(smb2ClientWrapper, os, diskEntryWrite);
     }
@@ -196,7 +196,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
             }
         } catch (Exception e) {
             fileSystem.putClient(smb2ClientWrapper);
-            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+            throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e);
         }
         return new Smb2InputStream(smb2ClientWrapper, is, this, diskEntry);
     }
@@ -240,7 +240,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
                     diskEntryFolderWrite.rename(fileObject.getRelPathToShare());
                     diskEntryFolderWrite.close();
                 } catch (Exception e) {
-                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e);
                 } finally {
                     fileSystem.putClient(smb2ClientWrapper);
                 }
@@ -261,7 +261,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
                         }
                     }
                 } catch (Exception e) {
-                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e.getCause());
+                    throw new FileSystemException("vfs.provider.smb2/diskentry-create.error", getName(), e);
                 }
             }
         }

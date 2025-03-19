@@ -42,7 +42,12 @@ import org.apache.commons.vfs2.provider.GenericFileName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A wrapper to the SMBClient for bundling the related client & connection instances.
@@ -60,6 +65,14 @@ public class Smb2ClientWrapper extends SMBClient {
     private Connection connection;
     private Session session;
     private DiskShare diskShare;
+    // Inline initialization of the Access Mask Map
+    private static final Map<String, Set<AccessMask>> ACCESS_MASK_MAP = new HashMap<String, Set<AccessMask>>() {{
+        put("READ", EnumSet.of(AccessMask.GENERIC_READ));
+        put("WRITE", EnumSet.of(AccessMask.GENERIC_WRITE));
+        put("READ_WRITE", EnumSet.of(AccessMask.GENERIC_READ, AccessMask.GENERIC_WRITE));
+        put("ALL", EnumSet.of(AccessMask.GENERIC_ALL));
+        put("MAXIMUM", EnumSet.of(AccessMask.MAXIMUM_ALLOWED));
+    }};
 
     protected Smb2ClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
@@ -162,11 +175,35 @@ public class Smb2ClientWrapper extends SMBClient {
      * @return DiskEntry file
      */
     public DiskEntry getDiskEntryWrite(String path, boolean append) throws FileSystemException {
-        return diskShare.open(path, EnumSet.of(AccessMask.MAXIMUM_ALLOWED),
+        String diskShareAccessMask = Smb2FileSystemConfigBuilder.getInstance()
+                .getDiskShareAccessMask(fileSystemOptions);
+        Set<AccessMask> accessMask = getAccessMaskFromConfig(diskShareAccessMask);
+        return diskShare.open(path, accessMask,
                               EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
                               EnumSet.of(SMB2ShareAccess.FILE_SHARE_WRITE),
                               append ? SMB2CreateDisposition.FILE_OPEN_IF : SMB2CreateDisposition.FILE_OVERWRITE_IF,
                               EnumSet.of(SMB2CreateOptions.FILE_NO_COMPRESSION));
+    }
+
+    /**
+     * Retrieves the set of \AccessMask\ values based on the provided configuration string.
+     *
+     * @param config the access mask configuration string
+     * @return a set of \AccessMask\ values corresponding to the configuration
+     * @throws IllegalArgumentException if the configuration string is null or invalid
+     */
+    public static Set<AccessMask> getAccessMaskFromConfig(String config) {
+        if (config == null) {
+            //To keep backward compatibility
+            return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
+        }
+        // Convert to uppercase for case-insensitive matching
+        Set<AccessMask> accessMask = ACCESS_MASK_MAP.get(config.toUpperCase());
+        if (accessMask == null) {
+            //To keep backward compatibility
+            return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
+        }
+        return accessMask;
     }
 
     /**
