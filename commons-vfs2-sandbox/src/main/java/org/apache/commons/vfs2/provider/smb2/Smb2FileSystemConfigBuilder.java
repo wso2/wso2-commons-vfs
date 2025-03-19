@@ -29,6 +29,7 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
 
     private static final Smb2FileSystemConfigBuilder BUILDER = new Smb2FileSystemConfigBuilder();
     private static final String ENCRYPTION_ENABLED = "EncryptionEnabled";
+    public static final String DISK_SHARE_ACCESS_MASK = "diskShareAccessMask";
 
     public static Smb2FileSystemConfigBuilder getInstance() {
         return BUILDER;
@@ -46,6 +47,21 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
     }
 
     /**
+     * Get the DiskShareAccessMask parameter for smb2 servers.
+     *
+     * @param opts The FileSystem options.
+     * @return The DiskShareAccessMask parameter.
+     */
+    public String getDiskShareAccessMask(FileSystemOptions opts) {
+        Object param = getParam(opts, DISK_SHARE_ACCESS_MASK);
+        if (param == null || !(param instanceof String)) {
+            return null; // Return null if param is null or not a String
+        }
+        String config = ((String) param).toUpperCase(); // Convert to uppercase
+        return config;
+    }
+
+    /**
      * Set the EncryptionEnabled parameter for SMB2 servers.
      *
      * @param opts            The FileSystem options.
@@ -53,6 +69,16 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setEncryptionEnabled(FileSystemOptions opts, boolean encryptionEnabled) {
         setParam(opts, ENCRYPTION_ENABLED, encryptionEnabled);
+    }
+
+    /**
+     * Set the DiskShareAccessMask parameter for SMB2 servers.
+     *
+     * @param opts The FileSystem options.
+     * @param mask The DiskShareAccessMask parameter.
+     */
+    public void setDiskShareAccessMask(FileSystemOptions opts, String mask) {
+        setParam(opts, DISK_SHARE_ACCESS_MASK, mask);
     }
 
     @Override
