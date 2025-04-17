@@ -22,6 +22,8 @@ import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.apache.commons.vfs2.FileSystemOptions;
 
+import java.util.ArrayList;
+
 /**
  * The config builder for SMB2 configuration options.
  */
@@ -52,12 +54,12 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
      * @param opts The FileSystem options.
      * @return The DiskShareAccessMask parameter.
      */
-    public String getDiskShareAccessMask(FileSystemOptions opts) {
+    public ArrayList<String> getDiskShareAccessMask(FileSystemOptions opts) {
         Object param = getParam(opts, DISK_SHARE_ACCESS_MASK);
-        if (param == null || !(param instanceof String)) {
+        if (param == null || !(param instanceof ArrayList)) {
             return null; // Return null if param is null or not a String
         }
-        String config = ((String) param).toUpperCase(); // Convert to uppercase
+        ArrayList<String> config = (ArrayList<String>) param;
         return config;
     }
 
@@ -77,7 +79,7 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
      * @param opts The FileSystem options.
      * @param mask The DiskShareAccessMask parameter.
      */
-    public void setDiskShareAccessMask(FileSystemOptions opts, String mask) {
+    public void setDiskShareAccessMask(FileSystemOptions opts, ArrayList<String> mask) {
         setParam(opts, DISK_SHARE_ACCESS_MASK, mask);
     }
 

@@ -40,14 +40,7 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.GenericFileName;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.*;
 
 /**
  * A wrapper to the SMBClient for bundling the related client & connection instances.
@@ -65,14 +58,6 @@ public class Smb2ClientWrapper extends SMBClient {
     private Connection connection;
     private Session session;
     private DiskShare diskShare;
-    // Inline initialization of the Access Mask Map
-    private static final Map<String, Set<AccessMask>> ACCESS_MASK_MAP = new HashMap<String, Set<AccessMask>>() {{
-        put("READ", EnumSet.of(AccessMask.GENERIC_READ));
-        put("WRITE", EnumSet.of(AccessMask.GENERIC_WRITE));
-        put("READ_WRITE", EnumSet.of(AccessMask.GENERIC_READ, AccessMask.GENERIC_WRITE));
-        put("ALL", EnumSet.of(AccessMask.GENERIC_ALL));
-        put("MAXIMUM", EnumSet.of(AccessMask.MAXIMUM_ALLOWED));
-    }};
 
     protected Smb2ClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
@@ -175,7 +160,7 @@ public class Smb2ClientWrapper extends SMBClient {
      * @return DiskEntry file
      */
     public DiskEntry getDiskEntryWrite(String path, boolean append) throws FileSystemException {
-        String diskShareAccessMask = Smb2FileSystemConfigBuilder.getInstance()
+        ArrayList<String> diskShareAccessMask = Smb2FileSystemConfigBuilder.getInstance()
                 .getDiskShareAccessMask(fileSystemOptions);
         Set<AccessMask> accessMask = getAccessMaskFromConfig(diskShareAccessMask);
         return diskShare.open(path, accessMask,
@@ -192,19 +177,33 @@ public class Smb2ClientWrapper extends SMBClient {
      * @return a set of \AccessMask\ values corresponding to the configuration
      * @throws IllegalArgumentException if the configuration string is null or invalid
      */
-    public static Set<AccessMask> getAccessMaskFromConfig(String config) {
-        if (config == null) {
-            //To keep backward compatibility
+    public static Set<AccessMask> getAccessMaskFromConfig(ArrayList<String> config) {
+        if (config == null || config.isEmpty()) {
+            // To keep backward compatibility
             return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
         }
-        // Convert to uppercase for case-insensitive matching
-        Set<AccessMask> accessMask = ACCESS_MASK_MAP.get(config.toUpperCase());
-        if (accessMask == null) {
-            //To keep backward compatibility
+
+        Set<AccessMask> accessMasks = EnumSet.noneOf(AccessMask.class);
+
+        for (String maskValue : config) {
+            try {
+                if (maskValue != null) {
+                    AccessMask mask = AccessMask.valueOf(maskValue.trim().toUpperCase());
+                    accessMasks.add(mask);
+                }
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid values
+            }
+        }
+
+        if (accessMasks.isEmpty()) {
+            // To keep backward compatibility
             return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
         }
-        return accessMask;
+
+        return accessMasks;
     }
+
 
     /**
      * Creates a folder on a given path.
