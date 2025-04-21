@@ -40,8 +40,10 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.provider.GenericFileName;
 
 import java.io.IOException;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 /**
  * A wrapper to the SMBClient for bundling the related client & connection instances.
  */
