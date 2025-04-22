@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+
 /**
  * A wrapper to the SMBClient for bundling the related client & connection instances.
  */
@@ -190,7 +191,9 @@ public class Smb2ClientWrapper extends SMBClient {
                     accessMasks.add(mask);
                 }
             } catch (IllegalArgumentException e) {
-                // Ignore invalid values
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Invalid access mask value: " + maskValue);
+                }
             }
         }
 
