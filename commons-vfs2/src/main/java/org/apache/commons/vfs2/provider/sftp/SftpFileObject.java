@@ -20,6 +20,8 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileNotFoundException;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -52,6 +54,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     private SftpATTRS attrs;
     private final String relPath;
     private boolean inRefresh;
+    private static final Log LOG = LogFactory.getLog(SftpFileObject.class);
 
     protected SftpFileObject(final AbstractFileName name, final SftpFileSystem fileSystem) throws FileSystemException {
         super(name, fileSystem);
@@ -84,6 +87,28 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                 inRefresh = false;
             }
         }
+    }
+
+    /**
+     * Checks if an exception is a STAT error for a lock file or for an imaginary file.
+     *
+     * @param e the exception to check
+     * @return true if this is a STAT error for a lock file or an imaginary file, false otherwise
+     */
+    private boolean isStatErrorForLockFile(Exception e) throws FileSystemException {
+        boolean isLockFile = getName().getPath().endsWith(".lock");
+
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SftpException && cause.getMessage() != null &&
+                    cause.getMessage().contains("STAT error")) {
+                if (isLockFile) {
+                    return true;
+                }
+                boolean isImaginaryFile = FileType.IMAGINARY.equals(getType());
+                return isImaginaryFile;
+            }
+        }
+        return false;
     }
 
     /**
@@ -129,8 +154,12 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
             try {
-                // maybe the channel has some problems, so recreate the channel and retry
-                if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+                if (isStatErrorForLockFile(e)) {
+                    // For lock files or imaginary files with STAT errors, set attrs to null and continue
+                    LOG.debug("STAT error encountered on lock or imaginary file — interpreting as 'file does not exist'");
+                    attrs = null;
+                } else if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+                    // maybe the channel has some problems, so recreate the channel and retry
                     channel.disconnect();
                     channel = sftpClient.getChannel();
                     setStat(channel.stat(relPath));
