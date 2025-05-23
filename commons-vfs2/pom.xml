@@ -81,7 +81,7 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>com.github.mwiede</groupId>
+      <groupId>com.jcraft</groupId>
       <artifactId>jsch</artifactId>
       <optional>true</optional>
     </dependency>
