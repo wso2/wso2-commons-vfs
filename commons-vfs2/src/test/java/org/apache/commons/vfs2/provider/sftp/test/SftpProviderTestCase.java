@@ -78,7 +78,6 @@ import org.apache.sshd.server.session.ServerSession;
 import org.apache.sshd.server.sftp.SftpSubsystem;
 
 import com.jcraft.jsch.SftpATTRS;
-import com.jcraft.jsch.TestIdentityRepositoryFactory;
 
 /**
  * Tests cases for the SFTP provider.
@@ -371,7 +370,6 @@ public class SftpProviderTestCase extends AbstractProviderTestConfig {
         final SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
         builder.setStrictHostKeyChecking(fileSystemOptions, "no");
         builder.setUserInfo(fileSystemOptions, new TrustEveryoneUserInfo());
-        builder.setIdentityRepositoryFactory(fileSystemOptions, new TestIdentityRepositoryFactory());
 
         if (streamProxyMode) {
             final FileSystemOptions proxyOptions = (FileSystemOptions) fileSystemOptions.clone();

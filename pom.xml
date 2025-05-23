@@ -427,9 +427,9 @@
         <version>1.6.5</version>
       </dependency>
       <dependency>
-        <groupId>com.jcraft</groupId>
+        <groupId>com.github.mwiede</groupId>
         <artifactId>jsch</artifactId>
-        <version>0.1.54</version>
+        <version>0.2.24</version>
       </dependency>
       <dependency>
         <groupId>org.codelibs</groupId>
