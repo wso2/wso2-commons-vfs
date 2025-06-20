@@ -110,6 +110,22 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     }
 
     /**
+     * Checks if an exception is a STAT error for a lock file or for an imaginary file.
+     *
+     * @param e the exception to check
+     * @return true if this is a STAT error for a lock file or an imaginary file, false otherwise
+     */
+    private boolean isStatError(Exception e) throws FileSystemException {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SftpException && cause.getMessage() != null &&
+                    cause.getMessage().contains("STAT error")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Creates this file as a folder.
      */
     @Override
