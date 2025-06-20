@@ -95,17 +95,11 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      * @param e the exception to check
      * @return true if this is a STAT error for a lock file or an imaginary file, false otherwise
      */
-    private boolean isStatErrorForLockFile(Exception e) throws FileSystemException {
-        boolean isLockFile = getName().getPath().endsWith(".lock");
-
+    private boolean isStatError(Exception e) throws FileSystemException {
         for (Throwable cause = e; cause != null; cause = cause.getCause()) {
             if (cause instanceof SftpException && cause.getMessage() != null &&
                     cause.getMessage().contains("STAT error")) {
-                if (isLockFile) {
-                    return true;
-                }
-                boolean isImaginaryFile = FileType.IMAGINARY.equals(getType());
-                return isImaginaryFile;
+                return true;
             }
         }
         return false;
@@ -154,12 +148,12 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
             try {
-                if (isStatErrorForLockFile(e)) {
-                    // For lock files or imaginary files with STAT errors, set attrs to null and continue
-                    LOG.debug("STAT error encountered on lock or imaginary file — interpreting as 'file does not exist'");
+                if (isStatError(e)) {
+                    // If the exception is a STAT error interpret it as a file does not exist.
+                    LOG.debug("STAT error encountered on the file — interpreting as 'file does not exist'");
                     attrs = null;
                 } else if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                    // maybe the channel has some problems, so recreate the channel and retry
+                    // Maybe the channel has some problems, so recreate the channel and retry
                     channel.disconnect();
                     channel = sftpClient.getChannel();
                     setStat(channel.stat(relPath));
