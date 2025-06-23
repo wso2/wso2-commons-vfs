@@ -90,22 +90,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     }
 
     /**
-     * Checks if an exception is a STAT error for a lock file or for an imaginary file.
-     *
-     * @param e the exception to check
-     * @return true if this is a STAT error for a lock file or an imaginary file, false otherwise
-     */
-    private boolean isStatError(Exception e) throws FileSystemException {
-        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
-            if (cause instanceof SftpException && cause.getMessage() != null &&
-                    cause.getMessage().contains("STAT error")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Determines the type of this file, returns null if the file does not exist.
      */
     @Override
@@ -143,36 +127,30 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     private void statSelf() throws Exception {
         SftpClient sftpClient = getAbstractFileSystem().getClient();
         ChannelSftp channel = null;
+
         try {
             channel = sftpClient.getChannel();
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
-            try {
-                if (isStatError(e)) {
-                    // If the exception is a STAT error interpret it as a file does not exist.
-                    LOG.debug("STAT error encountered on the file — interpreting as 'file does not exist'");
-                    attrs = null;
-                } else if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                    // Maybe the channel has some problems, so recreate the channel and retry
-                    channel.disconnect();
+            if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || e.id == ChannelSftp.SSH_FX_FAILURE) {
+                // File does not exist or stat failed in a known way — treat as imaginary
+                attrs = null;
+                LOG.debug("NO_SUCH_FILE or STAT FAILURE — treating as non-existent");
+            } else {
+                // Try one retry — possibly transient channel issue
+                try {
+                    if (channel != null) {
+                        channel.disconnect();
+                    }
                     channel = sftpClient.getChannel();
                     setStat(channel.stat(relPath));
-                } else {
-                    // Really does not exist
-                    attrs = null;
-                }
-            } catch (final SftpException innerEx) {
-                // TODO - not strictly true, but jsch 0.1.2 does not give us
-                // enough info in the exception. Should be using:
-                // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE )
-                // However, sometimes the exception has the correct id, and
-                // sometimes
-                // it does not. Need to look into why.
-                if(innerEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                    // Does not exist
-                    attrs = null;
-                } else {
-                    throw innerEx;
+                } catch (SftpException retryEx) {
+                    if (retryEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || retryEx.id == ChannelSftp.SSH_FX_FAILURE) {
+                        attrs = null;
+                        LOG.debug("STAT retry failed (NO_SUCH_FILE or FAILURE) — treating as non-existent");
+                    } else {
+                        throw retryEx;
+                    }
                 }
             }
         } finally {
