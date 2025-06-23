@@ -93,7 +93,7 @@
     <!-- make sure bundle plugin has dependency informations for 'optional' -->
     <commons.osgi.excludeDependencies />
     <commons.osgi.import>
-        *
+      *
     </commons.osgi.import>
     <!-- Avoid warnings about being unable to find jars during site building -->
     <dependency.locations.enabled>false</dependency.locations.enabled>
@@ -153,36 +153,36 @@
             </excludes>
           </configuration>
         </plugin>
-      <plugin>
-        <groupId>com.github.siom79.japicmp</groupId>
-        <artifactId>japicmp-maven-plugin</artifactId>
-        <configuration>
-          <parameter>
-            <overrideCompatibilityChangeParameters>
-              <overrideCompatibilityChangeParameter>
-                <compatibilityChange>METHOD_NEW_DEFAULT</compatibilityChange>
-                <binaryCompatible>true</binaryCompatible>
-                <sourceCompatible>true</sourceCompatible>
-                <semanticVersionLevel>PATCH</semanticVersionLevel>
-              </overrideCompatibilityChangeParameter>
-              <overrideCompatibilityChangeParameter>
-                <!-- BC is maintained, but no SC. -->
-                <compatibilityChange>METHOD_NO_LONGER_THROWS_CHECKED_EXCEPTION</compatibilityChange>
-                <binaryCompatible>true</binaryCompatible>
-                <sourceCompatible>true</sourceCompatible>
-                <semanticVersionLevel>PATCH</semanticVersionLevel>
-              </overrideCompatibilityChangeParameter>
-            </overrideCompatibilityChangeParameters>
-            <excludes>
-              <!-- Remove this section after 2.10.0 -->
-              <!-- Package moved to new module commons-vfs-hdfs -->
-              <exclude>org.apache.commons.vfs2.provider.hdfs</exclude>
-              <!-- Package moved to new module commons-vfs-ant -->
-              <exclude>org.apache.commons.vfs2.tasks</exclude>
-            </excludes>
-          </parameter>
-        </configuration>
-      </plugin>
+        <plugin>
+          <groupId>com.github.siom79.japicmp</groupId>
+          <artifactId>japicmp-maven-plugin</artifactId>
+          <configuration>
+            <parameter>
+              <overrideCompatibilityChangeParameters>
+                <overrideCompatibilityChangeParameter>
+                  <compatibilityChange>METHOD_NEW_DEFAULT</compatibilityChange>
+                  <binaryCompatible>true</binaryCompatible>
+                  <sourceCompatible>true</sourceCompatible>
+                  <semanticVersionLevel>PATCH</semanticVersionLevel>
+                </overrideCompatibilityChangeParameter>
+                <overrideCompatibilityChangeParameter>
+                  <!-- BC is maintained, but no SC. -->
+                  <compatibilityChange>METHOD_NO_LONGER_THROWS_CHECKED_EXCEPTION</compatibilityChange>
+                  <binaryCompatible>true</binaryCompatible>
+                  <sourceCompatible>true</sourceCompatible>
+                  <semanticVersionLevel>PATCH</semanticVersionLevel>
+                </overrideCompatibilityChangeParameter>
+              </overrideCompatibilityChangeParameters>
+              <excludes>
+                <!-- Remove this section after 2.10.0 -->
+                <!-- Package moved to new module commons-vfs-hdfs -->
+                <exclude>org.apache.commons.vfs2.provider.hdfs</exclude>
+                <!-- Package moved to new module commons-vfs-ant -->
+                <exclude>org.apache.commons.vfs2.tasks</exclude>
+              </excludes>
+            </parameter>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-pmd-plugin</artifactId>
@@ -251,7 +251,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-            <argLine>-Xmx64m</argLine>
+          <argLine>-Xmx64m</argLine>
         </configuration>
       </plugin>
       <plugin>

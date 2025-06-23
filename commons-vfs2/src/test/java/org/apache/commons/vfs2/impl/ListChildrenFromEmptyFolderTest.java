@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.vfs2.provider.ftp.test;
+package org.apache.commons.vfs2.impl;
 
-import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.vfs2.*;
+import org.apache.commons.vfs2.provider.ftp.FtpProviderTestCase;
 import org.apache.ftpserver.ftplet.FtpException;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -26,7 +26,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.SocketException;
 import java.sql.Timestamp;
 
 import static org.junit.Assert.fail;
@@ -35,7 +34,8 @@ public class ListChildrenFromEmptyFolderTest {
 
     @BeforeClass
     public static void setUpClass() throws FtpException, IOException {
-        FtpProviderTestCase.setUpClass(FtpProviderTestCase.getTestDirectory(), null);
+        FtpProviderTestCase testCase = new FtpProviderTestCase();
+        FtpProviderTestCase.setUpClass(testCase.getFtpRootDir(), null, null);
     }
 
     @AfterClass

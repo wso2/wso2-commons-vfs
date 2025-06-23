@@ -77,11 +77,6 @@ public final class FtpsClientFactory {
         }
 
         @Override
-        protected void setupOpenConnection(FTPClient client, FileSystemOptions fileSystemOptions) {
-
-        }
-
-        @Override
         protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws Exception {
 
             String KEYSTORE = builder.getKeyStore(fileSystemOptions);

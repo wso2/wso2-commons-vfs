@@ -63,19 +63,6 @@ import org.apache.commons.vfs2.provider.sftp.SftpConstants;
 import org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
 import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 
-import java.io.File;
-import java.lang.reflect.Constructor;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLStreamHandler;
-import java.net.URLStreamHandlerFactory;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * The default file system manager implementation.
  */
@@ -138,12 +125,6 @@ public class DefaultFileSystemManager implements FileSystemManager {
     private FileProvider defaultProvider;
 
     /**
-     * This constant holds the avoid permission check parameter for sftp servers.
-     * e.g:  sftp://admin":password@"localhost/in2\?transport.vfs.AvoidPermissionCheck=true
-     */
-    private final static String PERMISSION_CHECK = "transport.vfs.AvoidPermissionCheck";
-
-    /**
      * The file replicator to use.
      */
     private FileReplicator fileReplicator;
@@ -196,6 +177,13 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * Flag, if manager is initialized (after init() and before close()).
      */
     private boolean init;
+
+    /**
+     * This constant holds the avoid permission check parameter for sftp servers.
+     * e.g:  sftp://admin":password@"localhost/in2\?transport.vfs.AvoidPermissionCheck=true
+     */
+    private final static String PERMISSION_CHECK = "transport.vfs.AvoidPermissionCheck";
+
 
     /**
      * Constructs a new instance.
@@ -367,14 +355,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
         // make sure all discovered components in
         // org.apache.commons.vfs2.impl.StandardFileSystemManager.configure(Element)
         // are closed here
-
+        for (final FileProvider provider : providers.values()) {
+            closeComponent(provider);
+        }
         // Close the file system providers.
         providers.values().forEach(this::closeComponent);
-
+        // unregister all
         // Close the other components
         closeComponent(vfsProvider);
         closeComponent(fileReplicator);
         closeComponent(tempFileStore);
+        closeComponent(filesCache);
         closeComponent(defaultProvider);
 
         // unregister all providers here, so if any components have local file references
@@ -793,8 +784,8 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @return A FileObject representing the target file.
      * @throws FileSystemException if an error occurs accessing the file.
      */
-    public FileObject resolveFile(  final FileObject baseFile, final String uri, FileSystemOptions fileSystemOptions)
-            throws FileSystemException {
+    public FileObject resolveFile(final FileObject baseFile, final String uri,
+                                  FileSystemOptions fileSystemOptions) throws FileSystemException {
         final FileObject realBaseFile;
         if (baseFile != null && VFS.isUriStyle() && baseFile.getName().isFile()) {
             realBaseFile = baseFile.getParent();

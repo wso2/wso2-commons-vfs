@@ -30,6 +30,8 @@ import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.apache.commons.vfs2.FileSystemOptions;
 
+import static org.apache.commons.vfs2.provider.sftp.SftpConstants.RETRY_COUNT;
+
 /**
  * The config builder for various FTP configuration options.
  */
@@ -39,10 +41,10 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
 
     private static final FtpFileSystemConfigBuilder BUILDER = new FtpFileSystemConfigBuilder();
 
-    private static final String CONNECT_TIMEOUT = _PREFIX + ".CONNECT_TIMEOUT";
-    private static final String DATA_TIMEOUT = _PREFIX + ".DATA_TIMEOUT";
-    private static final String DEFAULT_DATE_FORMAT = _PREFIX + ".DEFAULT_DATE_FORMAT";
-    private static final String ENCODING = _PREFIX + ".ENCODING";
+    private static final String CONNECT_TIMEOUT = PREFIX + ".CONNECT_TIMEOUT";
+    private static final String DATA_TIMEOUT = PREFIX + ".DATA_TIMEOUT";
+    private static final String DEFAULT_DATE_FORMAT = PREFIX + ".DEFAULT_DATE_FORMAT";
+    private static final String ENCODING = PREFIX + ".ENCODING";
     private static final String AUTODETECT_UTF8 = PREFIX + ".AUTODETECT_UTF8";
     private static final String FACTORY_KEY = FTPFileEntryParserFactory.class.getName() + ".KEY";
     private static final String FILE_TYPE = PREFIX + ".FILE_TYPE";

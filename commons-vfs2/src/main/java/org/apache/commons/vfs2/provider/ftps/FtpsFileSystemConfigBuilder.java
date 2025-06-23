@@ -34,16 +34,16 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
 
     private static final FtpsFileSystemConfigBuilder BUILDER = new FtpsFileSystemConfigBuilder();
 
-    private static final String FTPS_MODE = _PREFIX + ".FTPS_MODE";
-    private static final String PROT = _PREFIX + ".PROT";
-    private static final String KEY_MANAGER = _PREFIX + ".KEY_MANAGER";
-    private static final String TRUST_MANAGER = _PREFIX + ".TRUST_MANAGER";
+    private static final String FTPS_MODE = PREFIX + ".FTPS_MODE";
+    private static final String PROT = PREFIX + ".PROT";
+    private static final String KEY_MANAGER = PREFIX + ".KEY_MANAGER";
+    private static final String TRUST_MANAGER = PREFIX + ".TRUST_MANAGER";
 
-    private static final String KEY_STORE = _PREFIX + ".KEY_STORE";
-    private static final String TRUST_STORE = _PREFIX + ".TRUST_STORE";
-    private static final String KS_PASSWD = _PREFIX + ".KS_PASSWD";
-    private static final String TS_PASSWD = _PREFIX + ".KS_PASSWD";
-    private static final String KEY_PASSWD = _PREFIX + ".KEY_PASSWD";
+    private static final String KEY_STORE = PREFIX + ".KEY_STORE";
+    private static final String TRUST_STORE = PREFIX + ".TRUST_STORE";
+    private static final String KS_PASSWD = PREFIX + ".KS_PASSWD";
+    private static final String TS_PASSWD = PREFIX + ".KS_PASSWD";
+    private static final String KEY_PASSWD = PREFIX + ".KEY_PASSWD";
 
     /**
      * Gets the singleton builder.

@@ -98,7 +98,8 @@ public abstract class LocalFileNameParser extends AbstractFileNameParser {
         }
 
         // Extract the queryString
-        final String queryString = UriParser.extractQueryString(name);
+        final String queryString = UriParser.extractQueryString(nameBuilder);
+
 
         // Remove encoding, and adjust the separators
         UriParser.canonicalizePath(nameBuilder, 0, nameBuilder.length(), this);

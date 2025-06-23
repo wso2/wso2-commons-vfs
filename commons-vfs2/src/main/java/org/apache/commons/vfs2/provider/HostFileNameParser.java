@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -171,8 +171,6 @@ public class HostFileNameParser extends AbstractFileNameParser {
     }
 
     private final int defaultPort;
-    private static final HostFileNameParser INSTANCE = new HostFileNameParser(21);
-
 
     /**
      * Constructs a new instance.
@@ -201,13 +199,6 @@ public class HostFileNameParser extends AbstractFileNameParser {
         }
         if (pos == 0) {
             return null;
-        }
-        public static FileNameParser getInstance() {
-            return INSTANCE;
-        }
-
-        public int getDefaultPort() {
-            return defaultPort;
         }
 
         if (isIPv6Host && pos < maxlen) {
@@ -259,7 +250,7 @@ public class HostFileNameParser extends AbstractFileNameParser {
     /**
      * Extracts the scheme, userinfo, hostname and port components of a generic URI.
      *
-     * @param uri  The absolute URI to parse.
+     * @param uri The absolute URI to parse.
      * @param name Used to return the remainder of the URI.
      * @return Authority extracted host authority, never null.
      * @throws FileSystemException if authority cannot be extracted.

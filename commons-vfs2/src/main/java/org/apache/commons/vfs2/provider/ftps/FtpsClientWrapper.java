@@ -16,8 +16,6 @@
  */
 package org.apache.commons.vfs2.provider.ftps;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.apache.commons.vfs2.FileSystemException;
@@ -39,35 +37,10 @@ import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
  */
 final class FtpsClientWrapper extends FTPClientWrapper {
 
-    private FTPSClient ftpsClient;
+//    private FTPSClient ftpsClient;
     FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws
             FileSystemException {
         super(root, fileSystemOptions);
-    }
-
-    @Override
-    protected FTPSClient getFtpClient() throws FileSystemException {
-        if (ftpsClient == null) {
-            ftpsClient = createClient();
-        }
-        return ftpsClient;
-    }
-
-    @Override
-    protected FTPSClient createClient() throws FileSystemException {
-        final GenericFileName rootName = getRoot();
-        UserAuthenticationData authData = null;
-        try {
-            authData = UserAuthenticatorUtils.authenticate(fileSystemOptions, FtpFileProvider.AUTHENTICATOR_TYPES);
-            char[] username = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                    UserAuthenticatorUtils.toChar(rootName.getUserName()));
-            char[] password = UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                    UserAuthenticatorUtils.toChar(rootName.getPassword()));
-            return FtpsClientFactory.createConnection(rootName.getHostName(), rootName.getPort(), username, password,
-                    rootName.getPath(), getFileSystemOptions());
-        } finally {
-            UserAuthenticatorUtils.cleanup(authData);
-        }
     }
 
     @Override

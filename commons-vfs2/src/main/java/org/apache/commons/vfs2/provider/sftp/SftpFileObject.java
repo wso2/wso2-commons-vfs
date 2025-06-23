@@ -16,10 +16,15 @@
  */
 package org.apache.commons.vfs2.provider.sftp;
 
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.ChannelSftp.LsEntry;
-import com.jcraft.jsch.SftpATTRS;
-import com.jcraft.jsch.SftpException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Vector;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileNotFoundException;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -36,17 +41,16 @@ import org.apache.commons.vfs2.util.MonitorOutputStream;
 import org.apache.commons.vfs2.util.PosixPermissions;
 import org.apache.commons.vfs2.util.RandomAccessMode;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Vector;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.SftpATTRS;
+import com.jcraft.jsch.SftpException;
 
 /**
  * An SFTP file.
  */
 public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
+    private static final Log LOG = LogFactory.getLog(SftpFileObject.class);
 
     /**
      * An InputStream that monitors for end-of-file.
@@ -97,6 +101,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     private SftpATTRS attrs;
 
     private final String relPath;
+
     /**
      * Constructs a new instance.
      *
@@ -107,22 +112,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     protected SftpFileObject(final AbstractFileName fileName, final SftpFileSystem fileSystem) throws FileSystemException {
         super(fileName, fileSystem);
         relPath = UriParser.decode(fileSystem.getRootName().getRelativeName(fileName));
-    }
-
-    /**
-     * Checks if an exception is a STAT error for a lock file or for an imaginary file.
-     *
-     * @param e the exception to check
-     * @return true if this is a STAT error for a lock file or an imaginary file, false otherwise
-     */
-    private boolean isStatError(Exception e) throws FileSystemException {
-        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
-            if (cause instanceof SftpException && cause.getMessage() != null &&
-                    cause.getMessage().contains("STAT error")) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -269,37 +258,19 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         return FileType.FILE;
     }
 
-//    @Override
-//    protected boolean doIsExecutable() throws Exception {
-//        return getPermissions(true).isExecutable();
-//    }
+    @Override
+    protected boolean doIsExecutable() throws Exception {
+        return getPermissions(true).isExecutable();
+    }
 
     @Override
     protected boolean doIsReadable() throws Exception {
-        if (isPermissionCheckRequired()) {
-            return getPermissions(true).isReadable();
-        } else {
-            return true;
-        }
-    }
-
-    private boolean isPermissionCheckRequired() throws Exception {
-        String permissionCheck = SftpFileSystemConfigBuilder.getInstance().getAvoidPermissionCheck
-                (getAbstractFileSystem().getFileSystemOptions());
-        if (permissionCheck != null && permissionCheck.equalsIgnoreCase("true")) {
-            return false;
-        } else {
-            return true;
-        }
+        return getPermissions(true).isReadable();
     }
 
     @Override
     protected boolean doIsWriteable() throws Exception {
-        if (isPermissionCheckRequired()) {
-            return getPermissions(true).isWritable();
-        } else {
-            return true;
-        }
+        return getPermissions(true).isWritable();
     }
 
     /**
@@ -310,13 +281,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         // use doListChildrenResolved for performance
         return null;
     }
-
-
-    @Override
-    protected boolean doIsExecutable() throws Exception {
-        return getPermissions(true).isExecutable();
-    }
-
 
     /**
      * Lists the children of this file.
@@ -329,18 +293,15 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         }
         // List the contents of the folder
         Vector<?> vector = null;
+        final ChannelSftp channel = getAbstractFileSystem().getChannel();
 
-        final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        ChannelSftp channel = null;
         try {
             // try the direct way to list the directory on the server to avoid too many round trips
-            channel = sftpClient.getChannel();
-            // try the direct way to list the directory on the server to avoid too many roundtrips
             vector = channel.ls(relPath);
         } catch (final SftpException e) {
             String workingDirectory = null;
             try {
-                if (channel != null && relPath != null) {
+                if (relPath != null) {
                     workingDirectory = channel.pwd();
                     channel.cd(relPath);
                 }
@@ -376,7 +337,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         // Extract the child names
         final ArrayList<FileObject> children = new ArrayList<>();
         for (@SuppressWarnings("unchecked") // OK because ChannelSftp.ls() is documented to return Vector<LsEntry>
-        final Iterator<LsEntry> iterator = (Iterator<LsEntry>) vector.iterator(); iterator.hasNext();) {
+             final Iterator<LsEntry> iterator = (Iterator<LsEntry>) vector.iterator(); iterator.hasNext();) {
             final LsEntry stat = iterator.next();
 
             String name = stat.getFilename();
@@ -484,20 +445,14 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      * file.
      */
     InputStream getInputStream(final long filePointer) throws IOException {
-        final SftpClient sftpClient = getAbstractFileSystem().getClient();
-        final ChannelSftp channel = null;
+        final ChannelSftp channel = getAbstractFileSystem().getChannel();
         // Using InputStream directly from the channel
         // is much faster than the memory method.
         try {
-            channel = sftpClient.getChannel();
-            final InputStream is = channel.get(getName().getPathDecoded(), null, filePointer);
             return new SftpInputStream(channel, channel.get(getName().getPathDecoded(), null, filePointer));
         } catch (final SftpException e) {
             putChannel(channel);
             throw new FileSystemException(e);
-        } catch (Exception e){
-            getAbstractFileSystem().putClient(sftpClient);
-            throw e;
         }
     }
 
@@ -556,33 +511,37 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      *
      * @throws IOException if an error occurs.
      */
-    private synchronized void statSelf() throws IOException {
+    private synchronized void statSelf() throws Exception {
         ChannelSftp channelSftp = null;
         try {
             channelSftp = getAbstractFileSystem().getChannel();
             setStat(channelSftp.stat(relPath));
         } catch (final SftpException e) {
-            try {
-                // maybe the channel has some problems, so recreate the channel and retry
-                if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                    channelSftp.disconnect();
-                    channelSftp = getAbstractFileSystem().getChannel();
-                    setStat(channelSftp.stat(relPath));
-                } else {
-                    // Really does not exist
+                if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || e.id == ChannelSftp.SSH_FX_FAILURE) {
+                    // File does not exist or stat failed in a known way — treat as imaginary
                     attrs = null;
-                }
-            } catch (final SftpException innerEx) {
-                // TODO - not strictly true, but jsch 0.1.2 does not give us
-                // enough info in the exception. Should be using:
-                // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE )
-                // However, sometimes the exception has the correct id, and
-                // sometimes
-                // it does not. Need to look into why.
+                    LOG.debug("NO_SUCH_FILE or STAT FAILURE — treating as non-existent");
+                } else {
+                    // Try one retry — possibly transient channel issue
+                    try {
+                        channelSftp.disconnect();
+                        setStat(channelSftp.stat(relPath));
+                    } catch (SftpException retryEx) {
+                        // TODO - not strictly true, but jsch 0.1.2 does not give us
+                        // enough info in the exception. Should be using:
+                        // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE ) || e.id == ChannelSftp.SSH_FX_FAILURE )
+                        // However, sometimes the exception has the correct id, and
+                        // sometimes
+                        // it does not. Need to look into why.
 
-                // Does not exist
-                attrs = null;
-            }
+                        if (retryEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || retryEx.id == ChannelSftp.SSH_FX_FAILURE) {
+                            attrs = null;
+                            LOG.debug("STAT retry failed (NO_SUCH_FILE or FAILURE) — treating as non-existent");
+                        } else {
+                            throw retryEx;
+                        }
+                    }
+                }
         } finally {
             if (channelSftp != null) {
                 putChannel(channelSftp);
