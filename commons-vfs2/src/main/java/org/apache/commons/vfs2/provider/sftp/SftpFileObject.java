@@ -145,6 +145,12 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                     channel = sftpClient.getChannel();
                     setStat(channel.stat(relPath));
                 } catch (SftpException retryEx) {
+                    // TODO - not strictly true, but jsch 0.1.2 does not give us
+                    // enough info in the exception. Should be using:
+                    // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE ) || e.id == ChannelSftp.SSH_FX_FAILURE )
+                    // However, sometimes the exception has the correct id, and
+                    // sometimes
+                    // it does not. Need to look into why.
                     if (retryEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || retryEx.id == ChannelSftp.SSH_FX_FAILURE) {
                         attrs = null;
                         LOG.debug("STAT retry failed (NO_SUCH_FILE or FAILURE) — treating as non-existent");
