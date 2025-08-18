@@ -67,10 +67,10 @@
     </dependency>
 
     <dependency>
-       <groupId>org.apache.commons</groupId>
-       <artifactId>commons-vfs2</artifactId>
-       <type>test-jar</type>
-       <scope>test</scope>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-vfs2</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -122,9 +122,9 @@
     <commons.packageId>vfs2-jackrabbit1</commons.packageId>
     <commons.module.name>org.apache.commons.vfs2.jackrabbit1</commons.module.name>
     <commons.osgi.import>
-        org.apache.jackrabbit.*;resolution:=optional,
-        org.apache.commons.httpclient.*;resolution:=optional,
-        *
+      org.apache.jackrabbit.*;resolution:=optional,
+      org.apache.commons.httpclient.*;resolution:=optional,
+      *
     </commons.osgi.import>
     <!-- project.build.outputTimestamp is managed by Maven plugins, see https://maven.apache.org/guides/mini/guide-reproducible-builds.html -->
     <project.build.outputTimestamp>2025-02-01T21:47:58Z</project.build.outputTimestamp>
@@ -144,7 +144,7 @@
         </includes>
       </resource>
     </resources>
-     <!-- include NOTICE/LICENSE in generated test jar -->
+    <!-- include NOTICE/LICENSE in generated test jar -->
     <testResources>
       <testResource>
         <directory>${project.basedir}/src/test/resources</directory>
@@ -212,11 +212,11 @@
   <profiles>
     <profile>
       <id>java14</id>
-        <!-- Jackrabbit 1.x does not run on Java 14 and above. -->
-        <activation>
-          <jdk>[14,)</jdk>
-        </activation>
-        <build>
+      <!-- Jackrabbit 1.x does not run on Java 14 and above. -->
+      <activation>
+        <jdk>[14,)</jdk>
+      </activation>
+      <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>

@@ -53,11 +53,6 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>com.hierynomus.wso2</groupId>
-      <artifactId>smbj</artifactId>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
       <groupId>commons-httpclient</groupId>
       <artifactId>commons-httpclient</artifactId>
       <optional>true</optional>
@@ -74,10 +69,10 @@
     </dependency>
 
     <dependency>
-       <groupId>org.apache.commons</groupId>
-       <artifactId>commons-vfs2</artifactId>
-       <type>test-jar</type>
-       <scope>test</scope>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-vfs2</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -110,7 +105,7 @@
         </includes>
       </resource>
     </resources>
-     <!-- include NOTICE/LICENSE in generated test jar -->
+    <!-- include NOTICE/LICENSE in generated test jar -->
     <testResources>
       <testResource>
         <directory>${commons.parent.dir}</directory>

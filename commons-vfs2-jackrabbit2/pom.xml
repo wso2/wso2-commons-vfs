@@ -63,10 +63,10 @@
       </exclusions>
     </dependency>
     <dependency>
-       <groupId>org.apache.commons</groupId>
-       <artifactId>commons-vfs2</artifactId>
-       <type>test-jar</type>
-       <scope>test</scope>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-vfs2</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -109,8 +109,8 @@
     <commons.packageId>vfs2-jackrabbit2</commons.packageId>
     <commons.module.name>org.apache.commons.vfs2.jackrabbit2</commons.module.name>
     <commons.osgi.import>
-        org.apache.jackrabbit.*;resolution:=optional,
-        *
+      org.apache.jackrabbit.*;resolution:=optional,
+      *
     </commons.osgi.import>
     <!-- project.build.outputTimestamp is managed by Maven plugins, see https://maven.apache.org/guides/mini/guide-reproducible-builds.html -->
     <project.build.outputTimestamp>2025-02-01T21:47:58Z</project.build.outputTimestamp>
@@ -130,7 +130,7 @@
         </includes>
       </resource>
     </resources>
-     <!-- include NOTICE/LICENSE in generated test jar -->
+    <!-- include NOTICE/LICENSE in generated test jar -->
     <testResources>
       <testResource>
         <directory>${project.basedir}/src/test/resources</directory>

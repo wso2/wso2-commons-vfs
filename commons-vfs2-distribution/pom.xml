@@ -234,7 +234,7 @@ limitations under the License.
                 <configuration>
                   <finalName>commons-vfs-${project.version}</finalName>
                   <descriptors>
-                      <descriptor>src/assembly/src.xml</descriptor>
+                    <descriptor>src/assembly/src.xml</descriptor>
                   </descriptors>
                   <tarLongFileMode>gnu</tarLongFileMode>
                 </configuration>
