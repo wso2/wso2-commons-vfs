@@ -807,7 +807,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
         if (scheme != null) {
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
-            //In the case of SFTP set the path from root if the param is presented in URL
+//            In the case of SFTP set the path from root if the param is presented in URL
             if (provider instanceof SftpFileProvider) {
                 if (fileSystemOptions == null) {
                     fileSystemOptions = new FileSystemOptions();
