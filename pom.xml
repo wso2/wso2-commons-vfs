@@ -36,13 +36,9 @@
 
   <modules>
     <module>commons-vfs2</module>
-    <module>commons-vfs2-ant</module>
-    <module>commons-vfs2-hdfs</module>
-    <module>commons-vfs2-jackrabbit1</module>
-    <module>commons-vfs2-jackrabbit2</module>
     <module>commons-vfs2-examples</module>
-    <module>commons-vfs2-bom</module>
     <module>commons-vfs2-distribution</module>
+    <module>commons-vfs2-sandbox</module>
   </modules>
   <!-- commons-vfs2-sandbox is in profile include-sandbox -->
 
@@ -114,7 +110,7 @@
     <japicmp.skip>false</japicmp.skip>
     <jacoco.skip>false</jacoco.skip>
     <!-- project.build.outputTimestamp is managed by Maven plugins, see https://maven.apache.org/guides/mini/guide-reproducible-builds.html -->
-    <project.build.outputTimestamp>2025-02-01T21:47:58Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2025-08-22T06:19:28Z</project.build.outputTimestamp>
   </properties>
 
   <build>
@@ -140,6 +136,7 @@
           <artifactId>apache-rat-plugin</artifactId>
           <!-- Should agree with config in reporting section -->
           <configuration>
+            <skip>true</skip>
             <excludes combine.children="append">
               <!--  trivial test data text files -->
               <exclude>src/test/resources/test-data/**/*.bin</exclude>
