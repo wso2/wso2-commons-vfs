@@ -17,18 +17,31 @@
  */
 package org.apache.commons.vfs2.provider.smb2.test;
 
-import org.apache.commons.AbstractVfsTestCase;
+
+import org.apache.commons.vfs2.AbstractTestSuite;
 import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.ProviderTestConfig;
 import org.apache.commons.vfs2.provider.smb.SmbFileName;
 import org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
 import org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
 
-public class FileNameTestCase extends AbstractVfsTestCase {
+import static org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
+
+public class FileNameTestCase extends AbstractTestSuite {
+    protected FileNameTestCase(ProviderTestConfig providerConfig, String prefix, boolean nested) throws Exception {
+        super(providerConfig, prefix, nested);
+    }
+
+    protected FileNameTestCase(ProviderTestConfig providerConfig, String prefix, boolean nested, boolean addEmptyDir) throws Exception {
+        super(providerConfig, prefix, nested, addEmptyDir);
+    }
+
     /**
      * Tests parsing a URI into its parts.
      *
      * @throws Exception in case of error
      */
+
     public void testParseUri() throws Exception {
         // Simple name
         SmbFileName name = (SmbFileName) SmbFileNameParser.getInstance().parseUri(null, null,

@@ -41,8 +41,8 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider {
 
     static final Collection<Capability> capabilities = Collections.unmodifiableCollection(
             Arrays.asList(Capability.CREATE, Capability.DELETE, Capability.RENAME, Capability.GET_TYPE,
-                          Capability.LIST_CHILDREN, Capability.READ_CONTENT, Capability.GET_LAST_MODIFIED,
-                          Capability.URI, Capability.WRITE_CONTENT, Capability.APPEND_CONTENT));
+                    Capability.LIST_CHILDREN, Capability.READ_CONTENT, Capability.GET_LAST_MODIFIED,
+                    Capability.URI, Capability.WRITE_CONTENT, Capability.APPEND_CONTENT));
 
     public Smb2FileProvider() {
 
@@ -54,8 +54,8 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider {
     protected FileSystem doCreateFileSystem(FileName name, FileSystemOptions fileSystemOptions) throws FileSystemException {
 
         final GenericFileName rootName = (GenericFileName) name;
-        final Smb2ClientWrapper smbClient = new Smb2ClientWrapper(rootName, fileSystemOptions);
-        return new Smb2FileSystem(rootName, fileSystemOptions, smbClient);
+        final Smb2WrapperClientFactory wrapperClientFactory = new Smb2WrapperClientFactory(rootName, fileSystemOptions);
+        return new Smb2FileSystem(rootName, fileSystemOptions, wrapperClientFactory);
     }
 
     @Override

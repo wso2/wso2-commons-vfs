@@ -139,15 +139,19 @@ public class Smb2ClientWrapper extends SMBClient {
      * @param relativePath of file
      * @return FileAllInformation object
      */
-    public FileAllInformation getFileInfo(String relativePath) {
+    public FileAllInformation getFileInfo(String relativePath) throws FileSystemException {
 
         try {
             return diskShare.getFileInformation(relativePath);
         } catch (Exception e) {
+            if (e instanceof SMBApiException) {
+                return null;
+            }
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Could not get information for file: " + relativePath);
             }
-            return null;
+            // Throw File System Exception for Transport Level Exceptions to trigger re-try mechanism
+            throw new FileSystemException("Could not get information for file: " + relativePath);
         }
     }
 
@@ -163,10 +167,10 @@ public class Smb2ClientWrapper extends SMBClient {
                 .getDiskShareAccessMask(fileSystemOptions);
         Set<AccessMask> accessMask = getAccessMaskFromConfig(diskShareAccessMask);
         return diskShare.open(path, accessMask,
-                              EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
-                              EnumSet.of(SMB2ShareAccess.FILE_SHARE_WRITE),
-                              append ? SMB2CreateDisposition.FILE_OPEN_IF : SMB2CreateDisposition.FILE_OVERWRITE_IF,
-                              EnumSet.of(SMB2CreateOptions.FILE_NO_COMPRESSION));
+                EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
+                EnumSet.of(SMB2ShareAccess.FILE_SHARE_WRITE),
+                append ? SMB2CreateDisposition.FILE_OPEN_IF : SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                EnumSet.of(SMB2CreateOptions.FILE_NO_COMPRESSION));
     }
 
     /**
