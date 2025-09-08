@@ -180,12 +180,25 @@ public final class UriParser {
      */
     public static boolean fixSeparators(final StringBuilder name) {
         boolean changed = false;
-        final int maxlen = name.length();
+        int maxlen = name.length();
         for (int i = 0; i < maxlen; i++) {
             final char ch = name.charAt(i);
             if (ch == TRANS_SEPARATOR) {
                 name.setCharAt(i, SEPARATOR_CHAR);
                 changed = true;
+            }
+            if (i < maxlen - 2 && name.charAt(i) == '%' && name.charAt(i + 1) == '2') {
+                if (name.charAt(i + 2) == 'f' || name.charAt(i + 2) == 'F') {
+                    name.setCharAt(i, SEPARATOR_CHAR);
+                    name.delete(i + 1, i + 3);
+                    maxlen -= 2;
+                    changed = true;
+                } else if (name.charAt(i + 2) == 'e' || name.charAt(i + 2) == 'E') {
+                    name.setCharAt(i, '.');
+                    name.delete(i + 1, i + 3);
+                    maxlen -= 2;
+                    changed = true;
+                }
             }
         }
         return changed;
