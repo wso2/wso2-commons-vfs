@@ -44,6 +44,10 @@ import java.security.cert.CertificateException;
  */
 public final class FtpsClientFactory {
 
+    private static final String BOUNCY_CASTLE_PROVIDER = "BC";
+    private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
+    private static final String SECURITY_JCE_PROVIDER = "security.jce.provider";
+
     private FtpsClientFactory() {
     }
 
@@ -71,6 +75,8 @@ public final class FtpsClientFactory {
             extends FtpClientFactory.ConnectionFactory<FTPSClient, FtpsFileSystemConfigBuilder> {
 
         private final Log log = LogFactory.getLog(getClass());
+        private static final String PKIX = "PKIX";
+        private static final String BCJSSE = "BCJSSE";
         private FtpsConnectionFactory(final FtpsFileSystemConfigBuilder builder) {
             super(builder);
         }
@@ -108,26 +114,51 @@ public final class FtpsClientFactory {
             KeyManagerFactory keyManagerFactory = null;
             TrustManagerFactory trustManagerFactory = null;
             try {
+                String provider = getPreferredJceProvider();
                 if (KEYSTORE != null && !KEYSTORE.trim().isEmpty()) {
-                    FileInputStream keystorePath = new FileInputStream(new File(KEYSTORE));
-                    KeyStore keyStore = KeyStore.getInstance("jks");
+                    File file = new File(KEYSTORE);
+                    FileInputStream keystorePath = new FileInputStream(file);
+                    KeyStore keyStore;
+                    if (provider != null) {
+                        String extension = getFileExtension(file);
+                        String type = !extension.isEmpty() ? extension.toUpperCase() : "BCFKS";
+                        keyStore = KeyStore.getInstance(type, provider);
+                    } else {
+                        keyStore = KeyStore.getInstance("JKS");
+                    }
 
                     //load key store.
                     keyStore.load(keystorePath, KS_PASSWD.toCharArray());
                     keystorePath.close();
 
                     // initialize key manager factory
-                    keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                    if (provider != null) {
+                        keyManagerFactory = KeyManagerFactory.getInstance(PKIX, BCJSSE);
+                    } else {
+                        keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                    }
                     keyManagerFactory.init(keyStore, KEY_PASSWD.toCharArray());
                 }
                 if (TRUSTSTORE != null && !TRUSTSTORE.trim().isEmpty()) {
-                    FileInputStream truststorePath = new FileInputStream(new File(TRUSTSTORE));
-                    KeyStore trustStore = KeyStore.getInstance("jks");
+                    File file = new File(TRUSTSTORE);
+                    FileInputStream truststorePath = new FileInputStream(file);
+                    KeyStore trustStore;
+                    if (provider != null) {
+                        String extension = getFileExtension(file);
+                        String type = !extension.isEmpty() ? extension.toUpperCase() : "BCFKS";
+                        trustStore = KeyStore.getInstance(type, provider);
+                    } else {
+                        trustStore = KeyStore.getInstance("JKS");
+                    }
                     //load trust store.
                     trustStore.load(truststorePath, TS_PASSWD.toCharArray());
                     truststorePath.close();
                     // initialize trust manager factory
-                    trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    if (provider != null) {
+                        trustManagerFactory = TrustManagerFactory.getInstance(PKIX, BCJSSE);
+                    } else {
+                        trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    }
                     trustManagerFactory.init(trustStore);
                 }
 
@@ -162,6 +193,29 @@ public final class FtpsClientFactory {
                     throw new FileSystemException("vfs.provider.ftps/data-channel.level", e, level.toString());
                 }
             }
+        }
+
+        private static String getFileExtension(File file) {
+            String fileName = file.getName();
+            int i = fileName.lastIndexOf('.');
+            if (i > 0) {
+                return fileName.substring(i+1);
+            }
+            return "";
+        }
+
+        /**
+         * Get the preferred JCE provider.
+         *
+         * @return the preferred JCE provider
+         */
+        public static String getPreferredJceProvider() {
+            String provider = System.getProperty(SECURITY_JCE_PROVIDER);
+            if (provider != null && (provider.equalsIgnoreCase(BOUNCY_CASTLE_FIPS_PROVIDER) ||
+                    provider.equalsIgnoreCase(BOUNCY_CASTLE_PROVIDER))) {
+                return provider;
+            }
+            return null;
         }
     }
 }
