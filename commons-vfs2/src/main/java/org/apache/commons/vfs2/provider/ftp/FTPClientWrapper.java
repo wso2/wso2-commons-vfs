@@ -57,7 +57,7 @@ public class FTPClientWrapper implements FtpClient {
      * @throws FileSystemException if a file system error occurs.
      */
     protected FTPClientWrapper(final GenericFileName rootFileName, final FileSystemOptions fileSystemOptions)
-        throws FileSystemException {
+            throws FileSystemException {
         this.rootFileName = rootFileName;
         this.fileSystemOptions = fileSystemOptions;
         getFtpClient(); // fail-fast
@@ -119,13 +119,13 @@ public class FTPClientWrapper implements FtpClient {
      * @throws FileSystemException if a file system error occurs.
      */
     protected FTPClient createClient(final GenericFileName rootFileName, final UserAuthenticationData authData)
-        throws FileSystemException {
+            throws FileSystemException {
         return FtpClientFactory.createConnection(rootFileName.getHostName(), rootFileName.getPort(),
-            UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
-                UserAuthenticatorUtils.toChar(rootFileName.getUserName())),
-            UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
-                UserAuthenticatorUtils.toChar(rootFileName.getPassword())),
-            rootFileName.getPath(), getFileSystemOptions());
+                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
+                        UserAuthenticatorUtils.toChar(rootFileName.getUserName())),
+                UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
+                        UserAuthenticatorUtils.toChar(rootFileName.getPassword())),
+                rootFileName.getPath(), getFileSystemOptions());
     }
 
     @Override
@@ -242,7 +242,7 @@ public class FTPClientWrapper implements FtpClient {
 
         if (relPath != null && !getFtpClient().changeWorkingDirectory(workingDirectory)) {
             throw new FileSystemException("vfs.provider.ftp.wrapper/change-work-directory-back.error",
-                workingDirectory);
+                    workingDirectory);
         }
         return ftpFiles;
     }

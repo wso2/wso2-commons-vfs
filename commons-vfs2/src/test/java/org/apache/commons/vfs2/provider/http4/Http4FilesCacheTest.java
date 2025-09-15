@@ -23,7 +23,9 @@ import java.util.Locale;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemManager;
+import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -45,23 +47,25 @@ public class Http4FilesCacheTest {
     @Test
     public void testQueryStringUrl1() throws FileSystemException {
         @SuppressWarnings("resource")
-        final FileSystemManager fileSystemManager = VFS.getManager();
+        final DefaultFileSystemManager fileSystemManager = (DefaultFileSystemManager) VFS.getManager();
 
         final String noQueryStringUrl = "http4://commons.apache.org/vfs";
         try (FileObject noQueryFile = fileSystemManager.resolveFile(noQueryStringUrl)) {
             assertEquals(noQueryStringUrl, noQueryFile.getURL().toExternalForm());
         }
+        fileSystemManager.closeCachedFileSystem(noQueryStringUrl, new FileSystemOptions());
     }
 
     @Test
     public void testQueryStringUrl2() throws FileSystemException {
         @SuppressWarnings("resource")
-        final FileSystemManager fileSystemManager = VFS.getManager();
+        final DefaultFileSystemManager fileSystemManager = (DefaultFileSystemManager) VFS.getManager();
 
         final String queryStringUrl = "http4://commons.apache.org/vfs?query=string";
         try (FileObject queryFile = fileSystemManager.resolveFile(queryStringUrl)) {
             assertEquals(queryStringUrl, queryFile.getURL().toExternalForm()); // failed for VFS-426
         }
+        fileSystemManager.closeCachedFileSystem(queryStringUrl, new FileSystemOptions());
     }
 
     @Test

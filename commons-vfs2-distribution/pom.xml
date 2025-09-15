@@ -38,7 +38,7 @@ limitations under the License.
     <commons.parent.dir>${basedir}/..</commons.parent.dir>
     <commons.release.isDistModule>true</commons.release.isDistModule>
     <!-- project.build.outputTimestamp is managed by Maven plugins, see https://maven.apache.org/guides/mini/guide-reproducible-builds.html -->
-    <project.build.outputTimestamp>2025-02-01T21:47:58Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2025-08-22T06:19:28Z</project.build.outputTimestamp>
   </properties>
 
   <profiles>
@@ -234,7 +234,7 @@ limitations under the License.
                 <configuration>
                   <finalName>commons-vfs-${project.version}</finalName>
                   <descriptors>
-                      <descriptor>src/assembly/src.xml</descriptor>
+                    <descriptor>src/assembly/src.xml</descriptor>
                   </descriptors>
                   <tarLongFileMode>gnu</tarLongFileMode>
                 </configuration>

@@ -47,6 +47,7 @@ import org.apache.commons.vfs2.FileType;
 import org.apache.commons.vfs2.FilesCache;
 import org.apache.commons.vfs2.NameScope;
 import org.apache.commons.vfs2.VFS;
+import org.apache.commons.vfs2.auth.StaticUserAuthenticator;
 import org.apache.commons.vfs2.cache.SoftRefFilesCache;
 import org.apache.commons.vfs2.operations.FileOperationProvider;
 import org.apache.commons.vfs2.provider.AbstractFileName;
@@ -58,6 +59,9 @@ import org.apache.commons.vfs2.provider.LocalFileProvider;
 import org.apache.commons.vfs2.provider.TemporaryFileStore;
 import org.apache.commons.vfs2.provider.UriParser;
 import org.apache.commons.vfs2.provider.VfsComponent;
+import org.apache.commons.vfs2.provider.sftp.SftpConstants;
+import org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
+import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 
 /**
  * The default file system manager implementation.
@@ -173,6 +177,13 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * Flag, if manager is initialized (after init() and before close()).
      */
     private boolean init;
+
+    /**
+     * This constant holds the avoid permission check parameter for sftp servers.
+     * e.g:  sftp://admin":password@"localhost/in2\?transport.vfs.AvoidPermissionCheck=true
+     */
+    private final static String PERMISSION_CHECK = "transport.vfs.AvoidPermissionCheck";
+
 
     /**
      * Constructs a new instance.
@@ -344,14 +355,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
         // make sure all discovered components in
         // org.apache.commons.vfs2.impl.StandardFileSystemManager.configure(Element)
         // are closed here
-
+        for (final FileProvider provider : providers.values()) {
+            closeComponent(provider);
+        }
         // Close the file system providers.
         providers.values().forEach(this::closeComponent);
-
+        // unregister all
         // Close the other components
         closeComponent(vfsProvider);
         closeComponent(fileReplicator);
         closeComponent(tempFileStore);
+        closeComponent(filesCache);
         closeComponent(defaultProvider);
 
         // unregister all providers here, so if any components have local file references
@@ -771,7 +785,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @throws FileSystemException if an error occurs accessing the file.
      */
     public FileObject resolveFile(final FileObject baseFile, final String uri,
-            final FileSystemOptions fileSystemOptions) throws FileSystemException {
+                                  FileSystemOptions fileSystemOptions) throws FileSystemException {
         final FileObject realBaseFile;
         if (baseFile != null && VFS.isUriStyle() && baseFile.getName().isFile()) {
             realBaseFile = baseFile.getParent();
@@ -788,9 +802,85 @@ public class DefaultFileSystemManager implements FileSystemManager {
 
         // Extract the scheme
         final String scheme = UriParser.extractScheme(getSchemes(), uri);
+        final Map<String,String> queryParam = UriParser.extractQueryParams(uri);
+
         if (scheme != null) {
             // An absolute URI - locate the provider
             final FileProvider provider = providers.get(scheme);
+//            In the case of SFTP set the path from root if the param is presented in URL
+            if (provider instanceof SftpFileProvider) {
+                if (fileSystemOptions == null) {
+                    fileSystemOptions = new FileSystemOptions();
+                }
+
+                String permissionCheck = queryParam.get(PERMISSION_CHECK);
+                SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
+                if (builder.getAvoidPermissionCheck(fileSystemOptions) == null) {
+                    builder.setAvoidPermissionCheck(fileSystemOptions, permissionCheck);
+                }
+
+                String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
+                Integer timeout = null;
+                if (timeoutStr != null && builder.getTimeout(fileSystemOptions) == null) {
+                    try {
+                        timeout = Integer.parseInt(timeoutStr);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid timeout " + timeoutStr + " specified in FileURI.");
+                    }
+                    builder.setTimeout(fileSystemOptions, timeout);
+                }
+
+                if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
+                    ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
+                            .setUserDirIsRoot(fileSystemOptions, false);
+                }
+
+                String strictHostKeyChecking = queryParam.get(SftpConstants.STRICT_HOST_KEY_CHECKING);
+
+                if (strictHostKeyChecking != null) {
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder()))
+                            .setStrictHostKeyChecking(fileSystemOptions, strictHostKeyChecking);
+                }
+
+                String proxyHost = queryParam.get(SftpConstants.PROXY_SERVER);
+
+                if (proxyHost != null && !proxyHost.isEmpty()) {
+                    String proxyPortStr = queryParam.get(SftpConstants.PROXY_PORT);
+                    int proxyPort = 8080;
+                    if (proxyPortStr != null) {
+                        try {
+                            proxyPort = Integer.parseInt(proxyPortStr);
+                        } catch (NumberFormatException e) {
+                            log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
+                            proxyPort = 8080;
+                        }
+                    }
+
+                    String proxyUser = queryParam.get(SftpConstants.PROXY_USERNAME);
+                    String proxyPassword = queryParam.get(SftpConstants.PROXY_PASSWORD);
+                    String proxyType = queryParam.get(SftpConstants.PROXY_TYPE);
+
+                    if (SftpConstants.SOCKS.equals(proxyType)) {
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
+                                SftpFileSystemConfigBuilder.PROXY_SOCKS5);
+                    } else {
+                        if (proxyType != null && !proxyType.isEmpty() && !SftpConstants.HTTP.equals(proxyType)) {
+                            log.warn(proxyType + " is not a supported proxy type. Trying with HTTP");
+                        }
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyType(fileSystemOptions,
+                                SftpFileSystemConfigBuilder.PROXY_HTTP);
+                    }
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyHost(fileSystemOptions,
+                            proxyHost);
+                    ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyPort(fileSystemOptions,
+                            proxyPort);
+                    if (proxyUser != null && !proxyUser.isEmpty()) {
+                        ((SftpFileSystemConfigBuilder) (provider.getConfigBuilder())).setProxyUserAuthenticator
+                                (fileSystemOptions, new StaticUserAuthenticator(null, proxyUser,
+                                        (proxyPassword != null) ? proxyPassword : ""));
+                    }
+                }
+            }
             if (provider != null) {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
             }
@@ -1195,6 +1285,55 @@ public class DefaultFileSystemManager implements FileSystemManager {
     @Override
     public FileObject toFileObject(final File file) throws FileSystemException {
         return getLocalFileProvider().findLocalFile(file);
+    }
+
+    /**
+     * Close file system by URI if existed
+     *
+     * @param uri               The URI of the file to locate file system.
+     * @param fileSystemOptions The options for the FileSystem.
+     */
+    public void closeCachedFileSystem(String uri, FileSystemOptions fileSystemOptions) throws FileSystemException {
+        final String scheme = UriParser.extractScheme(uri);
+        if (scheme != null) {
+            // An absolute URI - locate the provider
+            final FileProvider provider = providers.get(scheme);
+            if (provider instanceof AbstractFileProvider) {
+                AbstractFileProvider abstractFileProvider = (AbstractFileProvider) provider;
+                // Parse the URI
+                FileName name = null;
+                try {
+                    name = abstractFileProvider.parseUri(baseFile != null ? baseFile.getName() : null, uri);
+                } catch (final FileSystemException ignore) {
+                }
+                final FileName rootName = abstractFileProvider.getContext().getFileSystemManager().resolveName(name,
+                        FileName.ROOT_PATH);
+                FileSystem fs = abstractFileProvider.findFileSystem(rootName, fileSystemOptions);
+                if (fs != null) {
+                    // inform the cache ...
+                    getFilesCache().clear(fs);
+
+                    // just in case the cache didn't call _closeFileSystem
+                    _closeFileSystem(fs);
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks whether the given file system is cached in the File Provider.
+     *
+     * @param filesystem        The filesystem to check whether cached in the provider .
+     * @param fileSystemOptions The options for the FileSystem.
+     */
+    public boolean isFileSystemCached(final FileSystem filesystem, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        FileProvider provider = this.providers.get(filesystem.getRootName().getScheme());
+        if (provider != null) {
+            return ((AbstractFileProvider) provider).isFileSystemCached(filesystem.getRootName(), fileSystemOptions);
+        }
+        // TODO: implement virtual file system scenarios
+        return false;
     }
 
 }

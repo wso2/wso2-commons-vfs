@@ -71,7 +71,7 @@ public class FtpProviderUserDirTestCase extends FtpProviderTestCase {
      * Gets the root of the local FTP Server file system.
      */
     @Override
-    protected String getFtpRootDir() {
+    public String getFtpRootDir() {
         return new File(getTestDirectory(), "homeDirIsRoot").getPath();
     }
 

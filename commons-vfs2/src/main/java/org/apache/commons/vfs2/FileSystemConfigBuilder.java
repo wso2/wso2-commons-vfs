@@ -176,7 +176,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.0
      */
     protected Character getCharacter(final FileSystemOptions fileSystemOptions, final String name,
-        final Character defaultValue) {
+                                     final Character defaultValue) {
         Character value = getParam(fileSystemOptions, name);
         if (value == null) {
             final String str = getProperty(name);
@@ -220,7 +220,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.0
      */
     protected double getDouble(final FileSystemOptions fileSystemOptions, final String name,
-        final double defaultValue) {
+                               final double defaultValue) {
         return getDouble(fileSystemOptions, name, Double.valueOf(defaultValue)).doubleValue();
     }
 
@@ -289,7 +289,9 @@ public abstract class FileSystemConfigBuilder {
      */
     protected Integer getDurationInteger(final FileSystemOptions fileSystemOptions, final String name,
         final Duration defaultValue) {
-        return DurationUtils.toMillisInt(getParam(fileSystemOptions, name, defaultValue, Duration::parse));
+//        return DurationUtils.toMillisInt(getParam(fileSystemOptions, name, defaultValue, Duration::parse));
+        Duration duration = getParam(fileSystemOptions, name, defaultValue, Duration::parse);
+        return duration != null ? DurationUtils.toMillisInt(duration) : null;
     }
 
     /**
@@ -323,7 +325,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.1
      */
     protected <E extends Enum<E>> E getEnum(final Class<E> enumClass, final FileSystemOptions fileSystemOptions,
-        final String name, final E defaultValue) {
+                                            final String name, final E defaultValue) {
         E value = getParam(fileSystemOptions, name);
         if (value == null) {
             final String str = getProperty(name);
@@ -418,7 +420,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.0
      */
     protected Integer getInteger(final FileSystemOptions fileSystemOptions, final String name,
-        final Integer defaultValue) {
+                                 final Integer defaultValue) {
         return getParam(fileSystemOptions, name, defaultValue, Integer::valueOf);
     }
 
@@ -490,7 +492,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.8.0
      */
     private <T> T getParam(final FileSystemOptions fileSystemOptions, final String name, final T defaultValue,
-        final Function<String, T> function) {
+                           final Function<String, T> function) {
         T value = getParam(fileSystemOptions, name);
         if (value == null) {
             final String str = getProperty(name);
@@ -606,7 +608,7 @@ public abstract class FileSystemConfigBuilder {
      * @since 2.0
      */
     protected String getString(final FileSystemOptions fileSystemOptions, final String name,
-        final String defaultValue) {
+                               final String defaultValue) {
         return getParam(fileSystemOptions, name, defaultValue, String::valueOf);
     }
 

@@ -26,6 +26,8 @@ import org.apache.commons.vfs2.VFS;
 import org.apache.commons.vfs2.provider.GenericURLFileName;
 import org.junit.jupiter.api.Test;
 
+
+@Disabled("WebDAV4 is not supported in VFS 2.10.0")
 public class Webdav4FileObjectTest {
 
     private static final String WEBDAV4_URL = "webdav4://www.apache.org/licenses/LICENSE-2.0.txt";

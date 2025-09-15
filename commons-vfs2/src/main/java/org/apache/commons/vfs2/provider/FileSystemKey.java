@@ -53,9 +53,4 @@ final class FileSystemKey implements Comparable<FileSystemKey> {
 
         return fileSystemOptions.compareTo(o.fileSystemOptions);
     }
-
-    @Override
-    public String toString() {
-        return super.toString() + " [key=" + key + ", fileSystemOptions=" + fileSystemOptions + "]";
-    }
 }

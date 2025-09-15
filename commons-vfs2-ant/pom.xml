@@ -43,10 +43,10 @@
       <artifactId>commons-vfs2</artifactId>
     </dependency>
     <dependency>
-       <groupId>org.apache.commons</groupId>
-       <artifactId>commons-vfs2</artifactId>
-       <type>test-jar</type>
-       <scope>test</scope>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-vfs2</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -70,8 +70,8 @@
     <commons.packageId>vfs2-ant</commons.packageId>
     <commons.module.name>org.apache.commons.vfs2.ant</commons.module.name>
     <commons.osgi.import>
-        org.apache.tools.ant.*;resolution:=optional,
-        *
+      org.apache.tools.ant.*;resolution:=optional,
+      *
     </commons.osgi.import>
     <!-- Hadoop jars contain overlapping packages that blow up JPMS -->
     <moditect.skip>true</moditect.skip>
@@ -93,7 +93,7 @@
         </includes>
       </resource>
     </resources>
-     <!-- include NOTICE/LICENSE in generated test jar -->
+    <!-- include NOTICE/LICENSE in generated test jar -->
     <testResources>
       <testResource>
         <directory>${project.basedir}/src/test/resources</directory>
@@ -120,7 +120,7 @@
         </executions>
       </plugin>
       <plugin>
-		<!-- Remove after 2.10.0 -->
+        <!-- Remove after 2.10.0 -->
         <groupId>com.github.siom79.japicmp</groupId>
         <artifactId>japicmp-maven-plugin</artifactId>
         <configuration>
@@ -147,19 +147,19 @@
             <dependency>
               <groupId>com.jcraft</groupId>
               <artifactId>jsch</artifactId>
-             <version>${jsch.version}</version>
+              <version>${jsch.version}</version>
             </dependency>
             <dependency>
               <groupId>org.apache.ant</groupId>
               <artifactId>ant</artifactId>
-             <version>${ant.version}</version>
+              <version>${ant.version}</version>
             </dependency>
             <dependency>
               <groupId>commons-httpclient</groupId>
               <artifactId>commons-httpclient</artifactId>
-             <version>${httpclient3.version}</version>
+              <version>${httpclient3.version}</version>
             </dependency>
-		  </dependencies>
+          </dependencies>
         </configuration>
       </plugin>
     </plugins>
@@ -167,7 +167,7 @@
   <reporting>
     <plugins>
       <plugin>
-		<!-- Remove after 2.10.0 -->
+        <!-- Remove after 2.10.0 -->
         <groupId>com.github.siom79.japicmp</groupId>
         <artifactId>japicmp-maven-plugin</artifactId>
         <configuration>
@@ -194,21 +194,21 @@
             <dependency>
               <groupId>com.jcraft</groupId>
               <artifactId>jsch</artifactId>
-             <version>${jsch.version}</version>
+              <version>${jsch.version}</version>
             </dependency>
             <dependency>
               <groupId>ant</groupId>
               <artifactId>ant</artifactId>
-             <version>${ant.version}</version>
+              <version>${ant.version}</version>
             </dependency>
             <dependency>
               <groupId>commons-httpclient</groupId>
               <artifactId>commons-httpclient</artifactId>
-             <version>${httpclient3.version}</version>
+              <version>${httpclient3.version}</version>
             </dependency>
-		  </dependencies>
+          </dependencies>
         </configuration>
       </plugin>
-	</plugins>
+    </plugins>
   </reporting>
 </project>

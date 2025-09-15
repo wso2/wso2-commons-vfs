@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.PrintCommandListener;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
+import org.apache.commons.net.ftp.FTPHTTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 import org.apache.commons.net.ftp.parser.FTPFileEntryParserFactory;
 import org.apache.commons.vfs2.FileSystemException;
@@ -73,7 +74,6 @@ public final class FtpClientFactory {
             final String key = builder.getEntryParser(fileSystemOptions);
             if (key != null) {
                 final FTPClientConfig config = new FTPClientConfig(key);
-
                 final String serverLanguageCode = builder.getServerLanguageCode(fileSystemOptions);
                 if (serverLanguageCode != null) {
                     config.setServerLanguageCode(serverLanguageCode);
@@ -101,7 +101,6 @@ public final class FtpClientFactory {
                     }
                     config.setShortMonthNames(shortMonthNamesStr.toString());
                 }
-
                 client.configure(config);
             }
         }
@@ -115,20 +114,28 @@ public final class FtpClientFactory {
          */
         protected abstract C createClient(FileSystemOptions fileSystemOptions) throws FileSystemException;
 
+        public C createConnection(final String hostname, final int port, char[] username, char[] password, final
+        String workingDirectory, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+            return createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions, null,
+                    null, null, null, null, null);
+        }
+
         /**
          * Creates a connection.
          *
-         * @param hostname The host name or IP address.
-         * @param port The host port.
-         * @param username The user name.
-         * @param password The user password.
-         * @param workingDirectory The working directory.
+         * @param hostname          The host name or IP address.
+         * @param port              The host port.
+         * @param username          The user name.
+         * @param password          The user password.
+         * @param workingDirectory  The working directory.
          * @param fileSystemOptions Options to create the connection.
          * @return A new connection.
-         * @throws FileSystemException if an error occurs while connecting.
+         * @throws FileSystemException if an error occurs while establishing a connection.
          */
         public C createConnection(final String hostname, final int port, char[] username, char[] password,
-                final String workingDirectory, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+                                  final String workingDirectory, final FileSystemOptions fileSystemOptions,
+                                  String proxyServer, String proxyPort, String proxyUser, String proxyPassword,
+                                  String timeout, String retryCount) throws FileSystemException {
             // Determine the username and password to use
             if (username == null) {
                 username = ANON_CHAR_ARRAY;
@@ -137,9 +144,55 @@ public final class FtpClientFactory {
             if (password == null) {
                 password = ANON_CHAR_ARRAY;
             }
+            Integer connectionTimeout;
+
+            if (timeout == null) {
+                connectionTimeout = builder.getConnectTimeout(fileSystemOptions);
+            } else {
+                try {
+                    connectionTimeout = Integer.parseInt(timeout);
+                } catch (NumberFormatException nfe) {
+                    log.warn("Invalid connection timeout " + timeout + ". Set the connectionTimeout as 5000. (default)");
+                    connectionTimeout = 5000;
+                }
+            }
+
+            Integer connectionRetryCount;
+            if (retryCount == null) {
+                connectionRetryCount = builder.getRetryCount(fileSystemOptions);
+            } else {
+                try {
+                    connectionRetryCount = Integer.parseInt(retryCount);
+                } catch (NumberFormatException nfe) {
+                    log.warn("Invalid connection retry count " + retryCount + ". Set the connectionRetryCount as 5. "
+                            + "(default)");
+                    connectionRetryCount = 5;
+                }
+            }
+
+            boolean proxyMode = false;
 
             try {
-                final C client = createClient(fileSystemOptions);
+                C client;
+                //Implement the logic to support FTP over HTTP Proxy
+                if (proxyServer != null && proxyPort != null) {
+                    int parsedProxyPort;
+                    try {
+                        parsedProxyPort = Integer.parseInt(proxyPort);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid proxy port " + proxyPort + ". Set the port as 8080. (default)");
+                        parsedProxyPort = 8080;
+                    }
+                    if (proxyUser != null && proxyPassword != null) {
+                        client = (C) new FTPHTTPClient(proxyServer, parsedProxyPort, proxyUser, proxyPassword);
+                        proxyMode = true;
+                    } else {
+                        client = (C) new FTPHTTPClient(proxyServer, parsedProxyPort);
+                        proxyMode = true;
+                    }
+                } else {
+                    client = createClient(fileSystemOptions);
+                }
 
                 if (log.isDebugEnabled()) {
                     final Writer writer = new StringWriter(1024) {
@@ -171,6 +224,7 @@ public final class FtpClientFactory {
                 }
 
                 try {
+                    preConfigureClient(fileSystemOptions);
                     final Duration connectTimeout = builder.getConnectTimeoutDuration(fileSystemOptions);
                     if (connectTimeout != null) {
                         client.setDefaultTimeout(DurationUtils.toMillisInt(connectTimeout));
@@ -191,7 +245,21 @@ public final class FtpClientFactory {
                         client.setProxy(proxy);
                     }
 
-                    client.connect(hostname, port);
+                    //Need to enforce this since some times if we don't do this thread will hang forever
+                    if (proxyMode) {
+                        client.setConnectTimeout(connectionTimeout);
+                        boolean connect = false;
+                        while (!connect && (connectionRetryCount > 0)) {
+                            try {
+                                client.connect(hostname, port);
+                                connect = true;
+                            } catch (IOException e) {
+                                connectionRetryCount--;
+                            }
+                        }
+                    } else {
+                        client.connect(hostname, port);
+                    }
 
                     final int reply = client.getReplyCode();
                     if (!FTPReply.isPositiveCompletion(reply)) {
@@ -200,9 +268,9 @@ public final class FtpClientFactory {
 
                     // Login
                     if (!client.login(UserAuthenticatorUtils.toString(username),
-                        UserAuthenticatorUtils.toString(password))) {
+                            UserAuthenticatorUtils.toString(password))) {
                         throw new FileSystemException("vfs.provider.ftp/login.error", hostname,
-                            UserAuthenticatorUtils.toString(username));
+                                UserAuthenticatorUtils.toString(username));
                     }
 
                     FtpFileType fileType = builder.getFileType(fileSystemOptions);
@@ -231,19 +299,19 @@ public final class FtpClientFactory {
                     }
 
                     final Duration controlKeepAliveReplyTimeout = builder
-                        .getControlKeepAliveReplyTimeout(fileSystemOptions);
+                            .getControlKeepAliveReplyTimeout(fileSystemOptions);
                     if (controlKeepAliveReplyTimeout != null) {
                         client.setControlKeepAliveReplyTimeout(controlKeepAliveReplyTimeout);
                     }
 
                     final Boolean userDirIsRoot = builder.getUserDirIsRoot(fileSystemOptions);
                     if (workingDirectory != null && (userDirIsRoot == null || !userDirIsRoot.booleanValue())
-                        && !client.changeWorkingDirectory(workingDirectory)) {
+                            && !client.changeWorkingDirectory(workingDirectory)) {
                         throw new FileSystemException("vfs.provider.ftp/change-work-directory.error", workingDirectory);
                     }
 
                     final Boolean passiveMode = builder.getPassiveMode(fileSystemOptions);
-                    if (passiveMode != null && passiveMode.booleanValue()) {
+                    if (proxyMode || (passiveMode != null && passiveMode.booleanValue())) {
                         client.enterLocalPassiveMode();
                     }
 
@@ -266,10 +334,15 @@ public final class FtpClientFactory {
             }
         }
 
+        protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws
+                Exception {
+            // nothing to do for FTP
+        }
+
         /**
          * Sets up a new client.
          *
-         * @param client the client.
+         * @param client            the client.
          * @param fileSystemOptions the file system options.
          * @throws IOException if an IO error occurs.
          */
@@ -305,15 +378,15 @@ public final class FtpClientFactory {
      * @param workingDirectory The base directory.
      * @param fileSystemOptions The FileSystemOptions.
      * @return An FTPClient.
-     * @throws FileSystemException if an error occurs while connecting.
+     * @throws FileSystemException if an error occurs while establishing a connection.
      */
     public static FTPClient createConnection(final String hostname, final int port, final char[] username,
-            final char[] password, final String workingDirectory, final FileSystemOptions fileSystemOptions)
+                                             final char[] password, final String workingDirectory,
+                                             final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
         final FtpConnectionFactory factory = new FtpConnectionFactory(FtpFileSystemConfigBuilder.getInstance());
         return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions);
     }
-
     private FtpClientFactory() {
     }
 }

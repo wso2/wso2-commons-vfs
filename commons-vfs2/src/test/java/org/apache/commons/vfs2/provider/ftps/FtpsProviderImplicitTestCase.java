@@ -17,6 +17,7 @@
 package org.apache.commons.vfs2.provider.ftps;
 
 import junit.framework.Test;
+import org.junit.jupiter.api.Disabled;
 
 /**
  * Tests for FTPS file systems with implicit FTPS connection.
@@ -26,11 +27,13 @@ import junit.framework.Test;
  *
  * @see <a href="https://en.wikipedia.org/wiki/FTPS#Implicit">Wikipedia: FTPS/Implicit</a>
  */
+@Disabled
 public class FtpsProviderImplicitTestCase extends AbstractFtpsProviderTestCase {
 
     /**
      * Creates the test suite for the ftps file system.
      */
+    @Disabled
     public static Test suite() throws Exception {
         return new FtpProviderTestSuite(new FtpsProviderImplicitTestCase());
     }

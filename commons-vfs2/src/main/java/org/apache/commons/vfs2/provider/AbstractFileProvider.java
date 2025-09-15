@@ -125,7 +125,7 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
      * @param fileSystemOptions file system options the file system instance must have, may be null.
      * @return The file system instance, or null if it is not cached.
      */
-    protected FileSystem findFileSystem(final Comparable<?> key, final FileSystemOptions fileSystemOptions) {
+    public FileSystem findFileSystem(final Comparable<?> key, final FileSystemOptions fileSystemOptions) {
         synchronized (fileSystemMap) {
             return fileSystemMap.get(new FileSystemKey(key, fileSystemOptions));
         }
@@ -188,5 +188,15 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
      */
     protected void setFileNameParser(final FileNameParser parser) {
         this.fileNameParser = parser;
+    }
+
+    public boolean isFileSystemCached(final FileName name, final FileSystemOptions fileSystemOptions)
+            throws FileSystemException {
+        // Check in the cache for the file system
+        final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
+
+        final FileSystem fs = findFileSystem(rootName, fileSystemOptions);
+
+        return (fs != null);
     }
 }

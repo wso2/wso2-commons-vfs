@@ -249,7 +249,7 @@ public abstract class AbstractFileName implements FileName {
      */
     private String getKey() {
         if (key == null) {
-            key = getURI();
+            key = createURI(true, true);
         }
         return key;
     }
@@ -300,7 +300,6 @@ public abstract class AbstractFileName implements FileName {
         if (decodedAbsPath == null) {
             decodedAbsPath = UriParser.decode(getPath());
         }
-
         return decodedAbsPath;
     }
 

@@ -29,7 +29,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.io.function.Uncheck;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -416,6 +416,8 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         // VFS-210
         if (childMap == null) {
             return null;
+        } else if (childMap.isEmpty()) {
+            return new String[0];
         }
 
         // TODO - get rid of this children stuff
@@ -522,6 +524,10 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
         final FtpClient client = getAbstractFileSystem().getClient();
         try {
             final InputStream instr = client.retrieveFileStream(relPath, filePointer);
+            // VFS-210
+            if (instr == null) {
+                throw new FileNotFoundException(getName().getFriendlyURI());
+            }
             FileSystemException.requireNonNull(instr, "vfs.provider.ftp/input-error.debug", getName(),
                     client.getReplyString());
             return new FtpInputStream(client, instr);
@@ -602,7 +608,26 @@ public class FtpFileObject extends AbstractFileObject<FtpFileSystem> {
     @Override
     protected void onChildrenChanged(final FileName child, final FileType newType) {
         if (childMap != null && newType.equals(FileType.IMAGINARY)) {
-            Uncheck.run(() -> childMap.remove(UriParser.decode(child.getBaseName())));
+
+            if (!(childMap.isEmpty())) {
+
+                try {
+                    if (childMap.containsKey(UriParser.decode(child.getBaseName()))) {
+                        childMap.remove(UriParser.decode(child.getBaseName()));
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Map does not contain the " + child.getBaseName() + "in the map");
+                        }
+                    }
+                } catch (final FileSystemException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
+
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("EMPTY_FTP_FILE_MAP returned empty collection.");
+                }
+            }
         } else {
             // if child was added we have to rescan the children
             // TODO - get rid of this

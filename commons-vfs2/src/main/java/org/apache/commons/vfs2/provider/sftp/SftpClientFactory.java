@@ -40,6 +40,10 @@ import com.jcraft.jsch.ProxyHTTP;
 import com.jcraft.jsch.ProxySOCKS5;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
+import org.apache.commons.vfs2.UserAuthenticationData;
+import org.apache.commons.vfs2.UserAuthenticator;
+
+import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 /**
  * Create a JSch Session instance.
@@ -161,7 +165,9 @@ public final class SftpClientFactory {
         addIdentities(jsch, sshDir, identities);
         setConfigRepository(jsch, sshDir, configRepository, loadOpenSSHConfig);
 
-        final Session session;
+        UserAuthenticationData proxyAuthData = null;
+
+        Session session;
         try {
             session = jsch.getSession(new String(username), hostname, port);
             if (password != null) {
@@ -208,14 +214,24 @@ public final class SftpClientFactory {
                 final int proxyPort = builder.getProxyPort(fileSystemOptions);
                 final SftpFileSystemConfigBuilder.ProxyType proxyType = builder.getProxyType(fileSystemOptions);
                 final String proxyUser = builder.getProxyUser(fileSystemOptions);
-                final String proxyPassword = builder.getProxyPassword(fileSystemOptions);
+                char[] proxyPassword = builder.getProxyPassword(fileSystemOptions).toCharArray();
                 Proxy proxy = null;
+                UserAuthenticator proxyAuth = SftpFileSystemConfigBuilder.getInstance().getProxyUserAuthenticator
+                        (fileSystemOptions);
+                char[] proxyUsername = null;
+                if (proxyAuth != null) {
+                    proxyAuthData = UserAuthenticatorUtils.authenticate(proxyAuth, SftpFileProvider
+                            .AUTHENTICATOR_TYPES);
+                    proxyUsername = UserAuthenticatorUtils.getData(proxyAuthData, UserAuthenticationData.USERNAME,
+                            null);
+                    proxyPassword = UserAuthenticatorUtils.getData(proxyAuthData, UserAuthenticationData.PASSWORD,
+                            null);
+                }
+
                 if (SftpFileSystemConfigBuilder.PROXY_HTTP.equals(proxyType)) {
-                    proxy = createProxyHTTP(proxyHost, proxyPort);
-                    ((ProxyHTTP) proxy).setUserPasswd(proxyUser, proxyPassword);
+                    proxy = createProxyHTTP(proxyHost, proxyPort, proxyUsername, proxyPassword);
                 } else if (SftpFileSystemConfigBuilder.PROXY_SOCKS5.equals(proxyType)) {
-                    proxy = createProxySOCKS5(proxyHost, proxyPort);
-                    ((ProxySOCKS5) proxy).setUserPasswd(proxyUser, proxyPassword);
+                    proxy = createProxySOCKS5(proxyHost, proxyPort, proxyUsername, proxyPassword);
                 } else if (SftpFileSystemConfigBuilder.PROXY_STREAM.equals(proxyType)) {
                     proxy = createStreamProxy(proxyHost, proxyPort, fileSystemOptions, builder);
                 }
@@ -233,6 +249,8 @@ public final class SftpClientFactory {
             session.connect();
         } catch (final Exception exc) {
             throw new FileSystemException("vfs.provider.sftp/connect.error", exc, hostname);
+        } finally {
+            UserAuthenticatorUtils.cleanup(proxyAuthData);
         }
 
         return session;
@@ -262,6 +280,27 @@ public final class SftpClientFactory {
 
         // Create the stream proxy
         return new SftpStreamProxy(proxyCommand, proxyUser, proxyHost, proxyPort, proxyPassword, proxyOptions);
+    }
+
+    private static ProxySOCKS5 createProxySOCKS5(final String proxyHost, final int proxyPort, char[] proxyUsername,
+                                                 char[] proxyPassword) {
+        ProxySOCKS5 proxy = (proxyPort == 0) ? new ProxySOCKS5(proxyHost) : new ProxySOCKS5(proxyHost, proxyPort);
+        if (proxyUsername != null && proxyPassword != null) {
+            proxy.setUserPasswd(new String(proxyUsername),
+                    new String(proxyPassword));
+        }
+        return proxy;
+    }
+
+    private static ProxyHTTP createProxyHTTP(final String proxyHost, final int proxyPort, char[] proxyUsername,
+                                             char[] proxyPassword) {
+        ProxyHTTP proxy = (proxyPort == 0) ? new ProxyHTTP(proxyHost) : new ProxyHTTP(proxyHost, proxyPort);
+
+        if (proxyUsername != null && proxyPassword != null) {
+            proxy.setUserPasswd(new String(proxyUsername),
+                    new String(proxyPassword));
+        }
+        return proxy;
     }
 
     /**
@@ -344,5 +383,22 @@ public final class SftpClientFactory {
     }
 
     private SftpClientFactory() {
+    }
+
+    private static void addIndentity(final JSch jsch, final IdentityInfo info, String passPhrase) throws
+            FileSystemException {
+        try {
+            final String privateKeyFile = info.getPrivateKey() != null ? info.getPrivateKey().getAbsolutePath() : null;
+            final String publicKeyFile = info.getPublicKey() != null ? info.getPublicKey().getAbsolutePath() : null;
+
+            if (passPhrase != null) {
+                jsch.addIdentity(privateKeyFile, passPhrase);
+            } else {
+                jsch.addIdentity(privateKeyFile, publicKeyFile, info.getPassPhrase());
+            }
+
+        } catch (final JSchException e) {
+            throw new FileSystemException("vfs.provider.sftp/load-private-key.error", info, e);
+        }
     }
 }

@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -171,13 +171,18 @@ public class HostFileNameParser extends AbstractFileNameParser {
     }
 
     private final int defaultPort;
+    private static final HostFileNameParser INSTANCE = new HostFileNameParser(21);
+
+    public static FileNameParser getInstance() {
+        return INSTANCE;
+    }
 
     /**
      * Constructs a new instance.
      *
      * @param defaultPort The default port.
      */
-     public HostFileNameParser(final int defaultPort) {
+    public HostFileNameParser(final int defaultPort) {
         this.defaultPort = defaultPort;
     }
 

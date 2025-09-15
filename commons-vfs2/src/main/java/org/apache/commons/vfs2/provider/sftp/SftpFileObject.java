@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Vector;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.FileNotFoundException;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
@@ -48,6 +50,7 @@ import com.jcraft.jsch.SftpException;
  * An SFTP file.
  */
 public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
+    private static final Log LOG = LogFactory.getLog(SftpFileObject.class);
 
     /**
      * An InputStream that monitors for end-of-file.
@@ -334,7 +337,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         // Extract the child names
         final ArrayList<FileObject> children = new ArrayList<>();
         for (@SuppressWarnings("unchecked") // OK because ChannelSftp.ls() is documented to return Vector<LsEntry>
-        final Iterator<LsEntry> iterator = (Iterator<LsEntry>) vector.iterator(); iterator.hasNext();) {
+             final Iterator<LsEntry> iterator = (Iterator<LsEntry>) vector.iterator(); iterator.hasNext();) {
             final LsEntry stat = iterator.next();
 
             String name = stat.getFilename();
@@ -508,33 +511,37 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      *
      * @throws IOException if an error occurs.
      */
-    private synchronized void statSelf() throws IOException {
+    private synchronized void statSelf() throws Exception {
         ChannelSftp channelSftp = null;
         try {
             channelSftp = getAbstractFileSystem().getChannel();
             setStat(channelSftp.stat(relPath));
         } catch (final SftpException e) {
-            try {
-                // maybe the channel has some problems, so recreate the channel and retry
-                if (e.id != ChannelSftp.SSH_FX_NO_SUCH_FILE) {
-                    channelSftp.disconnect();
-                    channelSftp = getAbstractFileSystem().getChannel();
-                    setStat(channelSftp.stat(relPath));
-                } else {
-                    // Really does not exist
+                if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || e.id == ChannelSftp.SSH_FX_FAILURE) {
+                    // File does not exist or stat failed in a known way — treat as imaginary
                     attrs = null;
-                }
-            } catch (final SftpException innerEx) {
-                // TODO - not strictly true, but jsch 0.1.2 does not give us
-                // enough info in the exception. Should be using:
-                // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE )
-                // However, sometimes the exception has the correct id, and
-                // sometimes
-                // it does not. Need to look into why.
+                    LOG.debug("NO_SUCH_FILE or STAT FAILURE — treating as non-existent");
+                } else {
+                    // Try one retry — possibly transient channel issue
+                    try {
+                        channelSftp.disconnect();
+                        setStat(channelSftp.stat(relPath));
+                    } catch (SftpException retryEx) {
+                        // TODO - not strictly true, but jsch 0.1.2 does not give us
+                        // enough info in the exception. Should be using:
+                        // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE ) || e.id == ChannelSftp.SSH_FX_FAILURE )
+                        // However, sometimes the exception has the correct id, and
+                        // sometimes
+                        // it does not. Need to look into why.
 
-                // Does not exist
-                attrs = null;
-            }
+                        if (retryEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || retryEx.id == ChannelSftp.SSH_FX_FAILURE) {
+                            attrs = null;
+                            LOG.debug("STAT retry failed (NO_SUCH_FILE or FAILURE) — treating as non-existent");
+                        } else {
+                            throw retryEx;
+                        }
+                    }
+                }
         } finally {
             if (channelSftp != null) {
                 putChannel(channelSftp);

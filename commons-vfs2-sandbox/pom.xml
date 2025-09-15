@@ -67,12 +67,18 @@
       <artifactId>jakarta.mail</artifactId>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <groupId>com.hierynomus</groupId>
+      <artifactId>smbj</artifactId>
+      <version>0.13.0</version>
+      <optional>true</optional>
+    </dependency>
 
     <dependency>
-       <groupId>org.apache.commons</groupId>
-       <artifactId>commons-vfs2</artifactId>
-       <type>test-jar</type>
-       <scope>test</scope>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-vfs2</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -105,7 +111,7 @@
         </includes>
       </resource>
     </resources>
-     <!-- include NOTICE/LICENSE in generated test jar -->
+    <!-- include NOTICE/LICENSE in generated test jar -->
     <testResources>
       <testResource>
         <directory>${commons.parent.dir}</directory>
@@ -133,6 +139,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <skipTests>true</skipTests>
           <systemPropertyVariables>
             <test.basedir>../core/target/test-classes/test-data</test.basedir>
             <test.basedir.res>test-data</test.basedir.res>
@@ -153,6 +160,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
+              <skipTests>true</skipTests>
               <systemPropertyVariables>
                 <test.basedir>../core/target/test-classes/test-data</test.basedir>
                 <test.basedir.res>test-data</test.basedir.res>

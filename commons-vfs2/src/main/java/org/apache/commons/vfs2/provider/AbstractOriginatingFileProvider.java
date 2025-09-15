@@ -21,6 +21,9 @@ import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystem;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
+import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+
+import java.util.Map;
 
 /**
  * A {@link FileProvider} that handles physical files, such as the files in a local fs, or on an FTP server. An
@@ -29,8 +32,20 @@ import org.apache.commons.vfs2.FileSystemOptions;
 public abstract class AbstractOriginatingFileProvider extends AbstractFileProvider {
 
     /**
+     * This holds client connect timeout for the FileProvider classes which extend from this
+     * abstract class. Currently this is only used for ftp and ftps. Timeout should be specified
+     * for ftp or ftps urls in milliseconds as shown below.
+     * <p/>
+     * e.g:  ftp://admin":password@"localhost/in2\?transport.vfs.ConnectTimeout=1000
+     */
+    protected Integer defaultTimeout = null;
+
+    private final static String CONNECT_TIMEOUT = "transport.vfs.ConnectTimeout";
+
+    /**
      * Constructs a new instance for subclasses.
      */
+
     public AbstractOriginatingFileProvider() {
     }
 
@@ -72,6 +87,18 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
     @Override
     public FileObject findFile(final FileObject baseFileObject, final String uri, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
+        Integer timeout = null;
+        final Map<String, String> queryParam = UriParser.extractQueryParams(uri);//Extracting Connect Timeout from uri
+        String strConnectTimeout = queryParam.get(CONNECT_TIMEOUT);
+        if (strConnectTimeout != null) {
+            try {
+                timeout = Integer.valueOf(strConnectTimeout);
+            } catch (NumberFormatException nfe) {
+                getLogger().warn("value of transport.vfs.ConnectTimeout param " + strConnectTimeout + " is invalid "
+                        + "so the time out does not applied" );
+                timeout = null; //timeout not set
+            }
+        }
         // Parse the URI
         final FileName name;
         try {
@@ -80,7 +107,36 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
             throw new FileSystemException("vfs.provider/invalid-absolute-uri.error", uri, exc);
         }
         // Locate the file
-        return findFile(name, fileSystemOptions);
+        return findFile(name, fileSystemOptions, timeout);
+    }
+
+    /**
+     * Locates a file from its parsed URI.Can be used to set  default timeout for ftp and ftps
+     * connections.
+     *
+     * @param name The file name.
+     * @param fileSystemOptions FileSystem options.
+     * @return A FileObject associated with the file.
+     * @throws FileSystemException if an error occurs.
+     */
+    protected FileObject findFile(final FileName name, final FileSystemOptions fileSystemOptions, Integer defaultTimeout)
+            throws FileSystemException {
+        // Check in the cache for the file system
+        final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
+
+        FileSystem fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+        FileObject testFile = fs.resolveFile(name);
+        try {
+            testFile.exists();
+        } catch (FileSystemException e) {
+            ((DefaultFileSystemManager) getContext().getFileSystemManager()).closeCachedFileSystem(name.getURI(), fileSystemOptions);
+            fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+            testFile = fs.resolveFile(name);
+        }
+
+        // Locate the file
+        // return fs.resolveFile(name.getPath());
+        return testFile;
     }
 
     /**
@@ -92,8 +148,25 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
      * @throws FileSystemException if an error occurs.
      * @since 2.0
      */
-    protected synchronized FileSystem getFileSystem(final FileName rootFileName, final FileSystemOptions fileSystemOptions)
+    protected synchronized FileSystem getFileSystem(final FileName rootFileName, final FileSystemOptions
+            fileSystemOptions)
             throws FileSystemException {
+        return getFileSystem(rootFileName, fileSystemOptions, null);
+    }
+
+    /**
+     * Returns the FileSystem associated with the specified root. Facilitate timeout option.
+     *
+     * @param rootFileName The root path.
+     * @param fileSystemOptions The FileSystem options.
+     * @return The FileSystem.
+     * @throws FileSystemException if an error occurs.
+     * @since 2.0
+     */
+    protected synchronized FileSystem getFileSystem(final FileName rootFileName, final FileSystemOptions
+            fileSystemOptions, Integer defaultTimeout)
+            throws FileSystemException {
+        this.defaultTimeout = defaultTimeout;
         FileSystem fs = findFileSystem(rootFileName, fileSystemOptions);
         if (fs == null) {
             // Need to create the file system, and cache it

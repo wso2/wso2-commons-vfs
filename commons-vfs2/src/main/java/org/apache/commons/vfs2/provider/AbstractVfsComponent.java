@@ -47,7 +47,7 @@ public abstract class AbstractVfsComponent implements VfsComponent {
      *
      * @return provider context
      */
-    protected final VfsComponentContext getContext() {
+    public final VfsComponentContext getContext() {
         return context;
     }
 

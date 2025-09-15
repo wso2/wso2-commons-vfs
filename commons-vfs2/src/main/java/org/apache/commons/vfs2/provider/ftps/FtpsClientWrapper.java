@@ -23,6 +23,7 @@ import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
 import org.apache.commons.vfs2.provider.GenericFileName;
 import org.apache.commons.vfs2.provider.ftp.FTPClientWrapper;
+import org.apache.commons.vfs2.provider.ftp.FtpFileProvider;
 import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 /**
@@ -36,8 +37,9 @@ import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
  */
 final class FtpsClientWrapper extends FTPClientWrapper {
 
-    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions)
-            throws FileSystemException {
+//    private FTPSClient ftpsClient;
+    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws
+            FileSystemException {
         super(root, fileSystemOptions);
     }
 

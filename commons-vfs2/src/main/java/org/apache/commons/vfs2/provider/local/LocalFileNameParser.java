@@ -97,6 +97,10 @@ public abstract class LocalFileNameParser extends AbstractFileNameParser {
             scheme = "file";
         }
 
+        // Extract the queryString
+        final String queryString = UriParser.extractQueryString(nameBuilder);
+
+
         // Remove encoding, and adjust the separators
         UriParser.canonicalizePath(nameBuilder, 0, nameBuilder.length(), this);
 
@@ -110,6 +114,9 @@ public abstract class LocalFileNameParser extends AbstractFileNameParser {
 
         final String path = nameBuilder.toString();
 
-        return createFileName(scheme, rootFile, path, fileType);
+        return createFileName(scheme, rootFile, path, fileType, queryString);
     }
+
+    protected abstract FileName createFileName(String scheme, final String rootFile, final String path,
+                                               final FileType type, final String queryString);
 }

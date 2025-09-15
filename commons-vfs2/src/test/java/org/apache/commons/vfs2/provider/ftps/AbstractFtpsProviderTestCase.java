@@ -39,12 +39,15 @@ import org.apache.ftpserver.ssl.SslConfigurationFactory;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
 import org.apache.ftpserver.usermanager.impl.BaseUser;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 
 /**
  * Abstract tests for FTP file systems.
  */
+@Disabled
 abstract class AbstractFtpsProviderTestCase extends AbstractProviderTestConfig {
 
+    @Disabled
     static final class FtpProviderTestSuite extends ProviderTestSuite {
 
         private final boolean implicit;

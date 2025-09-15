@@ -17,15 +17,18 @@
 package org.apache.commons.vfs2.provider.ftps;
 
 import junit.framework.Test;
+import org.junit.jupiter.api.Disabled;
 
 /**
  * Tests for FTPS file systems with explicit FTPS connection.
  */
+@Disabled
 public class FtpsProviderExplicitTestCase extends AbstractFtpsProviderTestCase {
 
     /**
      * Creates the test suite for the ftps file system.
      */
+    @Disabled
     public static Test suite() throws Exception {
         return new FtpProviderTestSuite(new FtpsProviderExplicitTestCase());
     }

@@ -61,7 +61,7 @@ public class FtpProviderTestCase extends AbstractProviderTestConfig {
 
     private static final String USER_PROPS_RES = "org.apache.ftpserver/users.properties";
 
-    static String getConnectionUri() {
+    public static String getConnectionUri() {
         return connectionUri;
     }
 
@@ -81,8 +81,8 @@ public class FtpProviderTestCase extends AbstractProviderTestConfig {
      * @param commandFactory FTP server command factory.
      * @throws FtpException
      */
-    static void setUpClass(final String rootDirectory, final FileSystemFactory fileSystemFactory,
-        final CommandFactory commandFactory) throws FtpException {
+    public static void setUpClass(final String rootDirectory, final FileSystemFactory fileSystemFactory,
+                           final CommandFactory commandFactory) throws FtpException {
         if (server != null) {
             return;
         }
@@ -129,7 +129,7 @@ public class FtpProviderTestCase extends AbstractProviderTestConfig {
      * Creates the test suite for subclasses of the FTP file system.
      */
     protected static Test suite(final FtpProviderTestCase testCase,
-        final Class<? extends AbstractProviderTestCase>... testClasses) throws Exception {
+                                final Class<? extends AbstractProviderTestCase>... testClasses) throws Exception {
         return new ProviderTestSuite(testCase) {
 
             @Override
@@ -169,7 +169,7 @@ public class FtpProviderTestCase extends AbstractProviderTestConfig {
     /**
      * Stops the embedded Apache FTP Server (MINA).
      */
-    static void tearDownClass() {
+    public static void tearDownClass() {
         if (server != null) {
             server.stop();
             server = null;
@@ -222,7 +222,7 @@ public class FtpProviderTestCase extends AbstractProviderTestConfig {
     /**
      * Gets the root of the local FTP Server file system.
      */
-    protected String getFtpRootDir() {
+    public String getFtpRootDir() {
         return getTestDirectory();
     }
 

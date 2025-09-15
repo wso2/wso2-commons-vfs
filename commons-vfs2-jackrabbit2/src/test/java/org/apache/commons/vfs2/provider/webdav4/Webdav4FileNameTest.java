@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests {@link Webdav4FileName}.
  */
+@Disabled("Requires a running WebDAV server")
 public class Webdav4FileNameTest {
     /**
      * If the resolved path ends without a '/'
