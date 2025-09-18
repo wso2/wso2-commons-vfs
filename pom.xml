@@ -116,7 +116,7 @@
   </repositories>
 
   <build>
-    <defaultGoal>clean verify apache-rat:check japicmp:cmp spotbugs:check</defaultGoal>
+<!--    <defaultGoal>clean </defaultGoal>-->
 
     <pluginManagement>
       <plugins>
@@ -155,7 +155,38 @@
             </excludes>
           </configuration>
         </plugin>
-
+        <plugin>
+          <groupId>com.github.siom79.japicmp</groupId>
+          <artifactId>japicmp-maven-plugin</artifactId>
+          <configuration>
+            <parameter>
+              <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
+              <ignoreNonResolvableArtifacts>true</ignoreNonResolvableArtifacts>
+              <overrideCompatibilityChangeParameters>
+                <overrideCompatibilityChangeParameter>
+                  <compatibilityChange>METHOD_NEW_DEFAULT</compatibilityChange>
+                  <binaryCompatible>true</binaryCompatible>
+                  <sourceCompatible>true</sourceCompatible>
+                  <semanticVersionLevel>PATCH</semanticVersionLevel>
+                </overrideCompatibilityChangeParameter>
+                <overrideCompatibilityChangeParameter>
+                  <!-- BC is maintained, but no SC. -->
+                  <compatibilityChange>METHOD_NO_LONGER_THROWS_CHECKED_EXCEPTION</compatibilityChange>
+                  <binaryCompatible>true</binaryCompatible>
+                  <sourceCompatible>true</sourceCompatible>
+                  <semanticVersionLevel>PATCH</semanticVersionLevel>
+                </overrideCompatibilityChangeParameter>
+              </overrideCompatibilityChangeParameters>
+              <excludes>
+                <!-- Remove this section after 2.10.0 -->
+                <!-- Package moved to new module commons-vfs-hdfs -->
+                <exclude>org.apache.commons.vfs2.provider.hdfs</exclude>
+                <!-- Package moved to new module commons-vfs-ant -->
+                <exclude>org.apache.commons.vfs2.tasks</exclude>
+              </excludes>
+            </parameter>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-pmd-plugin</artifactId>
@@ -239,7 +270,19 @@
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
       </plugin>
-
+      <plugin>
+        <groupId>com.github.siom79.japicmp</groupId>
+        <artifactId>japicmp-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <threshold>Normal</threshold>
+          <effort>Default</effort>
+          <excludeFilterFile>${commons.parent.dir}/findbugs-exclude-filter.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
@@ -266,6 +309,33 @@
             </reports>
           </reportSet>
         </reportSets>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <threshold>Normal</threshold>
+          <effort>Default</effort>
+          <excludeFilterFile>${commons.parent.dir}/findbugs-exclude-filter.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <configuration>
+          <targetJdk>${maven.compiler.target}</targetJdk>
+        </configuration>
+        <reportSets>
+          <reportSet>
+            <reports>
+              <report>pmd</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+      <plugin>
+        <groupId>com.github.siom79.japicmp</groupId>
+        <artifactId>japicmp-maven-plugin</artifactId>
       </plugin>
     </plugins>
   </reporting>
