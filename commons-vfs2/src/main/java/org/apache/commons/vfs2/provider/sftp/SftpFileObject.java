@@ -541,7 +541,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         SftpOutputStream outputStream;
         try {
             final ChannelSftp channel = sftpClient.getChannel();
-             outputStream = new SftpOutputStream(sftpClient, channel.put(relPath));
+             outputStream = new SftpOutputStream(sftpClient, channel.put(relPath, bAppend ? ChannelSftp.APPEND
+                     : ChannelSftp.OVERWRITE));
         } catch (Exception e){
             getAbstractFileSystem().putClient(sftpClient);
             throw e;
