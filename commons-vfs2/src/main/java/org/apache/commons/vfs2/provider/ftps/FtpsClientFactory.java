@@ -110,6 +110,8 @@ public final class FtpsClientFactory {
             String KS_PASSWD = builder.getKeyStorePW(fileSystemOptions);
             String TS_PASSWD = builder.getTrustStorePW(fileSystemOptions);
             String KEY_PASSWD = builder.getKeyPW(fileSystemOptions);
+            String KS_TYPE = builder.getKeyStoreType(fileSystemOptions);
+            String TS_TYPE = builder.getTrustStoreType(fileSystemOptions);
 
             KeyManagerFactory keyManagerFactory = null;
             TrustManagerFactory trustManagerFactory = null;
@@ -120,11 +122,9 @@ public final class FtpsClientFactory {
                     FileInputStream keystorePath = new FileInputStream(file);
                     KeyStore keyStore;
                     if (provider != null) {
-                        String extension = getFileExtension(file);
-                        String type = !extension.isEmpty() ? extension.toUpperCase() : "BCFKS";
-                        keyStore = KeyStore.getInstance(type, provider);
+                        keyStore = KeyStore.getInstance(KS_TYPE, provider);
                     } else {
-                        keyStore = KeyStore.getInstance("JKS");
+                        keyStore = KeyStore.getInstance(KS_TYPE);
                     }
 
                     //load key store.
@@ -144,11 +144,9 @@ public final class FtpsClientFactory {
                     FileInputStream truststorePath = new FileInputStream(file);
                     KeyStore trustStore;
                     if (provider != null) {
-                        String extension = getFileExtension(file);
-                        String type = !extension.isEmpty() ? extension.toUpperCase() : "BCFKS";
-                        trustStore = KeyStore.getInstance(type, provider);
+                        trustStore = KeyStore.getInstance(TS_TYPE, provider);
                     } else {
-                        trustStore = KeyStore.getInstance("JKS");
+                        trustStore = KeyStore.getInstance(TS_TYPE);
                     }
                     //load trust store.
                     trustStore.load(truststorePath, TS_PASSWD.toCharArray());
@@ -199,7 +197,7 @@ public final class FtpsClientFactory {
             String fileName = file.getName();
             int i = fileName.lastIndexOf('.');
             if (i > 0) {
-                return fileName.substring(i+1);
+                return fileName.substring(i+1).toUpperCase();
             }
             return "";
         }

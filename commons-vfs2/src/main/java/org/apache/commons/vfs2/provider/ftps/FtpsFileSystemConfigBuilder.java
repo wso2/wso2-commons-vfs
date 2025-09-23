@@ -41,7 +41,9 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
     private static final String KEY_STORE = _PREFIX + ".KEY_STORE";
     private static final String TRUST_STORE = _PREFIX + ".TRUST_STORE";
     private static final String KS_PASSWD = _PREFIX + ".KS_PASSWD";
-    private static final String TS_PASSWD = _PREFIX + ".KS_PASSWD";
+    private static final String TS_PASSWD = _PREFIX + ".TS_PASSWD";
+    private static final String KS_TYPE = _PREFIX + ".KS_TYPE";
+    private static final String TS_TYPE = _PREFIX + ".TS_TYPE";
     private static final String KEY_PASSWD = _PREFIX + ".KEY_PASSWD";
 
     private FtpsFileSystemConfigBuilder() {
@@ -184,6 +186,47 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
      */
     public String getKeyPW(FileSystemOptions opts) {
         return getString(opts, KEY_PASSWD, "");
+    }
+
+    /**
+     * Set the trust store type.
+     *
+     * @param opts         The FileSystemOptions.
+     * @param trustStoreType The trustStore type.
+     */
+    public void setTrustStoreType(FileSystemOptions opts, String trustStoreType) {
+        setParam(opts, TS_TYPE, trustStoreType);
+    }
+
+    /**
+     * get the trustStore type.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the trust store type.
+     */
+    public String getTrustStoreType(FileSystemOptions opts) {
+        return getString(opts, TS_TYPE, "JKS");
+    }
+
+
+    /**
+     * Set the Key type.
+     *
+     * @param opts  The FileSystemOptions.
+     * @param keyType The key type.
+     */
+    public void setKeyStoreType(FileSystemOptions opts, String keyType) {
+        setParam(opts, KS_TYPE, keyType);
+    }
+
+    /**
+     * get the key type.
+     *
+     * @param opts The FileSystemOptions.
+     * @return the key type.
+     */
+    public String getKeyStoreType(FileSystemOptions opts) {
+        return getString(opts, KS_TYPE, "JKS");
     }
 
     /**
