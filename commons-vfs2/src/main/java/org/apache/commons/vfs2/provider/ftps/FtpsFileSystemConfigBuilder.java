@@ -208,7 +208,6 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
         return getString(opts, TS_TYPE, "JKS");
     }
 
-
     /**
      * Set the Key type.
      *

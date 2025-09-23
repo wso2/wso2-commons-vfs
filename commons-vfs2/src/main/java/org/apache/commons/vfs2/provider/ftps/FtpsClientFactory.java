@@ -193,15 +193,6 @@ public final class FtpsClientFactory {
             }
         }
 
-        private static String getFileExtension(File file) {
-            String fileName = file.getName();
-            int i = fileName.lastIndexOf('.');
-            if (i > 0) {
-                return fileName.substring(i+1).toUpperCase();
-            }
-            return "";
-        }
-
         /**
          * Get the preferred JCE provider.
          *
