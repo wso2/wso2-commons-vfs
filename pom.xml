@@ -14,9 +14,7 @@
    limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
 
   <parent>
     <groupId>org.wso2</groupId>
@@ -27,7 +25,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.wso2.org.apache.commons</groupId>
   <artifactId>commons-vfs2-project</artifactId>
-  <version>2.10.0-wso2v1-SNAPSHOT</version>
+  <version>2.10.0-wso2v1</version>
   <packaging>pom</packaging>
   <name>Apache Commons VFS Project</name>
   <description>Apache Commons VFS is a Virtual File System library.</description>
@@ -50,7 +48,7 @@
         <connection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</connection>
         <developerConnection>scm:git:https://github.com/wso2/wso2-commons-vfs.git</developerConnection>
         <url>https://github.com/wso2/wso2-commons-vfs.git</url>
-        <tag>2.10.x</tag>
+        <tag>v2.10.0-wso2v1</tag>
     </scm>
 
   <properties>
@@ -224,8 +222,8 @@
             <goals><goal>run</goal></goals>
             <configuration>
               <target>
-                <mkdir dir="${project.build.directory}/osgi"/>
-                <touch file="${project.build.directory}/osgi/MANIFEST.MF"/>
+                <mkdir dir="${project.build.directory}/osgi" />
+                <touch file="${project.build.directory}/osgi/MANIFEST.MF" />
               </target>
             </configuration>
           </execution>
@@ -237,8 +235,8 @@
               <target>
                 <copy todir="${project.build.directory}/apidocs/META-INF">
                   <fileset dir="${commons.parent.dir}">
-                    <include name="LICENSE.txt"/>
-                    <include name="NOTICE.txt"/>
+                    <include name="LICENSE.txt" />
+                    <include name="NOTICE.txt" />
                   </fileset>
                 </copy>
               </target>
