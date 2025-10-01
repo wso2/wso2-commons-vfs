@@ -21,13 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import org.apache.commons.vfs2.FileContent;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.http.HttpFileSystemConfigBuilder;
 
 /**
  * Tests VFS-427 NPE on HttpFileObject.getContent().getContentInfo().

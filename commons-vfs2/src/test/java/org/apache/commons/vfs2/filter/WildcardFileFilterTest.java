@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.filter.IOCase;
+import org.wso2.org.apache.commons.vfs2.filter.WildcardFileFilter;
 
 /**
  * Test for {@link WildcardFileFilter}.

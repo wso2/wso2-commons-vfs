@@ -19,6 +19,7 @@ package org.apache.commons.vfs2;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
 /**
  * Tests the {@link FileSystemException}.

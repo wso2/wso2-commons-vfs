@@ -18,9 +18,10 @@ package org.apache.commons.vfs2.provider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.apache.commons.vfs2.FileName;
-import org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileType;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
 
 public class AbstractFileNameTest {
 

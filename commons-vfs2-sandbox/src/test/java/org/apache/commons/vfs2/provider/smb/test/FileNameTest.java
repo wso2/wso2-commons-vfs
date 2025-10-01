@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.provider.smb.SmbFileName;
-import org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileName;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
 import org.junit.jupiter.api.Test;
 
 /**

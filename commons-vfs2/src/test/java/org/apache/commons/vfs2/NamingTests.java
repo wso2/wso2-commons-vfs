@@ -19,6 +19,10 @@ package org.apache.commons.vfs2;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.NameScope;
 
 /**
  * Test cases for file naming.

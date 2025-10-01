@@ -23,7 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.nio.file.Paths;
 
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.junit.jupiter.api.Test;
 
 public class VFSTest {

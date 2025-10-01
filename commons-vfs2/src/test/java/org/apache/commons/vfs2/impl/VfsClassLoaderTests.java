@@ -37,12 +37,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.commons.vfs2.AbstractProviderTestCase;
-import org.apache.commons.vfs2.Capability;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileType;
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.impl.VFSClassLoader;
 
 /**
  * VfsClassLoader test cases.

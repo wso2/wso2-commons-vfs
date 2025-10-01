@@ -32,7 +32,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.function.FailableFunction;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.junit.jupiter.api.Test;
 
 public class FileObjectEscapeCharacterInPathTest {
@@ -95,10 +99,10 @@ public class FileObjectEscapeCharacterInPathTest {
     private void testToFile(final FailableFunction<FileObject, File, IOException> function) throws IOException {
         for (final String testFilePath : TEST_FILE_PATHS) {
             try (FileSystemManager fileSystemManager = loadFileSystemManager();
-                FileObject fileObject = fileSystemManager.resolveFile(testFilePath)) {
+                 FileObject fileObject = fileSystemManager.resolveFile(testFilePath)) {
                 assertNotNull(fileObject);
                 try (FileContent content = fileObject.getContent();
-                    InputStream inputStream = content.getInputStream()) {
+                     InputStream inputStream = content.getInputStream()) {
                     assertEquals(TEST_FILE_CONTENT, IOUtils.toString(inputStream, StandardCharsets.UTF_8));
                 }
                 final File file = function.apply(fileObject);

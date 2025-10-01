@@ -23,10 +23,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.vfs2.FileFilter;
-import org.apache.commons.vfs2.FileSelectInfo;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.filter.OrFileFilter;
 
 // CHECKSTYLE:OFF Test code
 public class OrFileFilterTest extends BaseFilterTest {

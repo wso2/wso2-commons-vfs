@@ -19,9 +19,10 @@ package org.apache.commons.vfs2.provider.ftp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import org.apache.commons.vfs2.FileName;
-import org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileNameParser;
 
 /**
  * Tests https://issues.apache.org/jira/browse/VFS-793.

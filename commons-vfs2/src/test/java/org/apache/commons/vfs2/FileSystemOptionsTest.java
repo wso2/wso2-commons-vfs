@@ -22,8 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.File;
 
-import org.apache.commons.vfs2.provider.sftp.IdentityInfo;
-import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityInfo;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
 import org.junit.jupiter.api.Test;
 
 /**

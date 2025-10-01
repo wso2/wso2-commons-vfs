@@ -16,13 +16,17 @@
  */
 package org.apache.commons.vfs2.impl;
 
-import org.apache.commons.vfs2.*;
 import org.apache.commons.vfs2.provider.ftp.FtpProviderTestCase;
 import org.apache.ftpserver.ftplet.FtpException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.FileNotFolderException;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.VFS;
 
 import java.io.IOException;
 import java.net.MalformedURLException;

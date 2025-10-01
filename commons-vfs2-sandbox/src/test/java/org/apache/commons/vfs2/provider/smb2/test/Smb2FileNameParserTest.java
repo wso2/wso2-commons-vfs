@@ -17,9 +17,9 @@
  */
 package org.apache.commons.vfs2.provider.smb2.test;
 
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.provider.smb2.Smb2FileName;
-import org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileName;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
 import org.junit.Test;
 
 import java.net.URI;

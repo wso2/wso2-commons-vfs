@@ -23,7 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.apache.commons.vfs2.util.RandomAccessMode;
+import org.wso2.org.vfs2.provider.local.LocalFileRandomAccessContent;
+import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 import org.junit.jupiter.api.Test;
 
 /**

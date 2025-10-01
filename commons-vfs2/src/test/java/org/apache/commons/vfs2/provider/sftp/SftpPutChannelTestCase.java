@@ -18,9 +18,9 @@ package org.apache.commons.vfs2.provider.sftp;
 
 import java.io.InputStream;
 
-import org.apache.commons.vfs2.Capability;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.apache.mina.core.session.IoSession;
 import org.apache.sshd.common.FactoryManager;
 import org.apache.sshd.common.session.AbstractSession;

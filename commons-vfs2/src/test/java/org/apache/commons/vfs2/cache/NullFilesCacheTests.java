@@ -16,11 +16,12 @@
  */
 package org.apache.commons.vfs2.cache;
 
-import org.apache.commons.vfs2.FileName;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystem;
-import org.apache.commons.vfs2.FilesCache;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.NullFilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 

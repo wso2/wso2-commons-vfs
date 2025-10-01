@@ -16,6 +16,8 @@
  */
 package org.apache.commons.vfs2;
 
+import org.wso2.org.apache.commons.vfs2.FileType;
+
 import java.util.HashMap;
 import java.util.Map;
 

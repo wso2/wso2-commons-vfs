@@ -21,12 +21,13 @@ import static org.apache.commons.vfs2.VfsTestUtils.getResourceTestDirectory;
 import junit.framework.Test;
 
 import org.apache.commons.vfs2.AbstractProviderTestConfig;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.apache.commons.vfs2.ProviderTestSuite;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.apache.commons.vfs2.provider.jar.JarFileProvider;
-import org.apache.commons.vfs2.provider.url.UrlFileProvider;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.jar.JarFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.res.ResourceFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.url.UrlFileProvider;
 
 /**
  * Test cases for the resource provider.

@@ -18,6 +18,8 @@ package org.apache.commons.vfs2.provider.ftps;
 
 import junit.framework.Test;
 import org.junit.jupiter.api.Disabled;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsMode;
 
 /**
  * Tests for FTPS file systems with implicit FTPS connection.

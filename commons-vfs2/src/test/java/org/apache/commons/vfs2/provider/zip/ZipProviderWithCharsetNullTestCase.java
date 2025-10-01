@@ -24,13 +24,16 @@ import java.nio.charset.StandardCharsets;
 import junit.framework.Test;
 
 import org.apache.commons.vfs2.AbstractProviderTestConfig;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystem;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.ProviderTestSuite;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.junit.jupiter.api.Assertions;
+import org.wso2.org.apache.commons.vfs2.provider.zip.ZipFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.zip.ZipFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.zip.ZipFileSystemConfigBuilder;
 
 /**
  * Tests for the Zip file system.

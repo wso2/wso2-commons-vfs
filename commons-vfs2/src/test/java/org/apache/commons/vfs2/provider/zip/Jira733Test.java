@@ -22,14 +22,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.VFS;
-import org.apache.commons.vfs2.cache.OnCallRefreshFileObject;
-import org.apache.commons.vfs2.function.VfsConsumer;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.cache.OnCallRefreshFileObject;
+import org.wso2.org.apache.commons.vfs2.function.VfsConsumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.zip.ZipFileObject;
 
 public class Jira733Test {
 

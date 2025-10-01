@@ -19,11 +19,11 @@ package org.apache.commons.vfs2.provider.smb2.test;
 
 
 import org.apache.commons.vfs2.AbstractTestSuite;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.ProviderTestConfig;
-import org.apache.commons.vfs2.provider.smb.SmbFileName;
-import org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
-import org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileName;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
 
 import static org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
 

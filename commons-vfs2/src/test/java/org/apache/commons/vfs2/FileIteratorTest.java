@@ -22,6 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.VFS;
 
 /**
  * Tests {@link FileObject}s with iterators its implementation the {@link Iterable} interface to allow a FileObject to

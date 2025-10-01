@@ -38,11 +38,11 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.vfs2.AbstractProviderTestConfig;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.ProviderTestSuite;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.apache.ftpserver.ftplet.FtpException;
 import org.apache.sshd.SshServer;
 import org.apache.sshd.common.NamedFactory;
@@ -69,6 +69,10 @@ import org.apache.sshd.server.sftp.SftpSubsystem;
 
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.TestIdentityRepositoryFactory;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.TrustEveryoneUserInfo;
 
 /**
  * Tests cases for the SFTP provider.

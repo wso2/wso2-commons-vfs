@@ -22,10 +22,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-import org.apache.commons.vfs2.FileContent;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.VFS;
-import org.apache.commons.vfs2.provider.compressed.CompressedFileFileObject;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.provider.compressed.CompressedFileFileObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

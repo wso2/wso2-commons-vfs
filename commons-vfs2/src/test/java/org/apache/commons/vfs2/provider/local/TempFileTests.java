@@ -21,9 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.commons.vfs2.AbstractProviderTestCase;
-import org.apache.commons.vfs2.FileContent;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.junit.Test;
 
 /**

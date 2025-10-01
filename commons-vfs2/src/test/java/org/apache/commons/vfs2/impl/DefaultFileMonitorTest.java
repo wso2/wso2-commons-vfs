@@ -31,15 +31,16 @@ import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.vfs2.FileChangeEvent;
-import org.apache.commons.vfs2.FileListener;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.FileChangeEvent;
+import org.wso2.org.apache.commons.vfs2.FileListener;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileMonitor;
 
 /**
  * Tests {@link DefaultFileMonitor}.

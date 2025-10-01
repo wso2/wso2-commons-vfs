@@ -26,10 +26,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.vfs2.AbstractProviderTestCase;
-import org.apache.commons.vfs2.Capability;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.junit.Test;
 
 /**

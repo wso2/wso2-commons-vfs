@@ -18,9 +18,10 @@ package org.apache.commons.vfs2.cache;
 
 import java.util.Objects;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FilesCache;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.LRUFilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 

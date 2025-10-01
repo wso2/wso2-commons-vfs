@@ -16,12 +16,13 @@
  */
 package org.apache.commons.vfs2.provider;
 
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Warmup;
+import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 2)
