@@ -18,14 +18,14 @@
 package org.apache.commons.vfs2.provider.smb2.test;
 
 
-import org.apache.commons.vfs2.AbstractTestSuite;
+import org.wso2.org.apache.commons.vfs2.AbstractTestSuite;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.ProviderTestConfig;
+import org.wso2.org.apache.commons.vfs2.ProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileName;
 import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileNameParser;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
 
-import static org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
+import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
 
 public class FileNameTestCase extends AbstractTestSuite {
     protected FileNameTestCase(ProviderTestConfig providerConfig, String prefix, boolean nested) throws Exception {

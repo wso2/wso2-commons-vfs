@@ -16,7 +16,7 @@
  */
 package org.apache.commons.vfs2.provider.smb.test;
 
-import static org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
+import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;

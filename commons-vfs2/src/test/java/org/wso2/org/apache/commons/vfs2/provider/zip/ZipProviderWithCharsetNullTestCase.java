@@ -14,47 +14,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.vfs2.provider.smb.test;
+package org.wso2.org.apache.commons.vfs2.provider.zip;
+
+import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.getTestResource;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
 
 import org.wso2.org.apache.commons.vfs2.AbstractProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.org.apache.commons.vfs2.ProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.ProviderTestSuite;
-import org.wso2.org.apache.commons.vfs2.VFS;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileProvider;
 import org.junit.jupiter.api.Assertions;
 
 /**
- * Tests for the SMB file system.
+ * Tests for the Zip file system.
  */
-public class SmbProviderTestCase extends AbstractProviderTestConfig implements ProviderTestConfig {
+public class ZipProviderWithCharsetNullTestCase extends AbstractProviderTestConfig {
 
-    private static final String TEST_URI = "test.smb.uri";
-
+    /**
+     * Creates the test suite for the ZIP file system.
+     */
     public static Test suite() throws Exception {
-        if (System.getProperty(TEST_URI) != null) {
-            return new ProviderTestSuite(new SmbProviderTestCase());
-        }
-
-        // Cannot run IPv6LocalConnectionTests for smb, because there is no end-to-end test
-        // infrastructure implemented yet
-
-        return new TestSuite(SmbProviderTestCase.class);
+        return new ProviderTestSuite(new ZipProviderWithCharsetNullTestCase(), true);
     }
 
     /**
-     * Returns the base folder for tests.
+     * Returns the base folder for read tests.
      */
     @Override
     public FileObject getBaseTestFolder(final FileSystemManager manager) throws Exception {
-        final String uri = System.getProperty(TEST_URI);
-        return manager.resolveFile(uri);
+        final FileSystemOptions opts = new FileSystemOptions();
+        final ZipFileSystemConfigBuilder builder = ZipFileSystemConfigBuilder.getInstance();
+        // Tests null as the default.
+        builder.setCharset(opts, null);
+
+        final File zipFile = getTestResource("test.zip");
+        final String uri = "zip:file:" + zipFile.getAbsolutePath() + "!/";
+        final FileObject resolvedFile = manager.resolveFile(uri, opts);
+        final FileSystem fileSystem = resolvedFile.getFileSystem();
+        Assertions.assertInstanceOf(ZipFileSystem.class, fileSystem);
+        final ZipFileSystem zipFileSystem = (ZipFileSystem) fileSystem;
+        Assertions.assertEquals(StandardCharsets.UTF_8, zipFileSystem.getCharset());
+        return resolvedFile;
     }
 
     /**
@@ -62,18 +69,9 @@ public class SmbProviderTestCase extends AbstractProviderTestConfig implements P
      */
     @Override
     public void prepare(final DefaultFileSystemManager manager) throws Exception {
-        manager.addProvider("smb", new SmbFileProvider());
+        manager.addProvider("zip", new ZipFileProvider());
+        manager.addExtensionMap("zip", "zip");
+        manager.addMimeTypeMap(MIME_TYPE_APPLICATION_ZIP, "zip");
     }
 
-    @org.junit.jupiter.api.Test
-    public void testResolveIPv6Url() throws Exception {
-        final String ipv6Url = "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share";
-
-        final FileObject fileObject = VFS.getManager().resolveFile(ipv6Url, new FileSystemOptions());
-
-        Assertions.assertEquals(
-                "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getFileSystem().getRootURI());
-
-        Assertions.assertEquals("smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getName().getURI());
-    }
 }

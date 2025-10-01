@@ -14,38 +14,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.vfs2.provider.smb.test;
+package org.wso2.org.apache.commons.vfs2.provider.tar;
+
+import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.getTestResource;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
 
 import org.wso2.org.apache.commons.vfs2.AbstractProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.org.apache.commons.vfs2.ProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.ProviderTestSuite;
-import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.auth.StaticUserAuthenticator;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileProvider;
-import org.junit.jupiter.api.Assertions;
 
 /**
- * Tests for the SMB file system.
+ * Tests for the Tar file system, using a tar file nested inside another tar file.
  */
-public class SmbProviderTestCase extends AbstractProviderTestConfig implements ProviderTestConfig {
+public class NestedTarTestCase extends AbstractProviderTestConfig {
 
-    private static final String TEST_URI = "test.smb.uri";
-
+    /**
+     * Creates the test suite for nested tar files.
+     */
     public static Test suite() throws Exception {
-        if (System.getProperty(TEST_URI) != null) {
-            return new ProviderTestSuite(new SmbProviderTestCase());
-        }
-
-        // Cannot run IPv6LocalConnectionTests for smb, because there is no end-to-end test
-        // infrastructure implemented yet
-
-        return new TestSuite(SmbProviderTestCase.class);
+        return new ProviderTestSuite(new NestedTarTestCase(), true);
     }
 
     /**
@@ -53,8 +46,19 @@ public class SmbProviderTestCase extends AbstractProviderTestConfig implements P
      */
     @Override
     public FileObject getBaseTestFolder(final FileSystemManager manager) throws Exception {
-        final String uri = System.getProperty(TEST_URI);
-        return manager.resolveFile(uri);
+        // We test with non-empty FS options to make sure they are propagated
+        final FileSystemOptions opts = new FileSystemOptions();
+        DefaultFileSystemConfigBuilder.getInstance().setUserAuthenticator(opts,
+                new StaticUserAuthenticator("domain", null, null));
+
+        // Locate the base Tar file
+        final String tarFilePath = getTestResource("nested.tar").getAbsolutePath();
+
+        // Now build the nested file system
+        final String uri = "tar:file:" + tarFilePath + "!/test.tar";
+        final FileObject tarFile = manager.resolveFile(uri, opts);
+        final FileObject nestedFS = manager.createFileSystem(tarFile);
+        return nestedFS.resolveFile("/");
     }
 
     /**
@@ -62,18 +66,9 @@ public class SmbProviderTestCase extends AbstractProviderTestConfig implements P
      */
     @Override
     public void prepare(final DefaultFileSystemManager manager) throws Exception {
-        manager.addProvider("smb", new SmbFileProvider());
+        manager.addProvider("tar", new TarFileProvider());
+        manager.addExtensionMap("tar", "tar");
+        manager.addMimeTypeMap(MIME_TYPE_APPLICATION_X_TAR, "tar");
     }
 
-    @org.junit.jupiter.api.Test
-    public void testResolveIPv6Url() throws Exception {
-        final String ipv6Url = "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share";
-
-        final FileObject fileObject = VFS.getManager().resolveFile(ipv6Url, new FileSystemOptions());
-
-        Assertions.assertEquals(
-                "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getFileSystem().getRootURI());
-
-        Assertions.assertEquals("smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getName().getURI());
-    }
 }

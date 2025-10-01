@@ -14,66 +14,73 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.vfs2.provider.smb.test;
+package org.wso2.org.apache.commons.vfs2.provider.ram;
+
+import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.getTestDirectoryFile;
 
 import junit.framework.Test;
-import junit.framework.TestSuite;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.commons.vfs2.AbstractProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemManager;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.org.apache.commons.vfs2.ProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.ProviderTestSuite;
-import org.wso2.org.apache.commons.vfs2.VFS;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileProvider;
-import org.junit.jupiter.api.Assertions;
+import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 
 /**
- * Tests for the SMB file system.
+ * Tests for the RAM file system.
  */
-public class SmbProviderTestCase extends AbstractProviderTestConfig implements ProviderTestConfig {
+public class RamProviderTestCase extends AbstractProviderTestConfig {
 
-    private static final String TEST_URI = "test.smb.uri";
+    /** Logger */
+    private static final Log log = LogFactory.getLog(RamProviderTestCase.class);
 
+    /**
+     * Creates the test suite for the ram file system.
+     */
     public static Test suite() throws Exception {
-        if (System.getProperty(TEST_URI) != null) {
-            return new ProviderTestSuite(new SmbProviderTestCase());
-        }
-
-        // Cannot run IPv6LocalConnectionTests for smb, because there is no end-to-end test
-        // infrastructure implemented yet
-
-        return new TestSuite(SmbProviderTestCase.class);
+        return new ProviderTestSuite(new RamProviderTestCase());
     }
+
+    private boolean inited;
 
     /**
      * Returns the base folder for tests.
      */
     @Override
     public FileObject getBaseTestFolder(final FileSystemManager manager) throws Exception {
-        final String uri = System.getProperty(TEST_URI);
+        if (!inited) {
+            // Import the test tree
+            final FileObject fo = manager.resolveFile("ram:/");
+            final RamFileSystem fs = (RamFileSystem) fo.getFileSystem();
+            fs.importTree(getTestDirectoryFile());
+            fo.close();
+
+            inited = true;
+        }
+
+        final String uri = "ram:/";
         return manager.resolveFile(uri);
     }
 
     /**
      * Prepares the file system manager.
+     *
+     * Imports test data from the disk.
+     *
+     * @throws Exception
      */
     @Override
     public void prepare(final DefaultFileSystemManager manager) throws Exception {
-        manager.addProvider("smb", new SmbFileProvider());
+        try {
+            manager.addProvider("ram", new RamFileProvider());
+            manager.addProvider("file", new DefaultLocalFileProvider());
+        } catch (final Exception e) {
+            log.error(e);
+            throw e;
+        }
     }
 
-    @org.junit.jupiter.api.Test
-    public void testResolveIPv6Url() throws Exception {
-        final String ipv6Url = "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share";
-
-        final FileObject fileObject = VFS.getManager().resolveFile(ipv6Url, new FileSystemOptions());
-
-        Assertions.assertEquals(
-                "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getFileSystem().getRootURI());
-
-        Assertions.assertEquals("smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getName().getURI());
-    }
 }
