@@ -21,10 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.tar.TarFileObject;
 
 /**
  * test use DefaultFileSystemManager.createFileSystem method to create tar,tgz,tbz2 file system.

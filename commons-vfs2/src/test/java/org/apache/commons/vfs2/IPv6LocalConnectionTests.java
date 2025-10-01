@@ -30,6 +30,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 
 public class IPv6LocalConnectionTests extends AbstractProviderTestCase {
 
@@ -104,7 +109,8 @@ public class IPv6LocalConnectionTests extends AbstractProviderTestCase {
             try {
                 final FileSystem fileSystem = getFileSystem();
 
-                final FileObject readFolderObject = getManager().resolveFile(ipv6Url, setupConnectionTimeoutHints(fileSystem));
+                final FileObject
+                        readFolderObject = getManager().resolveFile(ipv6Url, setupConnectionTimeoutHints(fileSystem));
                 connected = connected || readFolderObject.resolveFile("file1.txt").getContent().getByteArray() != null;
             } catch (final FileSystemException e) {
                 // We don't care, if some of the discovered IPv6 addresses don't work.

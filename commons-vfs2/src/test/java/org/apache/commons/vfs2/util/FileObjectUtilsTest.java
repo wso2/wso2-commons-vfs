@@ -28,9 +28,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 
 /**
  * Tests {@link FileObjectUtils}.

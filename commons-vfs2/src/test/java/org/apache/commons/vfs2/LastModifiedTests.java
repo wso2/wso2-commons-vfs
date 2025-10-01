@@ -24,6 +24,9 @@ import java.util.Date;
 
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
 /**
  * Test cases for getting and setting file last modified time.

@@ -23,6 +23,10 @@ import java.net.URL;
 import java.net.URLConnection;
 
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 
 /**
  * URL test cases for providers.

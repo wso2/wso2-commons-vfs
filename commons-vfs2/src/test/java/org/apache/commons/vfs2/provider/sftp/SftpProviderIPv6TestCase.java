@@ -21,17 +21,19 @@ import java.io.IOException;
 import junit.framework.Test;
 
 import org.apache.commons.io.input.NullInputStream;
-import org.apache.commons.vfs2.FileName;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystem;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.IPv6LocalConnectionTests;
-import org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.mockito.Mockito;
 
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystem;
 
 public class SftpProviderIPv6TestCase extends AbstractSftpProviderTestCase {
 

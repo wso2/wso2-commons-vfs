@@ -19,8 +19,9 @@ package org.apache.commons.vfs2;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import org.apache.commons.vfs2.cache.SoftRefFilesCache;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.SoftRefFilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 
 /**
  * A partial {@link org.apache.commons.vfs2.ProviderTestConfig} implementation.

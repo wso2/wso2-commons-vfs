@@ -22,13 +22,13 @@ import static org.apache.commons.vfs2.VfsTestUtils.getTestDirectoryFile;
 import java.io.File;
 
 import org.apache.commons.vfs2.AbstractProviderTestCase;
-import org.apache.commons.vfs2.FileChangeEvent;
-import org.apache.commons.vfs2.FileListener;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystem;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.provider.DelegateFileObject;
-import org.apache.commons.vfs2.util.WeakRefFileListener;
+import org.wso2.org.apache.commons.vfs2.FileChangeEvent;
+import org.wso2.org.apache.commons.vfs2.FileListener;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.DelegateFileObject;
+import org.wso2.org.apache.commons.vfs2.util.WeakRefFileListener;
 import org.junit.Test;
 
 class DebugFileListener implements FileListener {

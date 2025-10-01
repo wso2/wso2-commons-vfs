@@ -25,15 +25,16 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FileSystemOptions;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
-import org.apache.commons.vfs2.provider.http5.Http5FileSystemConfigBuilder;
-import org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
-import org.apache.commons.vfs2.provider.sftp.TrustEveryoneUserInfo;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.http5.Http5FileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.TrustEveryoneUserInfo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.util.DelegatingFileSystemOptionsBuilder;
 
 /**
  * Tests {@link DelegatingFileSystemOptionsBuilder}.

@@ -18,7 +18,11 @@ package org.apache.commons.vfs2;
 
 import java.io.IOException;
 
-import org.apache.commons.vfs2.util.RandomAccessMode;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.RandomAccessContent;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 

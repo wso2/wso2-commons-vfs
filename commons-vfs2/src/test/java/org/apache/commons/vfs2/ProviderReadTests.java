@@ -26,6 +26,13 @@ import java.util.List;
 
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileContentInfo;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileType;
 
 /**
  * Read-only test cases for file providers.

@@ -23,6 +23,12 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.NameScope;
 
 /**
  * Test cases for reading file content.

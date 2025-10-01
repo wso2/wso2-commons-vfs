@@ -20,13 +20,17 @@ import java.net.URI;
 
 import junit.framework.Test;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemManager;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.PermissionsTests;
 import org.apache.commons.vfs2.ProviderReadTests;
 
 import com.jcraft.jsch.TestIdentityRepositoryFactory;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpStreamProxy;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.TrustEveryoneUserInfo;
 
 public class SftpProviderStreamProxyModeTestCase extends AbstractSftpProviderTestCase {
 

@@ -16,8 +16,9 @@
  */
 package org.apache.commons.vfs2.cache;
 
-import org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.cache.WeakRefFilesCache;
 
 /**
  * Tests for {@link WeakRefFilesCache} used by {@link WeakRefFilesCacheTestCase}.

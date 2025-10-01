@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 
 /**
  * URL Test cases for providers that supply structural info.

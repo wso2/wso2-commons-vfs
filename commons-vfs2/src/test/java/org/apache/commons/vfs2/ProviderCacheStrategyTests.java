@@ -16,10 +16,14 @@
  */
 package org.apache.commons.vfs2;
 
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.apache.commons.vfs2.impl.VirtualFileSystem;
-import org.apache.commons.vfs2.provider.ram.RamFileObject;
-import org.apache.commons.vfs2.util.FileObjectUtils;
+import org.wso2.org.apache.commons.vfs2.CacheStrategy;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.impl.VirtualFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.ram.RamFileObject;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.junit.Test;
 
 /**

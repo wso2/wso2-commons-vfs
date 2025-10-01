@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.VFS;
-import org.apache.commons.vfs2.util.RandomAccessMode;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.provider.ram.RamFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.ram.RamFileRandomAccessContent;
+import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 import org.junit.jupiter.api.Test;
 
 /**

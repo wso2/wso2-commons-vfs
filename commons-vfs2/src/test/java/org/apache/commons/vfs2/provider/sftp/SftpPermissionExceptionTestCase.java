@@ -21,10 +21,10 @@ import static org.apache.commons.vfs2.VfsTestUtils.getTestDirectory;
 import java.io.File;
 import java.nio.file.Paths;
 
-import org.apache.commons.vfs2.Capability;
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.Selectors;
-import org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.VFS;
 import org.apache.sshd.server.channel.ChannelSession;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;

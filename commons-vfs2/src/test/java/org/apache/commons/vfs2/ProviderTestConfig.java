@@ -16,7 +16,10 @@
  */
 package org.apache.commons.vfs2;
 
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 
 /**
  * Test configuration for a file system.

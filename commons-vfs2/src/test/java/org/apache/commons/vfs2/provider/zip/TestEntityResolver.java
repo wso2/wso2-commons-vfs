@@ -20,7 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 
-import org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;

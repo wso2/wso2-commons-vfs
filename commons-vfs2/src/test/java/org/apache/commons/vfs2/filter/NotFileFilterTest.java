@@ -21,9 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import org.apache.commons.vfs2.FileSelectInfo;
-import org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSelectInfo;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.filter.FalseFileFilter;
+import org.wso2.org.apache.commons.vfs2.filter.NotFileFilter;
+import org.wso2.org.apache.commons.vfs2.filter.TrueFileFilter;
 
 /**
  * Test for {@link NotFileFilter}.

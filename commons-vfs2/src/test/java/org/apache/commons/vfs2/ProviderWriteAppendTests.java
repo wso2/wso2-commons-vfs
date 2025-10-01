@@ -20,6 +20,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Test;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.Selectors;
 
 /**
  * File system test that check that a file system can be modified.

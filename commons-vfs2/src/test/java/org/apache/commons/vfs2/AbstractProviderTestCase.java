@@ -27,9 +27,16 @@ import java.nio.charset.StandardCharsets;
 
 import junit.framework.TestCase;
 
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.apache.commons.vfs2.provider.AbstractFileSystem;
-import org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileContent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 
 /**
  * File system test cases, which verifies the structure and naming functionality.

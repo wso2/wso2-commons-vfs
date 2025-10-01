@@ -18,13 +18,17 @@ package org.apache.commons.vfs2.provider.ftp;
 
 import junit.framework.Test;
 
-import org.apache.commons.vfs2.FileName;
-import org.apache.commons.vfs2.FileSystem;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.IPv6LocalConnectionTests;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.mockito.Mockito;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpClient;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystem;
 
 public class FtpProviderIPv6TestCase extends FtpProviderTestCase {
 

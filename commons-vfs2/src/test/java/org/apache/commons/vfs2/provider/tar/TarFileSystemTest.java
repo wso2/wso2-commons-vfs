@@ -20,11 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
-import org.apache.commons.vfs2.FilesCache;
-import org.apache.commons.vfs2.cache.WeakRefFilesCache;
-import org.apache.commons.vfs2.impl.StandardFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FilesCache;
+import org.wso2.org.apache.commons.vfs2.cache.WeakRefFilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.junit.jupiter.api.Test;
 
 public class TarFileSystemTest {

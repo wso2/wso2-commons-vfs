@@ -22,6 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.io.File;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileChangeEvent;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.VFS;
 
 public class FileChangeEventTest {
 

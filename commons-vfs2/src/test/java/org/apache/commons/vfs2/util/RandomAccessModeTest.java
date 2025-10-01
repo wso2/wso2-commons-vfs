@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.AccessMode;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 
 /**
  * Tests {@link RandomAccessMode}.

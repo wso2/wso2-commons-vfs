@@ -24,8 +24,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.util.regex.Pattern;
 
-import org.apache.commons.vfs2.FileFilter;
+import org.wso2.org.apache.commons.vfs2.FileFilter;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.filter.IOCase;
+import org.wso2.org.apache.commons.vfs2.filter.RegexFileFilter;
 
 /**
  * Test for {@link RegexFileFilter}.

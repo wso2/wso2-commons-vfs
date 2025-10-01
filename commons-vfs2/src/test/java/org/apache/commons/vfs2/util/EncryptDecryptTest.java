@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.util.Cryptor;
+import org.wso2.org.apache.commons.vfs2.util.CryptorFactory;
 
 /**
  */

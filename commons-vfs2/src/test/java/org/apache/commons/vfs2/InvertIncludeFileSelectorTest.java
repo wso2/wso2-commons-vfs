@@ -21,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.InvertIncludeFileSelector;
+import org.wso2.org.apache.commons.vfs2.PatternFileSelector;
 
 public class InvertIncludeFileSelectorTest {
 

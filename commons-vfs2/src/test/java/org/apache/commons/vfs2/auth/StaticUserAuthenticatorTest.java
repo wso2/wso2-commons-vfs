@@ -22,9 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.vfs2.UserAuthenticationData;
-import org.apache.commons.vfs2.UserAuthenticator;
+import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
+import org.wso2.org.apache.commons.vfs2.UserAuthenticator;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.auth.StaticUserAuthenticator;
 
 public class StaticUserAuthenticatorTest {
 

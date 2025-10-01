@@ -21,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.time.Duration;
 
 import org.apache.commons.lang3.Range;
-import org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
 
 /**
  * Tests {@link FtpFileSystemConfigBuilder}.

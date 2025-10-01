@@ -20,7 +20,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.vfs2.provider.local.LocalFileSystem;
+import org.wso2.org.apache.commons.vfs2.Capability;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.Selectors;
+import org.wso2.org.apache.commons.vfs2.provider.local.LocalFileSystem;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 

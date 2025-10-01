@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.URI;
 
-import org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileName;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.provider.url.UrlFileNameParser;
 
 public class UrlFileNameParserTest {
 

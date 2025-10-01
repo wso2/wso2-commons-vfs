@@ -37,10 +37,13 @@ import junit.framework.TestSuite;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.vfs2.impl.DefaultFileReplicator;
-import org.apache.commons.vfs2.impl.DefaultFileSystemManager;
-import org.apache.commons.vfs2.impl.PrivilegedFileReplicator;
-import org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileReplicator;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.impl.PrivilegedFileReplicator;
+import org.wso2.org.apache.commons.vfs2.provider.local.DefaultLocalFileProvider;
 
 /**
  * The suite of tests for a file system.

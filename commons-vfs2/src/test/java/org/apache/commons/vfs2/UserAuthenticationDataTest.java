@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
 
 public class UserAuthenticationDataTest {
 

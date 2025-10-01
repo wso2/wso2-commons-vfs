@@ -25,7 +25,7 @@ import java.nio.file.attribute.FileTime;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.vfs2.AbstractTestSuite;
-import org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.LastModifiedTests;
 import org.junit.Test;
 
