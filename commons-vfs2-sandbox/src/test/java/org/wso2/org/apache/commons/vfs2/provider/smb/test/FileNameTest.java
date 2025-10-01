@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.vfs2.provider.smb.test;
+package org.wso2.org.apache.commons.vfs2.provider.smb.test;
 
 import static org.wso2.org.apache.commons.vfs2.VfsTestUtils.assertSameMessage;
 import static org.junit.jupiter.api.Assertions.assertEquals;

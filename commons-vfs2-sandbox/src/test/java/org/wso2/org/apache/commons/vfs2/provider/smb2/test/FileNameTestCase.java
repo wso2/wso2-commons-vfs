@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.commons.vfs2.provider.smb2.test;
+package org.wso2.org.apache.commons.vfs2.provider.smb2.test;
 
 
 import org.wso2.org.apache.commons.vfs2.AbstractTestSuite;
