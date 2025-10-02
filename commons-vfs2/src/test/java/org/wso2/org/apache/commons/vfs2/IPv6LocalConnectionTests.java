@@ -81,16 +81,16 @@ public class IPv6LocalConnectionTests extends AbstractProviderTestCase {
 
         final Duration timeout = Duration.ofSeconds(5);
 
-        result.setOption(fileSystem.getClass(), "org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder.CONNECT_TIMEOUT", timeout);
-        result.setOption(fileSystem.getClass(), "org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder.TIMEOUT", timeout);
+        result.setOption(fileSystem.getClass(), "org.wso2org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder.CONNECT_TIMEOUT", timeout);
+        result.setOption(fileSystem.getClass(), "org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder.TIMEOUT", timeout);
 
         result.setOption(fileSystem.getClass(), "http.connection.timeout", timeout);
         result.setOption(fileSystem.getClass(), "http.socket.timeout", timeout);
 
         // This actually doesn't affect FtpFileProvider now, but it looks like an issue
         // This would work, if FtpClientFactory call client.setConnectTimeout() with CONNECT_TIMEOUT value
-        result.setOption(fileSystem.getClass(), "org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder.CONNECT_TIMEOUT", timeout);
-        result.setOption(fileSystem.getClass(), "org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder.SO_TIMEOUT", timeout);
+        result.setOption(fileSystem.getClass(), "org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder.CONNECT_TIMEOUT", timeout);
+        result.setOption(fileSystem.getClass(), "org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder.SO_TIMEOUT", timeout);
 
         return result;
     }

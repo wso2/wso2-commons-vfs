@@ -32,14 +32,14 @@ public class FileObjectContentOutputStreamCloseTest {
 
     @Test
     public void test() throws IOException {
-        final Path tempFilePath = Files.createTempFile("org.apache.commons.vfs2", ".txt");
+        final Path tempFilePath = Files.createTempFile("org.wso2.org.apache.commons.vfs2", ".txt");
         try (@SuppressWarnings("resource") // VFS.getManager() is a constant.
              FileObject fileObject = VFS.getManager().resolveFile(tempFilePath.toUri());
              final FileContent content = fileObject.getContent();
              OutputStream outputStream = content.getOutputStream();
              BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
              OutputStreamWriter outputStreamWriter = new OutputStreamWriter(bufferedOutputStream)) {
-            outputStreamWriter.write("org.apache.commons.vfs2");
+            outputStreamWriter.write("org.wso2.org.apache.commons.vfs2");
         }
     }
 

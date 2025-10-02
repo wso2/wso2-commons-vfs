@@ -114,7 +114,7 @@ public final class VFS {
      */
     public static synchronized FileSystemManager reset() throws FileSystemException {
         close();
-        return instance = createFileSystemManager("org.apache.commons.vfs2.impl.StandardFileSystemManager");
+        return instance = createFileSystemManager("org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager");
     }
 
     /**
