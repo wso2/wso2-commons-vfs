@@ -33,7 +33,7 @@ public final class Messages {
      * Map from message code to MessageFormat object for the message.
      */
     private static final ConcurrentMap<String, MessageFormat> MESSAGE_MAP = new ConcurrentHashMap<>();
-    private static final ResourceBundle RESOURCES = new CombinedResources("org.apache.commons.vfs2.Resources");
+    private static final ResourceBundle RESOURCES = new CombinedResources("org.wso2.org.apache.commons.vfs2.Resources");
 
     /**
      * Locates a message by its code.

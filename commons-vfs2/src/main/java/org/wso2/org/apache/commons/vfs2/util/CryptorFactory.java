@@ -26,13 +26,13 @@ public final class CryptorFactory {
     /**
      * The System property name to identify the Cryptor class to be used.
      */
-    public static final String CRYPTOR_CLASS = "org.apache.commons.vfs2.cryptor";
+    public static final String CRYPTOR_CLASS = "org.wso2.org.apache.commons.vfs2.cryptor";
 
     private static Cryptor instance;
 
     /**
      * Gets the Cryptor. If one has not been previously set, create it. The Cryptor class can be set by setting the
-     * "org.apache.commons.vfs2.cryptor" System property to the name of the Cryptor class.
+     * "org.wso2.org.apache.commons.vfs2.cryptor" System property to the name of the Cryptor class.
      *
      * @return The Cryptor.
      */
