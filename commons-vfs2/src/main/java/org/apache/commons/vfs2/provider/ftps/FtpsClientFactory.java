@@ -44,10 +44,6 @@ import java.security.cert.CertificateException;
  */
 public final class FtpsClientFactory {
 
-    private static final String BOUNCY_CASTLE_PROVIDER = "BC";
-    private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
-    private static final String SECURITY_JCE_PROVIDER = "security.jce.provider";
-
     private FtpsClientFactory() {
     }
 
@@ -76,7 +72,7 @@ public final class FtpsClientFactory {
 
         private final Log log = LogFactory.getLog(getClass());
         private static final String PKIX = "PKIX";
-        private static final String BCJSSE = "BCJSSE";
+        private static final String JCE_PROVIDER = "security.jce.provider";
         private FtpsConnectionFactory(final FtpsFileSystemConfigBuilder builder) {
             super(builder);
         }
@@ -116,47 +112,26 @@ public final class FtpsClientFactory {
             KeyManagerFactory keyManagerFactory = null;
             TrustManagerFactory trustManagerFactory = null;
             try {
-                String provider = getPreferredJceProvider();
                 if (KEYSTORE != null && !KEYSTORE.trim().isEmpty()) {
-                    File file = new File(KEYSTORE);
-                    FileInputStream keystorePath = new FileInputStream(file);
-                    KeyStore keyStore;
-                    if (provider != null) {
-                        keyStore = KeyStore.getInstance(KS_TYPE, provider);
-                    } else {
-                        keyStore = KeyStore.getInstance(KS_TYPE);
-                    }
+                    FileInputStream keystorePath = new FileInputStream(new File(KEYSTORE));
+                    KeyStore keyStore = KeyStore.getInstance(KS_TYPE);
 
                     //load key store.
                     keyStore.load(keystorePath, KS_PASSWD.toCharArray());
                     keystorePath.close();
 
                     // initialize key manager factory
-                    if (provider != null) {
-                        keyManagerFactory = KeyManagerFactory.getInstance(PKIX, BCJSSE);
-                    } else {
-                        keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                    }
+                    keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerType());
                     keyManagerFactory.init(keyStore, KEY_PASSWD.toCharArray());
                 }
                 if (TRUSTSTORE != null && !TRUSTSTORE.trim().isEmpty()) {
-                    File file = new File(TRUSTSTORE);
-                    FileInputStream truststorePath = new FileInputStream(file);
-                    KeyStore trustStore;
-                    if (provider != null) {
-                        trustStore = KeyStore.getInstance(TS_TYPE, provider);
-                    } else {
-                        trustStore = KeyStore.getInstance(TS_TYPE);
-                    }
+                    FileInputStream truststorePath = new FileInputStream(new File(TRUSTSTORE));
+                    KeyStore trustStore = KeyStore.getInstance(TS_TYPE);
                     //load trust store.
                     trustStore.load(truststorePath, TS_PASSWD.toCharArray());
                     truststorePath.close();
                     // initialize trust manager factory
-                    if (provider != null) {
-                        trustManagerFactory = TrustManagerFactory.getInstance(PKIX, BCJSSE);
-                    } else {
-                        trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                    }
+                    trustManagerFactory = TrustManagerFactory.getInstance(getTrustManagerType());
                     trustManagerFactory.init(trustStore);
                 }
 
@@ -193,18 +168,20 @@ public final class FtpsClientFactory {
             }
         }
 
-        /**
-         * Get the preferred JCE provider.
-         *
-         * @return the preferred JCE provider
-         */
-        public static String getPreferredJceProvider() {
-            String provider = System.getProperty(SECURITY_JCE_PROVIDER);
-            if (provider != null && (provider.equalsIgnoreCase(BOUNCY_CASTLE_FIPS_PROVIDER) ||
-                    provider.equalsIgnoreCase(BOUNCY_CASTLE_PROVIDER))) {
-                return provider;
+        private static String getKeyManagerType() {
+            if (System.getProperty(JCE_PROVIDER) != null) {
+                return PKIX;
+            } else {
+                return KeyManagerFactory.getDefaultAlgorithm();
             }
-            return null;
+        }
+
+        private static String getTrustManagerType() {
+            if (System.getProperty(JCE_PROVIDER) != null) {
+                return PKIX;
+            } else {
+                return TrustManagerFactory.getDefaultAlgorithm();
+            }
         }
     }
 }

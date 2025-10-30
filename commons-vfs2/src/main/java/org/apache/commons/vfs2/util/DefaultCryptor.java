@@ -39,9 +39,6 @@ public class DefaultCryptor implements Cryptor {
     private static final int BITS_IN_HALF_BYTE = 4;
 
     private static final char MASK = 0x0f;
-
-    private static final String BOUNCY_CASTLE_PROVIDER = "BC";
-    private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
     private static final String SECURITY_JCE_PROVIDER = "security.jce.provider";
 
     /**
@@ -58,13 +55,7 @@ public class DefaultCryptor implements Cryptor {
     public String encrypt(final String plainKey) throws Exception {
         final byte[] input = plainKey.getBytes();
         final SecretKeySpec key = new SecretKeySpec(KEY_BYTES, "AES");
-        String provider = getPreferredJceProvider();
-        final Cipher cipher;
-        if (provider != null) {
-            cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", provider);
-        } else {
-            cipher = Cipher.getInstance("AES");
-        }
+        final Cipher cipher = Cipher.getInstance(getAlgorithm());
 
         // encryption pass
         cipher.init(Cipher.ENCRYPT_MODE, key);
@@ -85,13 +76,7 @@ public class DefaultCryptor implements Cryptor {
     @Override
     public String decrypt(final String encryptedKey) throws Exception {
         final SecretKeySpec key = new SecretKeySpec(KEY_BYTES, "AES");
-        String provider = getPreferredJceProvider();
-        final Cipher cipher;
-        if (provider != null) {
-            cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", provider);
-        } else {
-            cipher = Cipher.getInstance("AES");
-        }
+        final Cipher cipher = Cipher.getInstance(getAlgorithm());
         cipher.init(Cipher.DECRYPT_MODE, key);
         final byte[] decoded = decode(encryptedKey);
         final byte[] plainText = new byte[cipher.getOutputSize(decoded.length)];
@@ -145,17 +130,11 @@ public class DefaultCryptor implements Cryptor {
         return INDEX_NOT_FOUND;
     }
 
-    /**
-     * Get the preferred JCE provider.
-     *
-     * @return the preferred JCE provider
-     */
-    public static String getPreferredJceProvider() {
-        String provider = System.getProperty(SECURITY_JCE_PROVIDER);
-        if (provider != null && (provider.equalsIgnoreCase(BOUNCY_CASTLE_FIPS_PROVIDER) ||
-                provider.equalsIgnoreCase(BOUNCY_CASTLE_PROVIDER))) {
-            return provider;
+    private static String getAlgorithm() {
+        if (System.getProperty(SECURITY_JCE_PROVIDER) != null) {
+            return "AES/CBC/PKCS7Padding";
+        } else {
+            return "AES";
         }
-        return null;
     }
 }
