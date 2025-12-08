@@ -39,6 +39,7 @@ public class DefaultCryptor implements Cryptor {
     private static final int BITS_IN_HALF_BYTE = 4;
 
     private static final char MASK = 0x0f;
+    private static final String SECURITY_JCE_PROVIDER = "security.jce.provider";
 
     /**
      * Encrypt the plain text password.
@@ -54,8 +55,7 @@ public class DefaultCryptor implements Cryptor {
     public String encrypt(final String plainKey) throws Exception {
         final byte[] input = plainKey.getBytes();
         final SecretKeySpec key = new SecretKeySpec(KEY_BYTES, "AES");
-
-        final Cipher cipher = Cipher.getInstance("AES");
+        final Cipher cipher = Cipher.getInstance(getAlgorithm());
 
         // encryption pass
         cipher.init(Cipher.ENCRYPT_MODE, key);
@@ -76,7 +76,7 @@ public class DefaultCryptor implements Cryptor {
     @Override
     public String decrypt(final String encryptedKey) throws Exception {
         final SecretKeySpec key = new SecretKeySpec(KEY_BYTES, "AES");
-        final Cipher cipher = Cipher.getInstance("AES");
+        final Cipher cipher = Cipher.getInstance(getAlgorithm());
         cipher.init(Cipher.DECRYPT_MODE, key);
         final byte[] decoded = decode(encryptedKey);
         final byte[] plainText = new byte[cipher.getOutputSize(decoded.length)];
@@ -128,5 +128,13 @@ public class DefaultCryptor implements Cryptor {
             }
         }
         return INDEX_NOT_FOUND;
+    }
+
+    private static String getAlgorithm() {
+        if (System.getProperty(SECURITY_JCE_PROVIDER) != null) {
+            return "AES/CBC/PKCS7Padding";
+        } else {
+            return "AES";
+        }
     }
 }
