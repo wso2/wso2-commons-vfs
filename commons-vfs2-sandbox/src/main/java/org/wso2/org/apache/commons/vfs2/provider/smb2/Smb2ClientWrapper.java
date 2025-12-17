@@ -24,8 +24,10 @@ import com.hierynomus.msfscc.fileinformation.FileAllInformation;
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation;
 import com.hierynomus.mssmb2.SMB2CreateDisposition;
 import com.hierynomus.mssmb2.SMB2CreateOptions;
+import com.hierynomus.mssmb2.SMB2Dialect;
 import com.hierynomus.mssmb2.SMB2ShareAccess;
 import com.hierynomus.mssmb2.SMBApiException;
+import com.hierynomus.security.jce.JceSecurityProvider;
 import com.hierynomus.smbj.SMBClient;
 import com.hierynomus.smbj.SmbConfig;
 import com.hierynomus.smbj.auth.AuthenticationContext;
@@ -40,6 +42,7 @@ import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 
 import java.io.IOException;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -55,6 +58,7 @@ public class Smb2ClientWrapper extends SMBClient {
             .withDfsEnabled(true)
             .withMultiProtocolNegotiate(true)
             .build();
+    private static final String BCFIPS = "BCFIPS";
     protected final FileSystemOptions fileSystemOptions;
     private final GenericFileName root;
     private SMBClient smbClient;
@@ -75,6 +79,19 @@ public class Smb2ClientWrapper extends SMBClient {
                     .withEncryptData(true)
                     .withMultiProtocolNegotiate(true)
                     .build();
+        }
+        // Detect FIPS
+        final String activeProvider = Security.getProviders()[0].getName();
+        final boolean isFipsMode = BCFIPS.equalsIgnoreCase(activeProvider);
+        if (isFipsMode) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("FIPS mode detected.");
+            }
+            System.setProperty("crypto.policy", "limited");
+            config = SmbConfig.builder()
+                    .withDialects(SMB2Dialect.SMB_2_1)
+                    .withSecurityProvider(new JceSecurityProvider())
+                    .withSigningRequired(true).build();
         }
         smbClient = new SMBClient(config);
         setupClient();

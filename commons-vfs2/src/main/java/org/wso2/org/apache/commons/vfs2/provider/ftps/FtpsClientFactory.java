@@ -50,6 +50,8 @@ public final class FtpsClientFactory {
             extends FtpClientFactory.ConnectionFactory<FTPSClient, FtpsFileSystemConfigBuilder> {
 
         private final Log log = LogFactory.getLog(getClass());
+        private static final String PKIX = "PKIX";
+        private static final String JCE_PROVIDER = "security.jce.provider";
         private FtpsConnectionFactory(final FtpsFileSystemConfigBuilder builder) {
             super(builder);
         }
@@ -83,30 +85,32 @@ public final class FtpsClientFactory {
             String KS_PASSWD = builder.getKeyStorePW(fileSystemOptions);
             String TS_PASSWD = builder.getTrustStorePW(fileSystemOptions);
             String KEY_PASSWD = builder.getKeyPW(fileSystemOptions);
+            String KS_TYPE = builder.getKeyStoreType(fileSystemOptions);
+            String TS_TYPE = builder.getTrustStoreType(fileSystemOptions);
 
             KeyManagerFactory keyManagerFactory = null;
             TrustManagerFactory trustManagerFactory = null;
             try {
                 if (KEYSTORE != null && !KEYSTORE.trim().isEmpty()) {
                     FileInputStream keystorePath = new FileInputStream(new File(KEYSTORE));
-                    KeyStore keyStore = KeyStore.getInstance("jks");
+                    KeyStore keyStore = KeyStore.getInstance(KS_TYPE);
 
                     //load key store.
                     keyStore.load(keystorePath, KS_PASSWD.toCharArray());
                     keystorePath.close();
 
                     // initialize key manager factory
-                    keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                    keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerType());
                     keyManagerFactory.init(keyStore, KEY_PASSWD.toCharArray());
                 }
                 if (TRUSTSTORE != null && !TRUSTSTORE.trim().isEmpty()) {
                     FileInputStream truststorePath = new FileInputStream(new File(TRUSTSTORE));
-                    KeyStore trustStore = KeyStore.getInstance("jks");
+                    KeyStore trustStore = KeyStore.getInstance(TS_TYPE);
                     //load trust store.
                     trustStore.load(truststorePath, TS_PASSWD.toCharArray());
                     truststorePath.close();
                     // initialize trust manager factory
-                    trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                    trustManagerFactory = TrustManagerFactory.getInstance(getTrustManagerType());
                     trustManagerFactory.init(trustStore);
                 }
 
@@ -140,6 +144,22 @@ public final class FtpsClientFactory {
                 } catch (final SSLException e) {
                     throw new FileSystemException("vfs.provider.ftps/data-channel.level", e, level.toString());
                 }
+            }
+        }
+
+        private static String getKeyManagerType() {
+            if (System.getProperty(JCE_PROVIDER) != null) {
+                return PKIX;
+            } else {
+                return KeyManagerFactory.getDefaultAlgorithm();
+            }
+        }
+
+        private static String getTrustManagerType() {
+            if (System.getProperty(JCE_PROVIDER) != null) {
+                return PKIX;
+            } else {
+                return TrustManagerFactory.getDefaultAlgorithm();
             }
         }
     }
