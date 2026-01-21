@@ -16,7 +16,7 @@
  */
 package com.jcraft.jsch;
 
-import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
+import org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
 
 /**
  * Simple JSch identity repository factory (that just returns the default factory).

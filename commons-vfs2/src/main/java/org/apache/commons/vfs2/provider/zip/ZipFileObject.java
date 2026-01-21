@@ -1,0 +1,165 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.vfs2.provider.zip;
+
+import java.io.InputStream;
+import java.util.HashSet;
+import java.util.zip.ZipEntry;
+
+import org.apache.commons.io.function.Uncheck;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.vfs2.FileName;
+import org.apache.commons.vfs2.FileSystemException;
+import org.apache.commons.vfs2.FileType;
+import org.apache.commons.vfs2.provider.AbstractFileName;
+import org.apache.commons.vfs2.provider.AbstractFileObject;
+
+/**
+ * A file in a ZIP file system.
+ */
+public class ZipFileObject extends AbstractFileObject<ZipFileSystem> {
+
+    /** The ZipEntry. */
+    protected ZipEntry entry;
+    private final HashSet<String> children = new HashSet<>();
+    private FileType type;
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param fileName the file name.
+     * @param entry The zip entry.
+     * @param fileSystem the file system.
+     * @param zipExists whether the zip file exists.
+     */
+    protected ZipFileObject(final AbstractFileName fileName, final ZipEntry entry, final ZipFileSystem fileSystem, final boolean zipExists) {
+        super(fileName, fileSystem);
+        setZipEntry(entry);
+        if (!zipExists) {
+            type = FileType.IMAGINARY;
+        }
+    }
+
+    /**
+     * Attaches a child.
+     * <p>
+     * TODO: Shouldn't this method have package-only visibility? Cannot change this without breaking binary
+     * compatibility.
+     * </p>
+     *
+     * @param childName The name of the child.
+     */
+    public void attachChild(final FileName childName) {
+        children.add(childName.getBaseName());
+    }
+
+    @Override
+    protected void doAttach() throws Exception {
+        getAbstractFileSystem().getZipFile();
+    }
+
+    @Override
+    protected void doDetach() throws Exception {
+        final ZipFileSystem afs = getAbstractFileSystem();
+        if (!afs.isOpen()) {
+            afs.close();
+        }
+    }
+
+    /**
+     * Returns the size of the file content (in bytes). Is only called if {@link #doGetType} returns
+     * {@link FileType#FILE}.
+     */
+    @Override
+    protected long doGetContentSize() {
+        return entry.getSize();
+    }
+
+    /**
+     * Creates an input stream to read the file content from. Is only called if {@link #doGetType} returns
+     * {@link FileType#FILE}. The input stream returned by this method is guaranteed to be closed before this method is
+     * called again.
+     */
+    @Override
+    protected InputStream doGetInputStream(final int bufferSize) throws Exception {
+        // VFS-210: zip allows to gather an input stream even from a directory and will
+        // return -1 on the first read. getType should not be expensive and keeps the tests
+        // running
+        if (!getType().hasContent()) {
+            throw new FileSystemException("vfs.provider/read-not-file.error", getName());
+        }
+
+        return getAbstractFileSystem().getZipFile().getInputStream(entry);
+    }
+
+    /**
+     * Returns the last modified time of this file.
+     */
+    @Override
+    protected long doGetLastModifiedTime() throws Exception {
+        return entry.getTime();
+    }
+
+    /**
+     * Returns the file's type.
+     */
+    @Override
+    protected FileType doGetType() {
+        return type;
+    }
+
+    /**
+     * Lists the children of the file.
+     */
+    @Override
+    protected String[] doListChildren() {
+        if (!Uncheck.get(this::getType).hasChildren()) {
+            return null;
+        }
+        return children.toArray(ArrayUtils.EMPTY_STRING_ARRAY);
+    }
+
+    /**
+     * Determines if this file can be written to.
+     *
+     * @return {@code true} if this file is writable, {@code false} if not.
+     * @throws FileSystemException if an error occurs.
+     */
+    @Override
+    public boolean isWriteable() throws FileSystemException {
+        return false;
+    }
+
+    /**
+     * Sets the details for this file object.
+     *
+     * @param entry ZIP information related to this file.
+     */
+    protected void setZipEntry(final ZipEntry entry) {
+        if (this.entry != null) {
+            return;
+        }
+
+        if (entry == null || entry.isDirectory()) {
+            type = FileType.FOLDER;
+        } else {
+            type = FileType.FILE;
+        }
+
+        this.entry = entry;
+    }
+}
