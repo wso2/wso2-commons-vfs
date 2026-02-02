@@ -76,6 +76,7 @@
                             org.apache.hc.client5.*;resolution:=optional,
                             org.apache.hc.core5.*;resolution:=optional,
                             jcifs.smb.*;resolution:=optional,
+                            jakarta.mail.*;version="[2.0.2,3.0.0)",
                             *
                         </Import-Package>
 
