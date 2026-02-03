@@ -17,17 +17,17 @@
   -->
 <providers>
 
-    <provider class-name="org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileProvider">
+    <provider class-name="org.apache.commons.vfs2.provider.smb.SmbFileProvider">
         <scheme name="smb"/>
         <if-available class-name="jcifs.smb.SmbFile"/>
     </provider>
 
-    <provider class-name="org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileProvider">
+    <provider class-name="org.apache.commons.vfs2.provider.smb2.Smb2FileProvider">
         <scheme name="smb2"/>
         <if-available class-name="com.hierynomus.smbj.SMBClient"/>
     </provider>
 
-    <provider class-name="org.wso2.org.apache.commons.vfs2.provider.mime.MimeFileProvider">
+    <provider class-name="org.apache.commons.vfs2.provider.mime.MimeFileProvider">
         <scheme name="mime"/>
         <if-available class-name="javax.mail.internet.MimeMultipart"/>
     </provider>
