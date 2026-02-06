@@ -127,8 +127,12 @@ public class Smb2ClientWrapper extends SMBClient {
             authDomain = null;
         }
 
-        //if username == "" the client tries to authenticate "anonymously". It's also possible to submit "guest" as username
-        AuthenticationContext authContext = new AuthenticationContext(userName, password.toCharArray(), authDomain);
+        //if username == "" the client tries to authenticate "anonymously". It's also possible to submit "guest" as
+        // username Password may be null depending on upstream auth handling. Avoid NullPointerException when
+        // converting to char[] by falling back to an empty array. This preserves constructor contract without
+        // altering authentication flow.
+        char[] pwd = (password != null) ? password.toCharArray() : new char[0];
+        AuthenticationContext authContext = new AuthenticationContext(userName, pwd, authDomain);
 
         //a connection stack is: SMBClient > Connection > Session > DiskShare
         try {
