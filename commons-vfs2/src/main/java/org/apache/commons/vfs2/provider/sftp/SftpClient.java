@@ -23,6 +23,9 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SftpException;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import org.apache.commons.vfs2.FileSystemException;
 import org.apache.commons.vfs2.FileSystemOptions;
 import org.apache.commons.vfs2.UserAuthenticationData;
@@ -66,6 +69,13 @@ public class SftpClient {
                     } catch (final SftpException e) {
                         throw new FileSystemException("vfs.provider.sftp/change-work-directory.error", workingDirectory, e);
                     }
+                }
+                String fileNameEncoding = SftpFileSystemConfigBuilder.getInstance()
+                    .getFileNameEncoding(fso);
+                if (fileNameEncoding != null && !fileNameEncoding.isEmpty()) {
+                    // safe to assume the encoding is supported as it is already
+                    // validated in SftpFileSystemConfigBuilder
+                    channel.setFilenameEncoding(Charset.forName(fileNameEncoding));
                 }
             } catch (JSchException | FileSystemException e) {
                 throw new FileSystemException("vfs.provider.sftp/change-work-directory.error", e);

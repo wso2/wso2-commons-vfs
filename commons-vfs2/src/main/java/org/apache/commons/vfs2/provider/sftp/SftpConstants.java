@@ -58,4 +58,7 @@ public interface SftpConstants {
      * the public key (fingerprint) of the SSH/SFTP server.
      **/
     String STRICT_HOST_KEY_CHECKING = "transport.vfs.StrictHostKeyChecking";
+
+    /** Denote the file name encoding. */
+    String FILE_NAME_ENCODING = "fileNameEncoding";
 }

@@ -16,6 +16,10 @@
  */
 package org.apache.commons.vfs2.impl;
 
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.vfs2.CacheStrategy;
@@ -728,6 +732,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
                 SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
                 if (builder.getAvoidPermissionCheck(fileSystemOptions) == null) {
                     builder.setAvoidPermissionCheck(fileSystemOptions, permissionCheck);
+                }
+
+                String fileNameEncoding = queryParam.get(SftpConstants.FILE_NAME_ENCODING);
+                if (fileNameEncoding != null && !fileNameEncoding.isEmpty()) {
+                    try {
+                        Charset.forName(fileNameEncoding);
+                        builder.setFileNameEncoding(fileSystemOptions, fileNameEncoding);
+                    } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+                        log.warn("Invalid filename encoding provided: " + fileNameEncoding
+                            + ". Falling back to UTF-8.");
+                    }
                 }
 
                 String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
