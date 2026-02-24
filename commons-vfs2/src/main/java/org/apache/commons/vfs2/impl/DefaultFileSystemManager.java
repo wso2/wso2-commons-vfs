@@ -23,6 +23,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -817,6 +820,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
                 SftpFileSystemConfigBuilder builder = SftpFileSystemConfigBuilder.getInstance();
                 if (builder.getAvoidPermissionCheck(fileSystemOptions) == null) {
                     builder.setAvoidPermissionCheck(fileSystemOptions, permissionCheck);
+                }
+
+                String fileNameEncoding = queryParam.get(SftpConstants.FILE_NAME_ENCODING);
+                if (fileNameEncoding != null && !fileNameEncoding.isEmpty()) {
+                    try {
+                        Charset.forName(fileNameEncoding);
+                        builder.setFileNameEncoding(fileSystemOptions, fileNameEncoding);
+                    } catch (IllegalCharsetNameException | UnsupportedCharsetException e) {
+                        log.warn("Invalid filename encoding provided: " + fileNameEncoding
+                            + ". Falling back to UTF-8.");
+                    }
                 }
 
                 String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
