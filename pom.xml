@@ -37,7 +37,6 @@
     <module>commons-vfs2-bom</module>
     <module>commons-vfs2-distribution</module>
     <module>commons-vfs2-sandbox</module>
-    <module>orbit</module>
   </modules>
 
   <issueManagement>
