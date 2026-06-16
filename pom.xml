@@ -90,7 +90,7 @@
     <slf4j.version>2.0.16</slf4j.version>
     <log4j2.version>2.24.3</log4j2.version>
     <collections4.version>4.5.0-M3</collections4.version>
-    <jsch.version>2.27.7</jsch.version>
+    <jsch.version>0.1.55</jsch.version>
     <httpclient3.version>3.1</httpclient3.version>
     <ant.version>1.10.15</ant.version>
 
@@ -428,7 +428,7 @@
         <version>${ant.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.github.mwiede</groupId>
+        <groupId>com.jcraft</groupId>
         <artifactId>jsch</artifactId>
         <version>${jsch.version}</version>
       </dependency>
