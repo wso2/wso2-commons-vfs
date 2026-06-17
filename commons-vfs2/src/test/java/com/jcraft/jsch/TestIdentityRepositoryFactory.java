@@ -16,7 +16,7 @@
  */
 package com.jcraft.jsch;
 
-import org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
+import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
 
 /**
  * Simple JSch identity repository factory (that just returns the default factory).
@@ -27,6 +27,6 @@ import org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
 public class TestIdentityRepositoryFactory implements IdentityRepositoryFactory {
     @Override
     public IdentityRepository create(final JSch jsch) {
-        return new LocalIdentityRepository(jsch.instLogger);
+        return new LocalIdentityRepository(jsch);
     }
 }

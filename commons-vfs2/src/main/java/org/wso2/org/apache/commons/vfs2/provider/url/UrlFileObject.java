@@ -1,0 +1,146 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.wso2.org.apache.commons.vfs2.provider.url;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.URLFileName;
+
+/**
+ * A {@link FileObject FileObject} implementation backed by a {@link URL}.
+ * <p>
+ * TODO - Implement set lastModified and get/set attribute
+ * </p>
+ * <p>
+ * TODO - Implement getOutputStream().
+ * </p>
+ */
+public class UrlFileObject extends AbstractFileObject<UrlFileSystem> {
+    private URL url;
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param fileSystem the file system.
+     * @param fileName the file name.
+     */
+    protected UrlFileObject(final UrlFileSystem fileSystem, final AbstractFileName fileName) {
+        super(fileName, fileSystem);
+    }
+
+    /**
+     * Creates a URL from the given file name.
+     *
+     * @param name the file name.
+     * @return a new URL.
+     * @throws IOException if an I/O error occurs.
+     */
+    protected URL createURL(final FileName name) throws IOException {
+        if (name instanceof URLFileName) {
+            final URLFileName urlName = (URLFileName) getName();
+
+            // TODO: charset
+            return new URL(urlName.getURIEncoded(null));
+        }
+        return new URL(getName().getURI());
+    }
+
+    /**
+     * Attaches this file object to its file resource. This method is called before any of the doBlah() or onBlah()
+     * methods. Subclasses can use this method to perform lazy initialization.
+     */
+    @Override
+    protected void doAttach() throws Exception {
+        if (url == null) {
+            // url = new URL(getName().getURI());
+            url = createURL(getName());
+        }
+    }
+
+    /**
+     * Returns the size of the file content (in bytes).
+     */
+    @Override
+    protected long doGetContentSize() throws Exception {
+        final URLConnection conn = url.openConnection();
+        try (InputStream unused = conn.getInputStream()) {
+            return conn.getContentLength();
+        }
+    }
+
+    /**
+     * Creates an input stream to read the file content from.
+     */
+    @Override
+    protected InputStream doGetInputStream(final int bufferSize) throws Exception {
+        return url.openStream();
+    }
+
+    /**
+     * Returns the last modified time of this file.
+     */
+    @Override
+    protected long doGetLastModifiedTime() throws Exception {
+        final URLConnection conn = url.openConnection();
+        try (InputStream unused = conn.getInputStream()) {
+            return conn.getLastModified();
+        }
+    }
+
+    /**
+     * Determines the type of the file.
+     */
+    @Override
+    protected FileType doGetType() throws Exception {
+        try {
+            // Attempt to connect & check status
+            final URLConnection conn = url.openConnection();
+            try (InputStream unused = conn.getInputStream()) {
+                if (conn instanceof HttpURLConnection) {
+                    final int status = ((HttpURLConnection) conn).getResponseCode();
+                    // 200 is good, maybe add more later...
+                    if (HttpURLConnection.HTTP_OK != status) {
+                        return FileType.IMAGINARY;
+                    }
+                }
+
+                return FileType.FILE;
+            }
+        } catch (final FileNotFoundException e) {
+            return FileType.IMAGINARY;
+        }
+    }
+
+    /**
+     * Lists the children of the file.
+     */
+    @Override
+    protected String[] doListChildren() throws Exception {
+        throw new FileSystemException("Not implemented.");
+    }
+}
