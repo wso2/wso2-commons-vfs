@@ -100,7 +100,9 @@ public class SftpFileSystem extends AbstractFileSystem {
         super(rootName, null, fileSystemOptions);
         this.session = Objects.requireNonNull(session, "session");
         connectTimeout = SftpFileSystemConfigBuilder.getInstance().getConnectTimeout(fileSystemOptions);
-        if (SftpFileSystemConfigBuilder.getInstance().isDisableDetectExecChannel(fileSystemOptions)) {
+        final SftpFileSystemConfigBuilder configBuilder = SftpFileSystemConfigBuilder.getInstance();
+        if (configBuilder.isDisableDetectExecChannel(fileSystemOptions)
+                || "true".equalsIgnoreCase(configBuilder.getAvoidPermissionCheck(fileSystemOptions))) {
             execDisabled = true;
         } else {
             execDisabled = detectExecDisabled();

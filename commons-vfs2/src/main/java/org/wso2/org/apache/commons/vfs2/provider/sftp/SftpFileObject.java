@@ -260,17 +260,32 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
 
     @Override
     protected boolean doIsExecutable() throws Exception {
-        return getPermissions(true).isExecutable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isExecutable();
+        }
+        return true;
     }
 
     @Override
     protected boolean doIsReadable() throws Exception {
-        return getPermissions(true).isReadable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isReadable();
+        }
+        return true;
     }
 
     @Override
     protected boolean doIsWriteable() throws Exception {
-        return getPermissions(true).isWritable();
+        if (isPermissionCheckRequired()) {
+            return getPermissions(true).isWritable();
+        }
+        return true;
+    }
+
+    private boolean isPermissionCheckRequired() {
+        final String permissionCheck = SftpFileSystemConfigBuilder.getInstance()
+                .getAvoidPermissionCheck(getAbstractFileSystem().getFileSystemOptions());
+        return permissionCheck == null || !permissionCheck.equalsIgnoreCase("true");
     }
 
     /**
