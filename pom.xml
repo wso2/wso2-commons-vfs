@@ -427,9 +427,9 @@
         <version>${ant.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.jcraft</groupId>
+        <groupId>com.github.mwiede</groupId>
         <artifactId>jsch</artifactId>
-        <version>${jsch.version}</version>
+        <version>2.27.7</version>
       </dependency>
       <dependency>
         <groupId>jcifs</groupId>
