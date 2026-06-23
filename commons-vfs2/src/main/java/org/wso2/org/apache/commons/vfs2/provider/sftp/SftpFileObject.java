@@ -540,6 +540,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                     // Try one retry — possibly transient channel issue
                     try {
                         channelSftp.disconnect();
+                        channelSftp = getAbstractFileSystem().getChannel();
                         setStat(channelSftp.stat(relPath));
                     } catch (SftpException retryEx) {
                         // TODO - not strictly true, but jsch 0.1.2 does not give us
