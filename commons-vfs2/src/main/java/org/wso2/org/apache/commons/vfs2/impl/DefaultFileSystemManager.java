@@ -355,20 +355,13 @@ public class DefaultFileSystemManager implements FileSystemManager {
             return;
         }
 
-        // make sure all discovered components in
-        // org.apache.commons.vfs2.impl.StandardFileSystemManager.configure(Element)
-        // are closed here
-        for (final FileProvider provider : providers.values()) {
-            closeComponent(provider);
-        }
         // Close the file system providers.
         providers.values().forEach(this::closeComponent);
-        // unregister all
+
         // Close the other components
         closeComponent(vfsProvider);
         closeComponent(fileReplicator);
         closeComponent(tempFileStore);
-        closeComponent(filesCache);
         closeComponent(defaultProvider);
 
         // unregister all providers here, so if any components have local file references
