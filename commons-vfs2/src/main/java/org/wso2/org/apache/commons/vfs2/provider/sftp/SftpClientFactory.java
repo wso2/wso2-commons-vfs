@@ -214,7 +214,8 @@ public final class SftpClientFactory {
                 final int proxyPort = builder.getProxyPort(fileSystemOptions);
                 final SftpFileSystemConfigBuilder.ProxyType proxyType = builder.getProxyType(fileSystemOptions);
                 final String proxyUser = builder.getProxyUser(fileSystemOptions);
-                char[] proxyPassword = builder.getProxyPassword(fileSystemOptions).toCharArray();
+                String proxyPasswordStr = builder.getProxyPassword(fileSystemOptions);
+                char[] proxyPassword = proxyPasswordStr != null ? proxyPasswordStr.toCharArray() : null;
                 Proxy proxy = null;
                 UserAuthenticator proxyAuth = SftpFileSystemConfigBuilder.getInstance().getProxyUserAuthenticator
                         (fileSystemOptions);
