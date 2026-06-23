@@ -197,6 +197,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                     throw new FileNotFoundException(getName());
                 }
                 throw new FileSystemException(e);
+            } catch (final Exception e) {
+                putChannel(channel);
+                throw e;
             }
             return new SftpInputStream(channel, inputStream, bufferSize);
         }

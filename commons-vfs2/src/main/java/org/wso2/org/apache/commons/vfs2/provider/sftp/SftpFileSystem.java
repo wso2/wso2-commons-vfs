@@ -66,6 +66,8 @@ public class SftpFileSystem extends AbstractFileSystem {
 
     private volatile ChannelSftp idleChannel;
 
+    private volatile boolean isFileSystemClosed;
+
     private final Duration connectTimeout;
 
     /**
@@ -141,6 +143,7 @@ public class SftpFileSystem extends AbstractFileSystem {
 
     @Override
     protected void doCloseCommunicationLink() {
+        isFileSystemClosed = true;
         if (idleChannel != null) {
             synchronized (this) {
                 if (idleChannel != null) {
@@ -361,6 +364,10 @@ public class SftpFileSystem extends AbstractFileSystem {
      * @param channelSftp the SFTP channel.
      */
     protected void putChannel(final ChannelSftp channelSftp) {
+        if (isFileSystemClosed) {
+            channelSftp.disconnect();
+            return;
+        }
         if (idleChannel == null) {
             synchronized (this) {
                 if (idleChannel == null) {
