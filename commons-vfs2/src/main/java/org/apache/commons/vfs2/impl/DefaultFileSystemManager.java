@@ -756,6 +756,26 @@ public class DefaultFileSystemManager implements FileSystemManager {
                     builder.setTimeout(fileSystemOptions, timeout);
                 }
 
+                String connectTimeoutStr = queryParam.get(SftpConstants.CONNECT_TIMEOUT);
+                if (connectTimeoutStr != null && builder.getConnectTimeout(fileSystemOptions) == null) {
+                    try {
+                        int connectTimeout = Integer.parseInt(connectTimeoutStr);
+                        builder.setConnectTimeout(fileSystemOptions, connectTimeout);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid connect timeout " + connectTimeoutStr + " specified in FileURI.");
+                    }
+                }
+
+                String keepAliveCountStr = queryParam.get(SftpConstants.KEEP_ALIVE_COUNT);
+                if (keepAliveCountStr != null && builder.getKeepAliveCountMax(fileSystemOptions) == null) {
+                    try {
+                        int keepAliveCount = Integer.parseInt(keepAliveCountStr);
+                        builder.setKeepAliveCountMax(fileSystemOptions, keepAliveCount);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid keep alive count " + keepAliveCountStr + " specified in FileURI.");
+                    }
+                }
+
                 if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
                     ((SftpFileSystemConfigBuilder) (((SftpFileProvider) provider).getConfigBuilder()))
                             .setUserDirIsRoot(fileSystemOptions, false);

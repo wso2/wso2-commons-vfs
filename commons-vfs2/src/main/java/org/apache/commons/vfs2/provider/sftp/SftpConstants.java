@@ -47,6 +47,16 @@ public interface SftpConstants {
     /** Default Timeout for the connection. */
     String TIMEOUT = "timeout";
 
+    /**
+     * Connection timeout for the connection.
+     */
+    String CONNECT_TIMEOUT = "connectTimeout";
+
+    /**
+     * Keep alive count for the connection.
+     */
+    String KEEP_ALIVE_COUNT = "keepAliveCount";
+
     /** Number of retries allow to connect to server */
     String RETRY_COUNT = "retryCount";
 
