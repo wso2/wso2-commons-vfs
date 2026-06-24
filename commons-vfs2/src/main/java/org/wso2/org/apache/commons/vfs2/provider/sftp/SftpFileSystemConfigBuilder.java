@@ -110,6 +110,7 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final SftpFileSystemConfigBuilder BUILDER = new SftpFileSystemConfigBuilder();
     private static final String COMPRESSION = PREFIX + "COMPRESSION";
     private static final String CONNECT_TIMEOUT = PREFIX + ".CONNECT_TIMEOUT";
+    private static final String KEEP_ALIVE_COUNT_MAX = PREFIX + ".KEEP_ALIVE_COUNT_MAX";
     private static final String ENCODING = PREFIX + ".ENCODING";
     private static final String HOST_KEY_CHECK_ASK = "ask";
     private static final String HOST_KEY_CHECK_NO = "no";
@@ -882,6 +883,26 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setIdentityPassPhrase(FileSystemOptions opts, String identityPassPhrase) throws FileSystemException {
         setParam(opts, PASS_PHRASE, identityPassPhrase);
+    }
+
+    /**
+     * Sets the maximum number of keep-alive messages to send on the Jsch session.
+     *
+     * @param opts The FileSystem options.
+     * @param keepAliveCountMax The maximum number of keep-alive messages to send.
+     */
+    public void setKeepAliveCountMax(final FileSystemOptions opts, final Integer keepAliveCountMax) {
+        this.setParam(opts, KEEP_ALIVE_COUNT_MAX, keepAliveCountMax);
+    }
+
+    /**
+     * Gets the maximum number of keep-alive messages to send on the Jsch session.
+     *
+     * @param options The FileSystem options.
+     * @return The maximum number of keep-alive messages, or null if not set.
+     */
+    public Integer getKeepAliveCountMax(final FileSystemOptions options) {
+        return this.getInteger(options, KEEP_ALIVE_COUNT_MAX);
     }
 
 }
