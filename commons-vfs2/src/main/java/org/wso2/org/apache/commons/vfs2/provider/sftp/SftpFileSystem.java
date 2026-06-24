@@ -299,6 +299,7 @@ public class SftpFileSystem extends AbstractFileSystem {
                     doCloseCommunicationLink();
                     session = SftpFileProvider.createSession((GenericFileName) getRootName(),
                         getFileSystemOptions());
+                    isFileSystemClosed = false;
                 }
             }
         }
