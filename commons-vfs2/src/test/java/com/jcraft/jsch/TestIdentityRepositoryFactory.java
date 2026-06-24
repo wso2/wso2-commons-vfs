@@ -27,6 +27,6 @@ import org.wso2.org.apache.commons.vfs2.provider.sftp.IdentityRepositoryFactory;
 public class TestIdentityRepositoryFactory implements IdentityRepositoryFactory {
     @Override
     public IdentityRepository create(final JSch jsch) {
-        return new LocalIdentityRepository(jsch);
+        return new LocalIdentityRepository(jsch.instLogger);
     }
 }
