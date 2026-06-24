@@ -107,17 +107,21 @@ public final class SftpClientFactory {
         JSch.setLogger(new JSchLogger());
     }
 
-    private static void addIdentities(final JSch jsch, final File sshDir, final IdentityProvider[] identities)
-            throws FileSystemException {
+    private static void addIdentities(final JSch jsch, final File sshDir, final IdentityProvider[] identities,
+            final String passPhrase) throws FileSystemException {
         if (identities != null) {
             for (final IdentityProvider info : identities) {
-                addIdentity(jsch, info);
+                if (passPhrase != null && info instanceof IdentityInfo) {
+                    addIdentity(jsch, (IdentityInfo) info, passPhrase);
+                } else {
+                    addIdentity(jsch, info);
+                }
             }
         } else {
             // Load the private key (rsa-key only)
             final File privateKeyFile = new File(sshDir, "id_rsa");
             if (privateKeyFile.isFile() && privateKeyFile.canRead()) {
-                addIdentity(jsch, new IdentityInfo(privateKeyFile));
+                addIdentity(jsch, new IdentityInfo(privateKeyFile), passPhrase);
             }
         }
     }
@@ -162,7 +166,8 @@ public final class SftpClientFactory {
             jsch.setIdentityRepository(repositoryFactory.create(jsch));
         }
 
-        addIdentities(jsch, sshDir, identities);
+        final String passPhrase = builder.getIdentityPassPhrase(fileSystemOptions);
+        addIdentities(jsch, sshDir, identities, passPhrase);
         setConfigRepository(jsch, sshDir, configRepository, loadOpenSSHConfig);
 
         UserAuthenticationData proxyAuthData = null;
@@ -386,7 +391,7 @@ public final class SftpClientFactory {
     private SftpClientFactory() {
     }
 
-    private static void addIndentity(final JSch jsch, final IdentityInfo info, String passPhrase) throws
+    private static void addIdentity(final JSch jsch, final IdentityInfo info, String passPhrase) throws
             FileSystemException {
         try {
             final String privateKeyFile = info.getPrivateKey() != null ? info.getPrivateKey().getAbsolutePath() : null;
