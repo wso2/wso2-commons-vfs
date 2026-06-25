@@ -26,12 +26,15 @@ import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.provider.QueryParamConfigurer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
-public class Smb2FileProvider extends AbstractOriginatingFileProvider {
+public class Smb2FileProvider extends AbstractOriginatingFileProvider implements QueryParamConfigurer {
 
     /**
      * Authenticator types.
@@ -43,6 +46,8 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider {
             Arrays.asList(Capability.CREATE, Capability.DELETE, Capability.RENAME, Capability.GET_TYPE,
                     Capability.LIST_CHILDREN, Capability.READ_CONTENT, Capability.GET_LAST_MODIFIED,
                     Capability.URI, Capability.WRITE_CONTENT, Capability.APPEND_CONTENT));
+
+    private static final String DISK_SHARE_ACCESS_MASK = "transport.vfs.diskShareAccessMask";
 
     public Smb2FileProvider() {
 
@@ -71,5 +76,14 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider {
             return getFileNameParser().parseUri(getContext(), base, uri);
         }
         throw new FileSystemException("vfs.provider/filename-parser-missing.error");
+    }
+
+    @Override
+    public void configure(FileSystemOptions fileSystemOptions, Map<String, String> queryParams) {
+
+        if (queryParams.containsKey(DISK_SHARE_ACCESS_MASK)) {
+            String[] masks = queryParams.get(DISK_SHARE_ACCESS_MASK).split(",");
+            Smb2FileSystemConfigBuilder.getInstance().setDiskShareAccessMask(fileSystemOptions, new ArrayList<>(Arrays.asList(masks)));
+        }
     }
 }
