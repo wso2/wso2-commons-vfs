@@ -186,7 +186,7 @@ public class Smb2ClientWrapper extends SMBClient {
     public DiskEntry getDiskEntryWrite(String path, boolean append) throws FileSystemException {
         ArrayList<String> diskShareAccessMask = Smb2FileSystemConfigBuilder.getInstance()
                 .getDiskShareAccessMask(fileSystemOptions);
-        Set<AccessMask> accessMask = getAccessMaskFromConfig(diskShareAccessMask);
+        Set<AccessMask> accessMask = resolveAccessMaskOrDefault(diskShareAccessMask, AccessMask.MAXIMUM_ALLOWED);
         return diskShare.open(path, accessMask,
                               EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
                               EnumSet.of(SMB2ShareAccess.FILE_SHARE_WRITE),
@@ -198,13 +198,15 @@ public class Smb2ClientWrapper extends SMBClient {
      * Retrieves the set of \AccessMask\ values based on the provided configuration string.
      *
      * @param config the access mask configuration string
+     * @param defaultMask the default \AccessMask\ value to use if the configuration string is null or empty
      * @return a set of \AccessMask\ values corresponding to the configuration
      * @throws IllegalArgumentException if the configuration string is null or invalid
      */
-    public static Set<AccessMask> getAccessMaskFromConfig(ArrayList<String> config) {
+    private static Set<AccessMask> resolveAccessMaskOrDefault(ArrayList<String> config, AccessMask defaultMask) {
         if (config == null || config.isEmpty()) {
             // To keep backward compatibility
-            return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
+            LOG.debug("Disk share access mask is not configured. Using default access mask: " + defaultMask);
+            return EnumSet.of(defaultMask);
         }
 
         Set<AccessMask> accessMasks = EnumSet.noneOf(AccessMask.class);
@@ -224,7 +226,7 @@ public class Smb2ClientWrapper extends SMBClient {
 
         if (accessMasks.isEmpty()) {
             // To keep backward compatibility
-            return EnumSet.of(AccessMask.MAXIMUM_ALLOWED);
+            return EnumSet.of(defaultMask);
         }
 
         return accessMasks;
@@ -250,8 +252,11 @@ public class Smb2ClientWrapper extends SMBClient {
      */
     public DiskEntry getDiskEntryFolderWrite(String path) {
 
+        ArrayList<String> diskShareAccessMask = Smb2FileSystemConfigBuilder.getInstance()
+                .getDiskShareAccessMask(fileSystemOptions);
+        Set<AccessMask> accessMask = resolveAccessMaskOrDefault(diskShareAccessMask, AccessMask.GENERIC_ALL);
         return diskShare.openDirectory(path,
-                EnumSet.of(AccessMask.GENERIC_ALL),
+                accessMask,
                 EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
                 EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
                 SMB2CreateDisposition.FILE_OPEN_IF,
