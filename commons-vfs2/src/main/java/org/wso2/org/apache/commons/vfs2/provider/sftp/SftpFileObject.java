@@ -186,8 +186,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                 // VFS-210: sftp allows to gather an input stream even from a directory and will
                 // fail on first read. So we need to check the type anyway
                 if (!getType().hasContent()) {
-                    // VFS-832: Sftp channel should put back when throw an exception
-                    putChannel(channel);
                     throw new FileSystemException("vfs.provider/read-not-file.error", getName());
                 }
                 inputStream = channel.get(relPath);
@@ -197,6 +195,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                     throw new FileNotFoundException(getName());
                 }
                 throw new FileSystemException(e);
+            } catch (final Exception e) {
+                putChannel(channel);
+                throw e;
             }
             return new SftpInputStream(channel, inputStream, bufferSize);
         }
@@ -540,6 +541,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                     // Try one retry — possibly transient channel issue
                     try {
                         channelSftp.disconnect();
+                        channelSftp = getAbstractFileSystem().getChannel();
                         setStat(channelSftp.stat(relPath));
                     } catch (SftpException retryEx) {
                         // TODO - not strictly true, but jsch 0.1.2 does not give us
