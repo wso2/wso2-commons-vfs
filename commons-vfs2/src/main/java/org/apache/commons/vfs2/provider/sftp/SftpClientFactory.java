@@ -94,6 +94,11 @@ public final class SftpClientFactory {
                 session.setPassword(new String(password));
             }
 
+            final Integer keepAliveCountMax = builder.getKeepAliveCountMax(fileSystemOptions);
+            if (keepAliveCountMax != null) {
+                session.setServerAliveCountMax(keepAliveCountMax);
+            }
+
             final Integer timeout = builder.getTimeout(fileSystemOptions);
             if (timeout != null) {
                 session.setTimeout(timeout.intValue());
@@ -159,7 +164,12 @@ public final class SftpClientFactory {
                 session.setConfig(config);
             }
             session.setDaemonThread(true);
-            session.connect();
+            final Integer connectTimeout = builder.getConnectTimeout(fileSystemOptions);
+            if (connectTimeout != null) {
+                session.connect(connectTimeout);
+            } else {
+                session.connect();
+            }
         } catch (final Exception exc) {
             throw new FileSystemException("vfs.provider.sftp/connect.error", exc, hostname);
         } finally {

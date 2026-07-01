@@ -118,6 +118,8 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
 
     private static final String STRICT_HOST_KEY_CHECKING = _PREFIX + ".STRICT_HOST_KEY_CHECKING";
     private static final String TIMEOUT = _PREFIX + ".TIMEOUT";
+    private static final String CONNECT_TIMEOUT = _PREFIX + ".CONNECT_TIMEOUT";
+    private static final String KEEP_ALIVE_COUNT_MAX = _PREFIX + ".KEEP_ALIVE_COUNT_MAX";
     private static final String USER_DIR_IS_ROOT = _PREFIX + ".USER_DIR_IS_ROOT";
     private static final String ENCODING = _PREFIX + ".ENCODING";
     private static final String PASS_PHRASE = "identitypassphrase";
@@ -636,5 +638,45 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setUserInfo(final FileSystemOptions opts, final UserInfo info) {
         this.setParam(opts, UserInfo.class.getName(), info);
+    }
+
+    /**
+     * Sets the connect timeout value on Jsch session.
+     *
+     * @param opts The FileSystem options.
+     * @param connectTimeout The connect timeout in milliseconds.
+     */
+    public void setConnectTimeout(final FileSystemOptions opts, final Integer connectTimeout) {
+        this.setParam(opts, CONNECT_TIMEOUT, connectTimeout);
+    }
+
+    /**
+     * Gets the connect timeout value on Jsch session.
+     *
+     * @param fileSystemOptions The FileSystem options.
+     * @return The connect timeout in milliseconds.
+     */
+    public Integer getConnectTimeout(FileSystemOptions fileSystemOptions) {
+        return this.getInteger(fileSystemOptions, CONNECT_TIMEOUT);
+    }
+
+    /**
+     * Sets the maximum number of keep alive messages to send on Jsch session.
+     *
+     * @param opts The FileSystem options.
+     * @param keepAliveCountMax The maximum number of keep alive messages to send.
+     */
+    public void setKeepAliveCountMax(final FileSystemOptions opts, final Integer keepAliveCountMax) {
+        this.setParam(opts, KEEP_ALIVE_COUNT_MAX, keepAliveCountMax);
+    }
+
+    /**
+     * Gets the maximum number of keep alive messages to send on Jsch session.
+     *
+     * @param fileSystemOptions The FileSystem options.
+     * @return The maximum number of keep alive messages to send.
+     */
+    public Integer getKeepAliveCountMax(FileSystemOptions fileSystemOptions) {
+        return this.getInteger(fileSystemOptions, KEEP_ALIVE_COUNT_MAX);
     }
 }
