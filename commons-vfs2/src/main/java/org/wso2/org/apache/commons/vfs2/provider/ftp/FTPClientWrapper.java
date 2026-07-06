@@ -21,8 +21,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
@@ -39,8 +37,6 @@ import org.wso2.org.apache.commons.vfs2.util.UserAuthenticatorUtils;
  * </p>
  */
 public class FTPClientWrapper implements FtpClient {
-
-    private static final Log LOG = LogFactory.getLog(FTPClientWrapper.class);
 
     /**
      * Authentication options.
@@ -141,17 +137,9 @@ public class FTPClientWrapper implements FtpClient {
     @Override
     public void disconnect() throws IOException {
         try {
-            getFtpClient().quit();
-        } catch (final IOException e) {
-            LOG.debug("I/O exception while trying to quit, probably it's a timed out connection, ignoring.", e);
+            getFtpClient().disconnect();
         } finally {
-            try {
-                getFtpClient().disconnect();
-            } catch (final IOException e) {
-                LOG.warn("I/O exception while trying to disconnect, probably it's a closed connection, ignoring.", e);
-            } finally {
-                ftpClient = null;
-            }
+            ftpClient = null;
         }
     }
 
