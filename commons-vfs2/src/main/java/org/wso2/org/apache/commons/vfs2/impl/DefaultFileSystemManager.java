@@ -59,6 +59,7 @@ import org.wso2.org.apache.commons.vfs2.provider.DefaultURLStreamHandler;
 import org.wso2.org.apache.commons.vfs2.provider.FileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.FileReplicator;
 import org.wso2.org.apache.commons.vfs2.provider.LocalFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.QueryParamConfigurer;
 import org.wso2.org.apache.commons.vfs2.provider.TemporaryFileStore;
 import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 import org.wso2.org.apache.commons.vfs2.provider.VfsComponent;
@@ -887,6 +888,12 @@ public class DefaultFileSystemManager implements FileSystemManager {
                                         (proxyPassword != null) ? proxyPassword : ""));
                     }
                 }
+            }
+            if (provider instanceof QueryParamConfigurer) {
+                if (fileSystemOptions == null) {
+                    fileSystemOptions = new FileSystemOptions();
+                }
+                ((QueryParamConfigurer) provider).configure(fileSystemOptions, queryParam);
             }
             if (provider != null) {
                 return provider.findFile(realBaseFile, uri, fileSystemOptions);
