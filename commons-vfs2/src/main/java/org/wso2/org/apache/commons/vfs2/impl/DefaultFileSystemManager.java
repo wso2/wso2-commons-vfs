@@ -18,6 +18,7 @@ package org.wso2.org.apache.commons.vfs2.impl;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
+import java.time.Duration;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -836,6 +837,26 @@ public class DefaultFileSystemManager implements FileSystemManager {
                         log.warn("Invalid timeout " + timeoutStr + " specified in FileURI.");
                     }
                     builder.setTimeout(fileSystemOptions, timeout);
+                }
+
+                String connectTimeoutStr = queryParam.get(SftpConstants.CONNECT_TIMEOUT);
+                if (connectTimeoutStr != null && Duration.ZERO.equals(builder.getConnectTimeout(fileSystemOptions))) {
+                    try {
+                        int connectTimeout = Integer.parseInt(connectTimeoutStr);
+                        builder.setConnectTimeout(fileSystemOptions, Duration.ofMillis(connectTimeout));
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid connect timeout " + connectTimeoutStr + " specified in FileURI.");
+                    }
+                }
+
+                String keepAliveCountStr = queryParam.get(SftpConstants.KEEP_ALIVE_COUNT);
+                if (keepAliveCountStr != null && builder.getKeepAliveCountMax(fileSystemOptions) == null) {
+                    try {
+                        int keepAliveCount = Integer.parseInt(keepAliveCountStr);
+                        builder.setKeepAliveCountMax(fileSystemOptions, keepAliveCount);
+                    } catch (NumberFormatException e) {
+                        log.warn("Invalid keep alive count " + keepAliveCountStr + " specified in FileURI.");
+                    }
                 }
 
                 if ("true".equals(queryParam.get(SftpConstants.SFTP_PATH_FROM_ROOT))) {
