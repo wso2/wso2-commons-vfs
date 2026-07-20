@@ -35,6 +35,9 @@ import org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 import java.io.File;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Create a JSch Session instance.
@@ -49,6 +52,53 @@ public final class SftpClientFactory {
     }
 
     private SftpClientFactory() {
+    }
+
+    // These defaults keep SFTP connections bounded when an endpoint omits the
+    // related settings. The values stay local and do not change the supplied
+    // file system options.
+    private static final String TIMEOUT_DEFAULT_PROPERTY = "vfs.sftp.timeout.default";
+    private static final String KEEP_ALIVE_COUNT_DEFAULT_PROPERTY = "vfs.sftp.keepAliveCount.default";
+    private static final String CONNECT_TIMEOUT_DEFAULT_PROPERTY = "vfs.sftp.connectTimeout.default";
+    private static final int DEFAULT_TIMEOUT_MILLIS = 30000;
+    private static final int DEFAULT_KEEP_ALIVE_COUNT = 3;
+    private static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 30000;
+    private static final int JSCH_DEFAULT_KEEP_ALIVE_COUNT = 1;
+
+    /** Records whether the socket timeout warning has already been logged. */
+    private static final AtomicBoolean BARE_TIMEOUT_WARNING_LOGGED = new AtomicBoolean();
+    /** Records invalid property values that have already been reported. */
+    private static final Set<String> INVALID_PROPERTY_WARNINGS = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Reads a nonnegative integer from a system property. Missing or invalid
+     * values return null so the caller can choose the correct fallback. Zero
+     * remains a valid value that disables the related limit.
+     */
+    private static Integer readSftpProperty(final String propertyName) {
+        final String propertyValue = System.getProperty(propertyName);
+        if (propertyValue == null) {
+            return null;
+        }
+        try {
+            final int parsedValue = Integer.parseInt(propertyValue.trim());
+            if (parsedValue < 0) {
+                warnAboutInvalidPropertyOnce(propertyName, propertyValue, "is negative");
+                return null;
+            }
+            return parsedValue;
+        } catch (final NumberFormatException e) {
+            warnAboutInvalidPropertyOnce(propertyName, propertyValue, "is not a number");
+            return null;
+        }
+    }
+
+    private static void warnAboutInvalidPropertyOnce(final String propertyName, final String propertyValue,
+                                                     final String reason) {
+        if (INVALID_PROPERTY_WARNINGS.add(propertyName + "=" + propertyValue)) {
+            LOG.warn(propertyName + "='" + propertyValue + "' " + reason
+                    + "; ignoring it and continuing normal fallback resolution");
+        }
     }
 
     /**
@@ -94,14 +144,64 @@ public final class SftpClientFactory {
                 session.setPassword(new String(password));
             }
 
-            final Integer keepAliveCountMax = builder.getKeepAliveCountMax(fileSystemOptions);
-            if (keepAliveCountMax != null) {
-                session.setServerAliveCountMax(keepAliveCountMax);
+            // An endpoint value has the highest priority. A valid system
+            // property is next. Remaining values use the compatible default.
+            final Integer endpointKeepAliveCount = builder.getKeepAliveCountMax(fileSystemOptions);
+            final Integer endpointTimeoutMillis = builder.getTimeout(fileSystemOptions);
+            final Integer endpointConnectTimeoutMillis = builder.getConnectTimeout(fileSystemOptions);
+            final Integer propertyKeepAliveCount = endpointKeepAliveCount == null
+                    ? readSftpProperty(KEEP_ALIVE_COUNT_DEFAULT_PROPERTY) : null;
+            final Integer propertyTimeoutMillis = endpointTimeoutMillis == null
+                    ? readSftpProperty(TIMEOUT_DEFAULT_PROPERTY) : null;
+
+            final int effectiveTimeoutMillis;
+            final String timeoutSource;
+            if (endpointTimeoutMillis != null) {
+                effectiveTimeoutMillis = endpointTimeoutMillis;
+                timeoutSource = "endpoint";
+                session.setTimeout(endpointTimeoutMillis.intValue());
+            } else if (propertyTimeoutMillis != null) {
+                effectiveTimeoutMillis = propertyTimeoutMillis;
+                timeoutSource = "system property";
+                if (effectiveTimeoutMillis > 0) {
+                    session.setTimeout(effectiveTimeoutMillis);
+                }
+            } else {
+                effectiveTimeoutMillis = DEFAULT_TIMEOUT_MILLIS;
+                timeoutSource = "default";
+                session.setTimeout(effectiveTimeoutMillis);
             }
 
-            final Integer timeout = builder.getTimeout(fileSystemOptions);
-            if (timeout != null) {
-                session.setTimeout(timeout.intValue());
+            // Keep the JSch default when the endpoint sets only a timeout.
+            final int effectiveKeepAliveCount;
+            final String keepAliveCountSource;
+            if (endpointKeepAliveCount != null) {
+                effectiveKeepAliveCount = endpointKeepAliveCount;
+                keepAliveCountSource = "endpoint";
+                session.setServerAliveCountMax(endpointKeepAliveCount);
+            } else if (propertyKeepAliveCount != null) {
+                effectiveKeepAliveCount = propertyKeepAliveCount;
+                keepAliveCountSource = "system property";
+                session.setServerAliveCountMax(propertyKeepAliveCount);
+            } else if (endpointTimeoutMillis != null) {
+                effectiveKeepAliveCount = JSCH_DEFAULT_KEEP_ALIVE_COUNT;
+                keepAliveCountSource = "JSch default";
+            } else {
+                effectiveKeepAliveCount = DEFAULT_KEEP_ALIVE_COUNT;
+                keepAliveCountSource = "default";
+                session.setServerAliveCountMax(effectiveKeepAliveCount);
+            }
+
+            // Warn once when keep alive checks do not support an active timeout.
+            if (effectiveTimeoutMillis > 0 && effectiveKeepAliveCount == 0) {
+                final String warningMessage = "SFTP timeout " + effectiveTimeoutMillis
+                        + " is active while keep alive count is zero. Slow but responsive operations may be "
+                        + "disconnected.";
+                if (BARE_TIMEOUT_WARNING_LOGGED.compareAndSet(false, true)) {
+                    LOG.warn(warningMessage);
+                } else if (LOG.isDebugEnabled()) {
+                    LOG.debug(warningMessage);
+                }
             }
 
             final UserInfo userInfo = builder.getUserInfo(fileSystemOptions);
@@ -164,12 +264,32 @@ public final class SftpClientFactory {
                 session.setConfig(config);
             }
             session.setDaemonThread(true);
-            final Integer connectTimeout = builder.getConnectTimeout(fileSystemOptions);
-            if (connectTimeout != null) {
-                session.connect(connectTimeout);
+            // Pass the resolved connection timeout directly. This preserves an
+            // explicit zero and keeps existing timeout only endpoints unchanged.
+            final Integer propertyConnectTimeoutMillis = endpointConnectTimeoutMillis == null
+                    ? readSftpProperty(CONNECT_TIMEOUT_DEFAULT_PROPERTY) : null;
+            final int effectiveConnectTimeoutMillis;
+            final String connectTimeoutSource;
+            if (endpointConnectTimeoutMillis != null) {
+                effectiveConnectTimeoutMillis = endpointConnectTimeoutMillis;
+                connectTimeoutSource = "endpoint";
+            } else if (propertyConnectTimeoutMillis != null) {
+                effectiveConnectTimeoutMillis = propertyConnectTimeoutMillis;
+                connectTimeoutSource = "system property";
+            } else if (endpointTimeoutMillis != null) {
+                effectiveConnectTimeoutMillis = endpointTimeoutMillis;
+                connectTimeoutSource = "endpoint timeout";
             } else {
-                session.connect();
+                effectiveConnectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT_MILLIS;
+                connectTimeoutSource = "default";
             }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("SFTP effective settings: timeout=" + effectiveTimeoutMillis + " from " + timeoutSource
+                        + ", keep alive count=" + effectiveKeepAliveCount + " from " + keepAliveCountSource
+                        + ", connection timeout=" + effectiveConnectTimeoutMillis + " from "
+                        + connectTimeoutSource);
+            }
+            session.connect(effectiveConnectTimeoutMillis);
         } catch (final Exception exc) {
             throw new FileSystemException("vfs.provider.sftp/connect.error", exc, hostname);
         } finally {
