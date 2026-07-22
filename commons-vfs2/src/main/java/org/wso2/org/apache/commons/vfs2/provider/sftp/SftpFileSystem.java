@@ -296,10 +296,18 @@ public class SftpFileSystem extends AbstractFileSystem {
         if (!session.isConnected()) {
             synchronized (this) {
                 if (!session.isConnected()) {
-                    doCloseCommunicationLink();
+                    // Clean up the stale session/channel directly rather than via doCloseCommunicationLink(),
+                    // which marks the file system as permanently closed for putChannel()'s pooling decision.
+                    // This is a reconnect on the same instance, not a teardown.
+                    if (idleChannel != null) {
+                        idleChannel.disconnect();
+                        idleChannel = null;
+                    }
+                    if (session != null) {
+                        session.disconnect();
+                    }
                     session = SftpFileProvider.createSession((GenericFileName) getRootName(),
                         getFileSystemOptions());
-                    isFileSystemClosed = false;
                 }
             }
         }
