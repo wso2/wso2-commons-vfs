@@ -746,34 +746,53 @@ public class DefaultFileSystemManager implements FileSystemManager {
                     }
                 }
 
-                String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
-                Integer timeout = null;
-                if (timeoutStr != null && builder.getTimeout(fileSystemOptions) == null) {
+                // Store only valid URI values. Invalid and negative values stay
+                // unset so the connection factory can choose a safe default.
+                String timeoutParameter = queryParam.get(SftpConstants.TIMEOUT);
+                if (timeoutParameter != null && builder.getTimeout(fileSystemOptions) == null) {
                     try {
-                        timeout = Integer.parseInt(timeoutStr);
+                        int timeoutMillis = Integer.parseInt(timeoutParameter);
+                        if (timeoutMillis >= 0) {
+                            builder.setTimeout(fileSystemOptions, timeoutMillis);
+                        } else {
+                            log.warn("The SFTP timeout value '" + timeoutParameter
+                                    + "' in the file URI is negative. The default value will be used.");
+                        }
                     } catch (NumberFormatException e) {
-                        log.warn("Invalid timeout " + timeoutStr + " specified in FileURI.");
-                    }
-                    builder.setTimeout(fileSystemOptions, timeout);
-                }
-
-                String connectTimeoutStr = queryParam.get(SftpConstants.CONNECT_TIMEOUT);
-                if (connectTimeoutStr != null && builder.getConnectTimeout(fileSystemOptions) == null) {
-                    try {
-                        int connectTimeout = Integer.parseInt(connectTimeoutStr);
-                        builder.setConnectTimeout(fileSystemOptions, connectTimeout);
-                    } catch (NumberFormatException e) {
-                        log.warn("Invalid connect timeout " + connectTimeoutStr + " specified in FileURI.");
+                        log.warn("The SFTP timeout value '" + timeoutParameter
+                                + "' in the file URI is invalid. The default value will be used.");
                     }
                 }
 
-                String keepAliveCountStr = queryParam.get(SftpConstants.KEEP_ALIVE_COUNT);
-                if (keepAliveCountStr != null && builder.getKeepAliveCountMax(fileSystemOptions) == null) {
+                String connectTimeoutParameter = queryParam.get(SftpConstants.CONNECT_TIMEOUT);
+                if (connectTimeoutParameter != null && builder.getConnectTimeout(fileSystemOptions) == null) {
                     try {
-                        int keepAliveCount = Integer.parseInt(keepAliveCountStr);
-                        builder.setKeepAliveCountMax(fileSystemOptions, keepAliveCount);
+                        int connectTimeoutMillis = Integer.parseInt(connectTimeoutParameter);
+                        if (connectTimeoutMillis >= 0) {
+                            builder.setConnectTimeout(fileSystemOptions, connectTimeoutMillis);
+                        } else {
+                            log.warn("The SFTP connection timeout value '" + connectTimeoutParameter
+                                    + "' in the file URI is negative. The default value will be used.");
+                        }
                     } catch (NumberFormatException e) {
-                        log.warn("Invalid keep alive count " + keepAliveCountStr + " specified in FileURI.");
+                        log.warn("The SFTP connection timeout value '" + connectTimeoutParameter
+                                + "' in the file URI is invalid. The default value will be used.");
+                    }
+                }
+
+                String keepAliveCountParameter = queryParam.get(SftpConstants.KEEP_ALIVE_COUNT);
+                if (keepAliveCountParameter != null && builder.getKeepAliveCountMax(fileSystemOptions) == null) {
+                    try {
+                        int keepAliveCount = Integer.parseInt(keepAliveCountParameter);
+                        if (keepAliveCount >= 0) {
+                            builder.setKeepAliveCountMax(fileSystemOptions, keepAliveCount);
+                        } else {
+                            log.warn("The SFTP keep alive count value '" + keepAliveCountParameter
+                                    + "' in the file URI is negative. The default value will be used.");
+                        }
+                    } catch (NumberFormatException e) {
+                        log.warn("The SFTP keep alive count value '" + keepAliveCountParameter
+                                + "' in the file URI is invalid. The default value will be used.");
                     }
                 }
 
