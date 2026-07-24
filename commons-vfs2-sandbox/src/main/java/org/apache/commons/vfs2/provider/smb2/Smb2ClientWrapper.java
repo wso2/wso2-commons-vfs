@@ -136,7 +136,9 @@ public class Smb2ClientWrapper extends SMBClient {
 
         //a connection stack is: SMBClient > Connection > Session > DiskShare
         try {
-            connection = smbClient.connect(rootName.getHostName());
+            // GenericFileName#getPort() always returns a positive value: either the port explicitly
+            // configured in the URI, or the protocol's default port (445) when none was specified.
+            connection = smbClient.connect(rootName.getHostName(), rootName.getPort());
             session = connection.authenticate(authContext);
             String share = ((Smb2FileName) rootName).getShareName();
             diskShare = (DiskShare) session.connectShare(share);
