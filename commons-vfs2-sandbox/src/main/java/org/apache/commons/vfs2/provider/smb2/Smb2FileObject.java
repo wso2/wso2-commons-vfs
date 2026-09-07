@@ -393,13 +393,30 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> {
          */
         @Override
         protected void onClose() throws IOException {
+            IOException firstException = null;
             try {
                 if (out != null) {
                     out.close();
                 }
+            } catch (IOException e) {
+                firstException = e;
+            } catch (RuntimeException e) {
+                // smbj surfaces write/flush timeouts (and other transport failures) as an
+                // unchecked SMBRuntimeException. It must not skip diskEntry.close() below,
+                // otherwise the remote SMB2 file handle is leaked until the JVM/session ends.
+                firstException = new IOException(e);
+            }
+            try {
                 diskEntry.close();
+            } catch (RuntimeException e) {
+                if (firstException == null) {
+                    firstException = new IOException(e);
+                }
             } finally {
                 getAbstractFileSystem().putClient(client);
+            }
+            if (firstException != null) {
+                throw firstException;
             }
         }
     }
