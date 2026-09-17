@@ -46,6 +46,8 @@ public class FtpFileSystem extends AbstractFileSystem {
     // An idle client
     private final AtomicReference<FtpClient> idleClient = new AtomicReference<>();
 
+    private volatile boolean isFileSystemClosed = false;
+
     /**
      * Constructs a new instance.
      *
@@ -109,6 +111,7 @@ public class FtpFileSystem extends AbstractFileSystem {
 
     @Override
     protected void doCloseCommunicationLink() {
+        isFileSystemClosed = true;
         final FtpClient idle = idleClient.getAndSet(null);
         // Clean up the connection
         if (idle != null) {
@@ -139,7 +142,10 @@ public class FtpFileSystem extends AbstractFileSystem {
      */
     public void putClient(final FtpClient client) {
         // Save client for reuse if none is idle.
-        if (!idleClient.compareAndSet(null, client)) {
+        if (isFileSystemClosed) {
+            // The file system has already been closed; don't strand this connection in idleClient.
+            closeConnection(client);
+        } else if (!idleClient.compareAndSet(null, client)) {
             // An idle client is already present so close the connection.
             closeConnection(client);
         }
