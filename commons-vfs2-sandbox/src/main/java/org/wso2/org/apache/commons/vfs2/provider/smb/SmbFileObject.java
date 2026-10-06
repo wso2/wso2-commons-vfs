@@ -34,8 +34,10 @@ import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 import org.wso2.org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
+import jcifs.CIFSContext;
+import jcifs.context.SingletonContext;
 import jcifs.smb.NtStatus;
-import jcifs.smb.NtlmPasswordAuthentication;
+import jcifs.smb.NtlmPasswordAuthenticator;
 import jcifs.smb.SmbException;
 import jcifs.smb.SmbFile;
 import jcifs.smb.SmbFileInputStream;
@@ -72,7 +74,7 @@ public class SmbFileObject extends AbstractFileObject<SmbFileSystem> {
             authData = UserAuthenticatorUtils.authenticate(getFileSystem().getFileSystemOptions(),
                     SmbFileProvider.AUTHENTICATOR_TYPES);
 
-            NtlmPasswordAuthentication auth = new NtlmPasswordAuthentication(
+            final NtlmPasswordAuthenticator auth = new NtlmPasswordAuthenticator(
                     UserAuthenticatorUtils.toString(
                             UserAuthenticatorUtils.getData(
                                     authData,
@@ -88,10 +90,11 @@ public class SmbFileObject extends AbstractFileObject<SmbFileSystem> {
                                     authData,
                                     UserAuthenticationData.PASSWORD,
                                     UserAuthenticatorUtils.toChar(smbFileName.getPassword()))));
-            file = new SmbFile(path, auth);
+            final CIFSContext context = SingletonContext.getInstance().withCredentials(auth);
+            file = new SmbFile(path, context);
 
             if (file.isDirectory() && !file.toString().endsWith("/")) {
-                file = new SmbFile(path + "/", auth);
+                file = new SmbFile(path + "/", context);
             }
             return file;
         } finally {
