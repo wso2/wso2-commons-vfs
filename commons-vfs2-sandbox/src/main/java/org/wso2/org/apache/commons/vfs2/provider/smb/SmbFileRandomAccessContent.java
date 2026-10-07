@@ -18,8 +18,6 @@ package org.wso2.org.apache.commons.vfs2.provider.smb;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.UnknownHostException;
 
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractRandomAccessContent;
@@ -78,7 +76,7 @@ final class SmbFileRandomAccessContent extends AbstractRandomAccessContent {
                     return n;
                 }
             };
-        } catch (final MalformedURLException | SmbException | UnknownHostException e) {
+        } catch (final SmbException e) {
             throw new FileSystemException("vfs.provider/random-access-open-failed.error", smbFile, e);
         }
     }
