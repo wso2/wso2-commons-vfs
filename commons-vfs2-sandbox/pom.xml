@@ -45,7 +45,7 @@
     </dependency>
 
     <dependency>
-      <groupId>org.codelibs</groupId>
+      <groupId>jcifs</groupId>
       <artifactId>jcifs</artifactId>
       <optional>true</optional>
     </dependency>
