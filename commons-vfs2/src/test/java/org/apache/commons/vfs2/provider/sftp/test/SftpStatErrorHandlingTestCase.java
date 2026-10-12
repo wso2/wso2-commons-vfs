@@ -207,12 +207,17 @@ public class SftpStatErrorHandlingTestCase {
      * Resolves a fresh FileObject on the pooled file system for each call, as the VFS transport sender does.
      */
     private FileType typeOf(final String child) throws FileSystemException {
-        final String uri = String.format("sftp://%s:%s@localhost:%d%s/%s", USER, USER, port,
-                baseDir.getAbsolutePath().replace('\\', '/'), child);
+        // URI-encoded absolute path that always starts with '/', also on Windows (e.g. /C:/...)
+        String basePath = baseDir.toURI().getRawPath();
+        if (!basePath.endsWith("/")) {
+            basePath += "/";
+        }
+        final String uri = String.format("sftp://%s:%s@localhost:%d%s%s", USER, USER, port, basePath, child);
         final FileObject file = manager.resolveFile(uri, options);
         try {
             return file.getType();
         } finally {
+            file.close();
             manager.getFilesCache().clear(file.getFileSystem());
         }
     }
