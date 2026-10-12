@@ -137,6 +137,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
                 attrs = null;
             } else {
                 // maybe the channel has some problems, so recreate the channel and retry
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Stat of '" + relPath + "' failed, recreating the SFTP channel and retrying", e);
+                }
                 try {
                     if (channel != null) {
                         channel.disconnect();
@@ -165,6 +168,10 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      */
     private boolean isFileNotFound(final SftpException e, final ChannelSftp channel) {
         if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("SFTP server returned no such file for stat of '" + relPath
+                        + "', treating it as non-existent");
+            }
             return true;
         }
         if (isServerReportedFailure(e, channel != null && channel.isConnected())) {
