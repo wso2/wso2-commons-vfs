@@ -132,28 +132,28 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
             channel = sftpClient.getChannel();
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
-            if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || e.id == ChannelSftp.SSH_FX_FAILURE) {
-                // File does not exist or stat failed in a known way — treat as imaginary
+            if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+                // Really does not exist
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("SFTP server returned no such file for stat of '" + relPath
+                            + "', treating it as non-existent");
+                }
                 attrs = null;
-                LOG.debug("NO_SUCH_FILE or STAT FAILURE — treating as non-existent");
             } else {
-                // Try one retry — possibly transient channel issue
+                // maybe the channel has some problems (broken or out of sync), so recreate the channel and retry.
+                // SSH_FX_FAILURE is retried as well, it is only trusted as "does not exist" on a fresh channel.
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Stat of '" + relPath + "' failed, recreating the SFTP channel and retrying", e);
+                }
                 try {
                     if (channel != null) {
                         channel.disconnect();
                     }
                     channel = sftpClient.getChannel();
                     setStat(channel.stat(relPath));
-                } catch (SftpException retryEx) {
-                    // TODO - not strictly true, but jsch 0.1.2 does not give us
-                    // enough info in the exception. Should be using:
-                    // if ( e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE ) || e.id == ChannelSftp.SSH_FX_FAILURE )
-                    // However, sometimes the exception has the correct id, and
-                    // sometimes
-                    // it does not. Need to look into why.
-                    if (retryEx.id == ChannelSftp.SSH_FX_NO_SUCH_FILE || retryEx.id == ChannelSftp.SSH_FX_FAILURE) {
+                } catch (final SftpException retryEx) {
+                    if (isFileNotFound(retryEx, channel)) {
                         attrs = null;
-                        LOG.debug("STAT retry failed (NO_SUCH_FILE or FAILURE) — treating as non-existent");
                     } else {
                         throw retryEx;
                     }
@@ -162,6 +162,50 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
         } finally {
             getAbstractFileSystem().putClient(sftpClient);
         }
+    }
+
+    /**
+     * Checks whether a failed stat on a fresh channel means that the file does not exist.
+     * <p>
+     * Some SFTP servers (e.g. FileZilla Server) reply {@code SSH_FX_FAILURE} instead of {@code SSH_FX_NO_SUCH_FILE}
+     * for a missing file, so a failure status sent by the server is also treated as "does not exist". JSch reports
+     * connection and protocol problems with {@code SSH_FX_FAILURE} as well, those are not treated as "does not exist".
+     * This is only used for the stat retried on a fresh channel: JSch does not match replies to requests, so on a
+     * channel that is out of sync a stale or unexpected reply can also look like a failure status from the server.
+     */
+    private boolean isFileNotFound(final SftpException e, final ChannelSftp channel) {
+        if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("SFTP server returned no such file for stat of '" + relPath
+                        + "', treating it as non-existent");
+            }
+            return true;
+        }
+        if (isServerReportedFailure(e, channel != null && channel.isConnected())) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("SFTP server returned a failure status for stat of '" + relPath + "' (" + e.getMessage()
+                        + "), treating it as non-existent");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether an {@code SSH_FX_FAILURE} was sent by the SFTP server as a status reply.
+     * <p>
+     * JSch creates a status reply exception without a cause, whereas connection problems (closed stream, session down,
+     * I/O errors) carry the underlying exception as the cause.
+     * <p>
+     * This relies on how JSch builds the exception. When changing this logic or upgrading JSch, run
+     * {@code SftpStatErrorHandlingTestCase}.
+     *
+     * @param e the exception thrown by stat
+     * @param channelConnected whether the channel used for the stat is still connected
+     * @return true if the failure is a status reply sent by the server over a working channel
+     */
+    private static boolean isServerReportedFailure(final SftpException e, final boolean channelConnected) {
+        return e.id == ChannelSftp.SSH_FX_FAILURE && e.getCause() == null && channelConnected;
     }
 
     /**
