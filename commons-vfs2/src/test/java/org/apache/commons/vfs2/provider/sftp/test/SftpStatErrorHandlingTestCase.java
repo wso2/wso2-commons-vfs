@@ -53,6 +53,11 @@ import org.junit.Test;
  * Tests how SftpFileObject interprets failed STAT requests: a status reply from the server for a missing file must be
  * treated as a non-existent file, while a broken connection (e.g. a stale pooled session) must be recovered or
  * reported as an error, never as a non-existent file.
+ * <p>
+ * Run this test when changing the SFTP stat handling in {@code SftpFileObject} / {@code SftpClient} or upgrading
+ * JSch; run it from the IDE, as tests are skipped in the Maven build of this module. The embedded test server only
+ * supports legacy algorithms, so add the JVM options
+ * {@code -Djsch.kex=diffie-hellman-group14-sha1 -Djsch.server_host_key=ssh-dss}.
  */
 public class SftpStatErrorHandlingTestCase {
 

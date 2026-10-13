@@ -452,6 +452,8 @@
         <artifactId>ant</artifactId>
         <version>1.6.5</version>
       </dependency>
+      <!-- When upgrading JSch, run SftpStatErrorHandlingTestCase: SftpFileObject relies on how JSch reports
+           stat failures. Tests are skipped in the Maven build of this module, so run it from the IDE. -->
       <dependency>
         <groupId>com.github.mwiede</groupId>
         <artifactId>jsch</artifactId>

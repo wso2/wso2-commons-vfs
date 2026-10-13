@@ -189,6 +189,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
      * <p>
      * JSch creates a status reply exception without a cause, whereas connection problems (closed stream, session down,
      * I/O errors) carry the underlying exception as the cause.
+     * <p>
+     * This relies on how JSch builds the exception. When changing this logic or upgrading JSch, run
+     * {@code SftpStatErrorHandlingTestCase}.
      *
      * @param e the exception thrown by stat
      * @param channelConnected whether the channel used for the stat is still connected
