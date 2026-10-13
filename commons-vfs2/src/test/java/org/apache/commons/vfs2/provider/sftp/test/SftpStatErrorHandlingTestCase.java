@@ -73,6 +73,9 @@ public class SftpStatErrorHandlingTestCase {
     private static volatile int forcedStatus;
     private static volatile String forcedStatusPath;
 
+    /** How many STAT requests for {@link #forcedStatusPath} are answered with {@link #forcedStatus}. */
+    private static volatile int forcedStatusTimes;
+
     /** Number of STAT requests received for {@link #forcedStatusPath}. */
     private static final AtomicInteger FORCED_STATUS_STAT_COUNT = new AtomicInteger();
 
@@ -130,6 +133,7 @@ public class SftpStatErrorHandlingTestCase {
         failureMessage = "STAT error";
         forcedStatus = 0;
         forcedStatusPath = null;
+        forcedStatusTimes = Integer.MAX_VALUE;
         FORCED_STATUS_STAT_COUNT.set(0);
         STAT_DROP_PLAN.clear();
         manager = new DefaultFileSystemManager();
@@ -175,6 +179,17 @@ public class SftpStatErrorHandlingTestCase {
         } catch (final FileSystemException expected) {
             // expected
         }
+        Assert.assertEquals("STAT must be retried once on a new channel", 2, FORCED_STATUS_STAT_COUNT.get());
+    }
+
+    @Test
+    public void testFailureStatusOnFirstStatIsRetried() throws FileSystemException {
+        // A failure status without a cause on a connected channel, e.g. a stale reply on a channel that is out of
+        // sync, must not be trusted until it is confirmed on a fresh channel.
+        forcedStatus = SftpSubsystem.SSH_FX_FAILURE;
+        forcedStatusPath = "/dir";
+        forcedStatusTimes = 1;
+        Assert.assertEquals(FileType.FOLDER, typeOf("dir"));
         Assert.assertEquals("STAT must be retried once on a new channel", 2, FORCED_STATUS_STAT_COUNT.get());
     }
 
@@ -260,9 +275,10 @@ public class SftpStatErrorHandlingTestCase {
                     return;
                 }
                 if (forcedStatusPath != null && path.endsWith(forcedStatusPath)) {
-                    FORCED_STATUS_STAT_COUNT.incrementAndGet();
-                    sendStatus(id, forcedStatus, "Forced status");
-                    return;
+                    if (FORCED_STATUS_STAT_COUNT.incrementAndGet() <= forcedStatusTimes) {
+                        sendStatus(id, forcedStatus, "Forced status");
+                        return;
+                    }
                 }
                 if (failureStatusForMissingFile && !view.getFile(path).doesExist()) {
                     sendStatus(id, SSH_FX_FAILURE, failureMessage);

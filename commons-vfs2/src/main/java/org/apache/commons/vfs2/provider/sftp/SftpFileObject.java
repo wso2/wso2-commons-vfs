@@ -132,11 +132,16 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
             channel = sftpClient.getChannel();
             setStat(channel.stat(relPath));
         } catch (final SftpException e) {
-            if (isFileNotFound(e, channel)) {
+            if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
                 // Really does not exist
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("SFTP server returned no such file for stat of '" + relPath
+                            + "', treating it as non-existent");
+                }
                 attrs = null;
             } else {
-                // maybe the channel has some problems, so recreate the channel and retry
+                // maybe the channel has some problems (broken or out of sync), so recreate the channel and retry.
+                // SSH_FX_FAILURE is retried as well, it is only trusted as "does not exist" on a fresh channel.
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Stat of '" + relPath + "' failed, recreating the SFTP channel and retrying", e);
                 }
@@ -160,11 +165,13 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> {
     }
 
     /**
-     * Checks whether a failed stat means that the file does not exist.
+     * Checks whether a failed stat on a fresh channel means that the file does not exist.
      * <p>
      * Some SFTP servers (e.g. FileZilla Server) reply {@code SSH_FX_FAILURE} instead of {@code SSH_FX_NO_SUCH_FILE}
      * for a missing file, so a failure status sent by the server is also treated as "does not exist". JSch reports
      * connection and protocol problems with {@code SSH_FX_FAILURE} as well, those are not treated as "does not exist".
+     * This is only used for the stat retried on a fresh channel: JSch does not match replies to requests, so on a
+     * channel that is out of sync a stale or unexpected reply can also look like a failure status from the server.
      */
     private boolean isFileNotFound(final SftpException e, final ChannelSftp channel) {
         if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
