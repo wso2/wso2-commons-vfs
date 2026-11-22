@@ -23,6 +23,7 @@ import java.net.SocketException;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.VFS;
 import org.apache.ftpserver.ftplet.FtpException;
@@ -48,8 +49,17 @@ public class MultipleConnectionTest {
 
     @Test
     public void testConnectRoot() throws IOException {
-        resolveRoot();
-        resolveRoot();
+        // The global manager keeps these file systems and their connected clients. Each one is closed, also when the
+        // second resolve fails, so that no later test in this JVM finds their sockets.
+        final FileSystem first = resolveRoot().getFileSystem();
+        try {
+            final FileSystem second = resolveRoot().getFileSystem();
+            if (second != first) {
+                VFS.getManager().closeFileSystem(second);
+            }
+        } finally {
+            VFS.getManager().closeFileSystem(first);
+        }
     }
 
     @Test

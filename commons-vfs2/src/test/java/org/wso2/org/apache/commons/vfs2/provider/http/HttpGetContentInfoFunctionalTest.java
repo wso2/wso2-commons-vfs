@@ -18,6 +18,7 @@ package org.wso2.org.apache.commons.vfs2.provider.http;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -26,7 +27,10 @@ import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.AbstractProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.VfsTestUtils;
+import org.wso2.org.apache.commons.vfs2.util.NHttpFileServer;
 import org.junit.jupiter.api.Test;
 import org.wso2.org.apache.commons.vfs2.provider.http.HttpFileSystemConfigBuilder;
 
@@ -65,14 +69,22 @@ public class HttpGetContentInfoFunctionalTest {
      * @throws FileSystemException thrown when the getContentInfo API fails.
      */
     @Test
-    public void testGetContentInfo() throws FileSystemException, MalformedURLException {
-        final FileSystemManager fsManager = VFS.getManager();
-        final String uri = "http://www.apache.org/licenses/LICENSE-2.0.txt";
-        try (FileObject fo = fsManager.resolveFile(uri, getOptionsWithProxy());
-                final FileContent content = fo.getContent()) {
-            assertNotNull(content);
-            // Used to NPE before fix:
-            content.getContentInfo();
+    public void testGetContentInfo() throws Exception {
+        // The probe of findFile throws a refusal of the server as it is, and the public site refuses the HEAD of this
+        // client. So the file is served by a local server.
+        final NHttpFileServer server = NHttpFileServer.start(0, new File(VfsTestUtils.getTestDirectory()), 5000);
+        try {
+            @SuppressWarnings("resource") // getManager() returns a global.
+            final FileSystemManager fsManager = VFS.getManager();
+            final String uri = AbstractProviderTestConfig.getLocalHostUriString("http", server.getPort()) + "/read-tests/file1.txt";
+            try (FileObject fo = fsManager.resolveFile(uri);
+                 FileContent content = fo.getContent()) {
+                assertNotNull(content);
+                // Used to NPE before fix:
+                content.getContentInfo();
+            }
+        } finally {
+            server.close();
         }
     }
 

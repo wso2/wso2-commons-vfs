@@ -16,7 +16,13 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider.sftp;
 
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileType;
 import org.wso2.org.apache.commons.vfs2.provider.FileNameParser;
+import org.wso2.org.apache.commons.vfs2.provider.URLFileName;
+import org.wso2.org.apache.commons.vfs2.provider.UriParser;
+import org.wso2.org.apache.commons.vfs2.provider.VfsComponentContext;
 import org.wso2.org.apache.commons.vfs2.provider.URLFileNameParser;
 
 /**
@@ -42,5 +48,23 @@ public class SftpFileNameParser extends URLFileNameParser {
      */
     public SftpFileNameParser() {
         super(DEFAULT_PORT);
+    }
+
+    @Override
+    public boolean encodeCharacter(final char ch) {
+        return ch == '\\' || super.encodeCharacter(ch);
+    }
+
+    @Override
+    public FileName parseUri(final VfsComponentContext context, final FileName base, final String uri)
+            throws FileSystemException {
+        final StringBuilder path = new StringBuilder();
+        final Authority auth = extractToPath(context, uri, path);
+        final String query = UriParser.extractQueryString(path);
+        UriParser.fixSeparators(path);
+        UriParser.canonicalizePath(path, 0, path.length(), this);
+        final FileType type = UriParser.normalisePath(path);
+        return new URLFileName(auth.getScheme(), auth.getHostName(), auth.getPort(), getDefaultPort(),
+                auth.getUserName(), auth.getPassword(), path.toString(), type, query);
     }
 }

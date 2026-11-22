@@ -136,6 +136,11 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String USER_DIR_IS_ROOT = PREFIX + ".USER_DIR_IS_ROOT";
     private static final String PASS_PHRASE = "identitypassphrase";
     private static final String PERMISSION_CHECK = "avoidpermissioncheck";
+    private static final String WRITE_STALL_TIMEOUT = PREFIX + ".WRITE_STALL_TIMEOUT";
+    private static final String HOST_KEY_ALGORITHMS = PREFIX + ".HOST_KEY_ALGORITHMS";
+    private static final String CIPHERS = PREFIX + ".CIPHERS";
+    private static final String MACS = PREFIX + ".MACS";
+    private static final String PUBKEY_ACCEPTED_ALGORITHMS = PREFIX + ".PUBKEY_ACCEPTED_ALGORITHMS";
 
 
     /**
@@ -457,7 +462,144 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     @Deprecated
     public Integer getTimeout(final FileSystemOptions options) {
-        return this.getInteger(options, SESSION_TIMEOUT);
+        return this.getDurationInteger(options, SESSION_TIMEOUT);
+    }
+
+    /**
+     * Tests whether the options hold a session timeout of their own.
+     *
+     * @param options The FileSystem options.
+     * @return true when a value is set. {@link #getSessionTimeout(FileSystemOptions)} gives zero for no value.
+     */
+    public boolean isSessionTimeoutSet(final FileSystemOptions options) {
+        return isSet(options, SESSION_TIMEOUT);
+    }
+
+    /**
+     * Tests whether the options hold a connect timeout of their own.
+     *
+     * @param options The FileSystem options.
+     * @return true when a value is set. {@link #getConnectTimeout(FileSystemOptions)} gives zero for no value.
+     */
+    public boolean isConnectTimeoutSet(final FileSystemOptions options) {
+        return isSet(options, CONNECT_TIMEOUT);
+    }
+
+    /**
+     * Tests whether the options hold a keep alive count of their own.
+     *
+     * @param options The FileSystem options.
+     * @return true when a value is set.
+     */
+    public boolean isKeepAliveCountMaxSet(final FileSystemOptions options) {
+        return isSet(options, KEEP_ALIVE_COUNT_MAX);
+    }
+
+    // A key that holds null has no value.
+    private boolean isSet(final FileSystemOptions options, final String name) {
+        return hasParam(options, name) && getParam(options, name) != null;
+    }
+
+    /**
+     * Sets the write stall timeout of the watchdog. A socket write that moves no bytes for this time is ended by a
+     * close of the socket.
+     *
+     * @param options The FileSystem options.
+     * @param timeout The timeout. Zero turns the watchdog off for the file system.
+     */
+    public void setWriteStallTimeout(final FileSystemOptions options, final Duration timeout) {
+        this.setParam(options, WRITE_STALL_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the write stall timeout of the watchdog.
+     *
+     * @param options The FileSystem options.
+     * @return The timeout, or null when the options hold none.
+     */
+    public Duration getWriteStallTimeout(final FileSystemOptions options) {
+        return this.getDuration(options, WRITE_STALL_TIMEOUT);
+    }
+
+    /**
+     * Sets the host key algorithms of the session, as JSch reads them under the key {@code server_host_key}.
+     *
+     * @param options The FileSystem options.
+     * @param algorithms The algorithms, separated by commas. Null leaves the default of JSch.
+     */
+    public void setHostKeyAlgorithms(final FileSystemOptions options, final String algorithms) {
+        this.setParam(options, HOST_KEY_ALGORITHMS, algorithms);
+    }
+
+    /**
+     * Gets the host key algorithms of the session.
+     *
+     * @param options The FileSystem options.
+     * @return The algorithms, or null when the options hold none.
+     */
+    public String getHostKeyAlgorithms(final FileSystemOptions options) {
+        return this.getString(options, HOST_KEY_ALGORITHMS);
+    }
+
+    /**
+     * Sets the ciphers of the session, for both directions.
+     *
+     * @param options The FileSystem options.
+     * @param ciphers The ciphers, separated by commas. Null leaves the default of JSch.
+     */
+    public void setCiphers(final FileSystemOptions options, final String ciphers) {
+        this.setParam(options, CIPHERS, ciphers);
+    }
+
+    /**
+     * Gets the ciphers of the session.
+     *
+     * @param options The FileSystem options.
+     * @return The ciphers, or null when the options hold none.
+     */
+    public String getCiphers(final FileSystemOptions options) {
+        return this.getString(options, CIPHERS);
+    }
+
+    /**
+     * Sets the MAC algorithms of the session, for both directions.
+     *
+     * @param options The FileSystem options.
+     * @param macs The MAC algorithms, separated by commas. Null leaves the default of JSch.
+     */
+    public void setMacs(final FileSystemOptions options, final String macs) {
+        this.setParam(options, MACS, macs);
+    }
+
+    /**
+     * Gets the MAC algorithms of the session.
+     *
+     * @param options The FileSystem options.
+     * @return The MAC algorithms, or null when the options hold none.
+     */
+    public String getMacs(final FileSystemOptions options) {
+        return this.getString(options, MACS);
+    }
+
+    /**
+     * Sets the public key algorithms that the session accepts for key authentication, as JSch reads them under the
+     * key {@code PubkeyAcceptedAlgorithms}.
+     *
+     * @param options The FileSystem options.
+     * @param algorithms The algorithms, separated by commas. Null leaves the default of JSch.
+     */
+    public void setPubkeyAcceptedAlgorithms(final FileSystemOptions options, final String algorithms) {
+        this.setParam(options, PUBKEY_ACCEPTED_ALGORITHMS, algorithms);
+    }
+
+    /**
+     * Gets the public key algorithms that the session accepts for key authentication.
+     *
+     * @param options The FileSystem options.
+     * @return The algorithms, or null when the options hold none.
+     */
+    public String getPubkeyAcceptedAlgorithms(final FileSystemOptions options) {
+        return this.getString(options, PUBKEY_ACCEPTED_ALGORITHMS);
     }
 
     /**
@@ -846,7 +988,7 @@ public final class SftpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     @Deprecated
     public void setTimeout(final FileSystemOptions options, final Integer timeout) {
-        this.setParam(options, SESSION_TIMEOUT, timeout);
+        setSessionTimeout(options, Duration.ofMillis(timeout));
     }
 
     /**

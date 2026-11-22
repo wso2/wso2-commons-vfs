@@ -18,6 +18,7 @@ package org.wso2.org.apache.commons.vfs2.provider.http5s;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.io.File;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,10 @@ import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemManager;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.AbstractProviderTestConfig;
 import org.wso2.org.apache.commons.vfs2.VFS;
+import org.wso2.org.apache.commons.vfs2.VfsTestUtils;
+import org.wso2.org.apache.commons.vfs2.util.NHttpFileServer;
 import org.wso2.org.apache.commons.vfs2.provider.http5.Http5FileSystemConfigBuilder;
 import org.junit.jupiter.api.Test;
 
@@ -86,14 +90,23 @@ public class Http5sGetContentInfoTest {
      * @throws MalformedURLException thrown when the System environment contains an invalid URL for an HTTPS proxy.
      */
     @Test
-    public void testGetContentInfo() throws FileSystemException, MalformedURLException {
-        final FileSystemManager fsManager = VFS.getManager();
-        final String uri = "http5://www.apache.org/licenses/LICENSE-2.0.txt";
-        final FileObject fo = fsManager.resolveFile(uri, getOptionsWithProxy());
-        final FileContent content = fo.getContent();
-        assertNotNull(content);
-        // Used to NPE before fix:
-        content.getContentInfo();
+    public void testGetContentInfo() throws Exception {
+        // The probe of findFile throws a refusal of the server as it is, and the public site refuses the HEAD of this
+        // client. So the file is served by a local server.
+        final NHttpFileServer server = NHttpFileServer.start(0, new File(VfsTestUtils.getTestDirectory()), 5000);
+        try {
+            @SuppressWarnings("resource") // getManager() returns a global.
+            final FileSystemManager fsManager = VFS.getManager();
+            final String uri = AbstractProviderTestConfig.getLocalHostUriString("http5", server.getPort()) + "/read-tests/file1.txt";
+            try (FileObject fo = fsManager.resolveFile(uri);
+                 FileContent content = fo.getContent()) {
+                assertNotNull(content);
+                // Used to NPE before fix:
+                content.getContentInfo();
+            }
+        } finally {
+            server.close();
+        }
     }
 
     /**

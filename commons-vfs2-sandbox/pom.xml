@@ -68,11 +68,9 @@
       <optional>true</optional>
     </dependency>
 
-    <!-- Not managed in parent; keep explicit version -->
     <dependency>
       <groupId>com.hierynomus</groupId>
       <artifactId>smbj</artifactId>
-      <version>0.13.0</version>
       <optional>true</optional>
     </dependency>
 
@@ -103,12 +101,32 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- The abort test of the rig opens an SFTP and an FTP file system next to the SMB2 one. The core module declares
+         both libraries optional, so they are not on this class path by themselves. -->
+    <dependency>
+      <groupId>com.github.mwiede</groupId>
+      <artifactId>jsch</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-net</groupId>
+      <artifactId>commons-net</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- The unit tests of the SMB2 provider stand in for the share, the handle and the stream of smbj. -->
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <properties>
     <commons.componentid>vfs-sandbox</commons.componentid>
     <commons.parent.dir>${basedir}/..</commons.parent.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- A test that needs the test form of TestPoints runs only in the profile testbuild. -->
+    <testpoints.excludedGroups>testbuild</testpoints.excludedGroups>
   </properties>
 
   <build>
@@ -157,7 +175,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <skipTests>true</skipTests>
+          <skipTests>false</skipTests>
+          <excludedGroups>${testpoints.excludedGroups}</excludedGroups>
           <systemPropertyVariables>
             <!-- keep your existing props; adjust paths if needed -->
             <test.basedir>../core/target/test-classes/test-data</test.basedir>
@@ -169,6 +188,14 @@
   </build>
 
   <profiles>
+    <!-- The test build. It runs the tests that need the test form of TestPoints. -->
+    <profile>
+      <id>testbuild</id>
+      <properties>
+        <testpoints.excludedGroups />
+      </properties>
+    </profile>
+
     <profile>
       <id>smb</id>
       <activation>

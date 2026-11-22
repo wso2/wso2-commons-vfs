@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.util.Messages;
 
 /**
@@ -89,6 +90,11 @@ public class FileSystemException extends IOException {
      * Array of complementary info (context).
      */
     private final String[] info;
+
+    /**
+     * What this error means for the connection. Null when the site that threw did not decide.
+     */
+    private Fault fault;
 
     /**
      * Constructs exception with the specified detail message.
@@ -195,6 +201,24 @@ public class FileSystemException extends IOException {
      */
     public String getCode() {
         return super.getMessage();
+    }
+
+    /**
+     * Gets what this error means for the connection, as the site that threw decided it.
+     *
+     * @return the fault, or null when the site that threw did not decide.
+     */
+    public Fault getFault() {
+        return fault;
+    }
+
+    /**
+     * Sets what this error means for the connection. A provider sets it where the library exception is still in hand.
+     *
+     * @param fault the fault.
+     */
+    public void setFault(final Fault fault) {
+        this.fault = fault;
     }
 
     /**

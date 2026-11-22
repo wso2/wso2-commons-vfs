@@ -21,17 +21,25 @@ package org.wso2.org.apache.commons.vfs2.provider.smb2;
 import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.EffectiveBounds;
 
+import java.time.Duration;
 import java.util.ArrayList;
 
 /**
  * The config builder for SMB2 configuration options.
  */
-public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
+public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder implements EffectiveBounds.Smb2Timeouts {
 
     private static final Smb2FileSystemConfigBuilder BUILDER = new Smb2FileSystemConfigBuilder();
     private static final String ENCRYPTION_ENABLED = "EncryptionEnabled";
     public static final String DISK_SHARE_ACCESS_MASK = "diskShareAccessMask";
+    private static final String READ_TIMEOUT = "readTimeout";
+    private static final String WRITE_TIMEOUT = "writeTimeout";
+    private static final String TRANSACT_TIMEOUT = "transactTimeout";
+    private static final String WRITE_STALL_TIMEOUT = "writeStallTimeout";
+    // The default of smbj for each request timeout, and the default of the watchdog.
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
 
     public static Smb2FileSystemConfigBuilder getInstance() {
         return BUILDER;
@@ -81,6 +89,112 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setDiskShareAccessMask(FileSystemOptions opts, ArrayList<String> mask) {
         setParam(opts, DISK_SHARE_ACCESS_MASK, mask);
+    }
+
+    /**
+     * Sets the read timeout of each SMB2 read request.
+     *
+     * @param opts The FileSystem options.
+     * @param timeout The timeout.
+     */
+    public void setReadTimeout(FileSystemOptions opts, Duration timeout) {
+        setParam(opts, READ_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the read timeout of each SMB2 read request. Only the options decide. No system property is read.
+     *
+     * @param opts The FileSystem options.
+     * @return The timeout of the options, or 60 seconds when the options hold none.
+     */
+    public Duration getReadTimeout(FileSystemOptions opts) {
+        return valueOrDefault(opts, READ_TIMEOUT);
+    }
+
+    /**
+     * Sets the write timeout of each SMB2 write request.
+     *
+     * @param opts The FileSystem options.
+     * @param timeout The timeout.
+     */
+    public void setWriteTimeout(FileSystemOptions opts, Duration timeout) {
+        setParam(opts, WRITE_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the write timeout of each SMB2 write request. Only the options decide. No system property is read.
+     *
+     * @param opts The FileSystem options.
+     * @return The timeout of the options, or 60 seconds when the options hold none.
+     */
+    public Duration getWriteTimeout(FileSystemOptions opts) {
+        return valueOrDefault(opts, WRITE_TIMEOUT);
+    }
+
+    /**
+     * Sets the timeout of each other SMB2 request, for example a create, a query or a close.
+     *
+     * @param opts The FileSystem options.
+     * @param timeout The timeout.
+     */
+    public void setTransactTimeout(FileSystemOptions opts, Duration timeout) {
+        setParam(opts, TRANSACT_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the timeout of each other SMB2 request. Only the options decide. No system property is read.
+     *
+     * @param opts The FileSystem options.
+     * @return The timeout of the options, or 60 seconds when the options hold none.
+     */
+    public Duration getTransactTimeout(FileSystemOptions opts) {
+        return valueOrDefault(opts, TRANSACT_TIMEOUT);
+    }
+
+    /**
+     * Sets the write stall timeout of the watchdog. A socket write that moves no bytes for this time is ended by a
+     * close of the socket.
+     *
+     * @param opts The FileSystem options.
+     * @param timeout The timeout. Zero turns the watchdog off for the file system.
+     */
+    public void setWriteStallTimeout(FileSystemOptions opts, Duration timeout) {
+        setParam(opts, WRITE_STALL_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the write stall timeout of the watchdog. Only the options decide. No system property is read.
+     *
+     * @param opts The FileSystem options.
+     * @return The timeout of the options, or 60 seconds when the options hold none.
+     */
+    public Duration getWriteStallTimeout(FileSystemOptions opts) {
+        return valueOrDefault(opts, WRITE_STALL_TIMEOUT);
+    }
+
+    @Override
+    public Duration configuredReadTimeout(FileSystemOptions opts) {
+        return getParam(opts, READ_TIMEOUT);
+    }
+
+    @Override
+    public Duration configuredWriteTimeout(FileSystemOptions opts) {
+        return getParam(opts, WRITE_TIMEOUT);
+    }
+
+    @Override
+    public Duration configuredTransactTimeout(FileSystemOptions opts) {
+        return getParam(opts, TRANSACT_TIMEOUT);
+    }
+
+    @Override
+    public Duration configuredWriteStallTimeout(FileSystemOptions opts) {
+        return getParam(opts, WRITE_STALL_TIMEOUT);
+    }
+
+    private Duration valueOrDefault(FileSystemOptions opts, String name) {
+        Duration value = getParam(opts, name);
+        return value != null ? value : DEFAULT_TIMEOUT;
     }
 
     @Override

@@ -27,8 +27,10 @@ import org.wso2.org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 import org.wso2.org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 import com.jcraft.jsch.Session;
@@ -55,8 +57,14 @@ public class SftpFileProvider extends AbstractOriginatingFileProvider {
      *
      * @return A Session, never null.
      */
-    static Session createSession(final GenericFileName rootName, final FileSystemOptions fileSystemOptions)
-            throws FileSystemException {
+    static Session createSession(final GenericFileName rootName, final FileSystemOptions fileSystemOptions,
+            final SocketGroup group) throws FileSystemException {
+        return createSession(rootName, fileSystemOptions, group, 0);
+    }
+
+    // The same with a deadline on the clock of System.nanoTime, or 0 for none, at which the whole setup ends.
+    static Session createSession(final GenericFileName rootName, final FileSystemOptions fileSystemOptions,
+            final SocketGroup group, final long setupDeadline) throws FileSystemException {
         UserAuthenticationData authData = null;
         try {
             authData = UserAuthenticatorUtils.authenticate(fileSystemOptions, AUTHENTICATOR_TYPES);
@@ -66,7 +74,7 @@ public class SftpFileProvider extends AbstractOriginatingFileProvider {
                             UserAuthenticatorUtils.toChar(rootName.getUserName())),
                     UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
                             UserAuthenticatorUtils.toChar(rootName.getPassword())),
-                    fileSystemOptions);
+                    fileSystemOptions, group, setupDeadline);
         } catch (final Exception e) {
             throw new FileSystemException("vfs.provider.sftp/connect.error", rootName, e);
         } finally {
@@ -87,9 +95,10 @@ public class SftpFileProvider extends AbstractOriginatingFileProvider {
     @Override
     protected FileSystem doCreateFileSystem(final FileName name, final FileSystemOptions fileSystemOptions)
             throws FileSystemException {
-        // Create the file system
-        return new SftpFileSystem((GenericFileName) name, createSession((GenericFileName) name, fileSystemOptions),
-                fileSystemOptions);
+        // Create the file system. The manager knows the group, so an abort of the manager reaches its sockets.
+        final SocketGroup group = ((DefaultFileSystemManager) getContext().getFileSystemManager()).newSocketGroup();
+        return new SftpFileSystem((GenericFileName) name,
+                createSession((GenericFileName) name, fileSystemOptions, group), group, fileSystemOptions);
     }
 
     @Override

@@ -18,17 +18,20 @@ package org.wso2.org.apache.commons.vfs2.provider.sftp;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
+import java.net.SocketTimeoutException;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.SystemProperties;
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.lang3.time.DurationUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.EffectiveBounds;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 import com.jcraft.jsch.ConfigRepository;
 import com.jcraft.jsch.JSch;
@@ -101,7 +104,11 @@ public final class SftpClientFactory {
 
     private static final String SSH_DIR_NAME = ".ssh";
     private static final String OPENSSH_CONFIG_NAME = "config";
+    private static final String SCHEME = "sftp";
     private static final Log LOG = LogFactory.getLog(SftpClientFactory.class);
+
+    // The warning of a timeout with no keep alive is given once per copy of the fork.
+    private static final AtomicBoolean BARE_TIMEOUT_WARNED = new AtomicBoolean();
 
     static {
         JSch.setLogger(new JSchLogger());
@@ -135,7 +142,11 @@ public final class SftpClientFactory {
     }
 
     /**
-     * Creates a new connection to the server.
+     * Creates a new connection to the server, with a socket group of its own.
+     * <p>
+     * No file system manager knows that group, so an abort of a manager does not reach this session. The provider
+     * uses {@link #createConnection(String, int, char[], char[], FileSystemOptions, SocketGroup)}.
+     * </p>
      *
      * @param hostname The name of the host to connect to.
      * @param port The port to use.
@@ -147,6 +158,37 @@ public final class SftpClientFactory {
      */
     public static Session createConnection(final String hostname, final int port, final char[] username,
         final char[] password, final FileSystemOptions fileSystemOptions) throws FileSystemException {
+        return createConnection(hostname, port, username, password, fileSystemOptions, new SocketGroup());
+    }
+
+    /**
+     * Creates a new connection to the server.
+     *
+     * @param hostname The name of the host to connect to.
+     * @param port The port to use.
+     * @param username The user's id.
+     * @param password The user's password.
+     * @param fileSystemOptions The FileSystem options.
+     * @param group The group of the sockets of the session. The session connects only through sockets of this group.
+     * @return A Session, never null.
+     * @throws FileSystemException if an error occurs.
+     */
+    public static Session createConnection(final String hostname, final int port, final char[] username,
+        final char[] password, final FileSystemOptions fileSystemOptions, final SocketGroup group)
+        throws FileSystemException {
+        return createConnection(hostname, port, username, password, fileSystemOptions, group, 0);
+    }
+
+    /**
+     * Creates a new connection to the server, with an optional deadline for its whole setup. With a deadline, the
+     * connect, a proxy and every read of the handshake and of the login on the connecting thread end at it. The
+     * bounds of the endpoint stay as they are for the session after its setup.
+     *
+     * @param setupDeadline the deadline on the clock of {@link System#nanoTime()}, or 0 for none.
+     */
+    static Session createConnection(final String hostname, final int port, final char[] username,
+        final char[] password, final FileSystemOptions fileSystemOptions, final SocketGroup group,
+        final long setupDeadline) throws FileSystemException {
         Objects.requireNonNull(username, "username");
         final JSch jsch = new JSch();
 
@@ -173,21 +215,15 @@ public final class SftpClientFactory {
         UserAuthenticationData proxyAuthData = null;
 
         Session session;
+        SftpStreamProxy streamProxy = null;
         try {
             session = jsch.getSession(new String(username), hostname, port);
             if (password != null) {
                 session.setPassword(new String(password));
             }
 
-            final Integer keepAliveCountMax = builder.getKeepAliveCountMax(fileSystemOptions);
-            if (keepAliveCountMax != null) {
-                session.setServerAliveCountMax(keepAliveCountMax);
-            }
-
-            final Duration sessionTimeout = builder.getSessionTimeout(fileSystemOptions);
-            if (sessionTimeout != null) {
-                session.setTimeout(DurationUtils.toMillisInt(sessionTimeout));
-            }
+            final EffectiveBounds bounds = EffectiveBounds.of(SCHEME, fileSystemOptions);
+            applyBounds(session, bounds);
 
             final UserInfo userInfo = builder.getUserInfo(fileSystemOptions);
             if (userInfo != null) {
@@ -218,6 +254,26 @@ public final class SftpClientFactory {
             if (keyExchangeAlgorithm != null) {
                 config.setProperty("kex", keyExchangeAlgorithm);
             }
+            // The algorithms of this one session. A value that is not set leaves the default of JSch, which follows
+            // the JVM wide jsch properties.
+            final String hostKeyAlgorithms = builder.getHostKeyAlgorithms(fileSystemOptions);
+            if (hostKeyAlgorithms != null) {
+                config.setProperty("server_host_key", hostKeyAlgorithms);
+            }
+            final String ciphers = builder.getCiphers(fileSystemOptions);
+            if (ciphers != null) {
+                config.setProperty("cipher.s2c", ciphers);
+                config.setProperty("cipher.c2s", ciphers);
+            }
+            final String macs = builder.getMacs(fileSystemOptions);
+            if (macs != null) {
+                config.setProperty("mac.s2c", macs);
+                config.setProperty("mac.c2s", macs);
+            }
+            final String pubkeyAcceptedAlgorithms = builder.getPubkeyAcceptedAlgorithms(fileSystemOptions);
+            if (pubkeyAcceptedAlgorithms != null) {
+                config.setProperty("PubkeyAcceptedAlgorithms", pubkeyAcceptedAlgorithms);
+            }
 
             final String proxyHost = builder.getProxyHost(fileSystemOptions);
             if (proxyHost != null) {
@@ -244,7 +300,9 @@ public final class SftpClientFactory {
                 } else if (SftpFileSystemConfigBuilder.PROXY_SOCKS5.equals(proxyType)) {
                     proxy = createProxySOCKS5(proxyHost, proxyPort, proxyUsername, proxyPassword);
                 } else if (SftpFileSystemConfigBuilder.PROXY_STREAM.equals(proxyType)) {
-                    proxy = createStreamProxy(proxyHost, proxyPort, fileSystemOptions, builder);
+                    streamProxy = createStreamProxy(proxyHost, proxyPort, fileSystemOptions, builder, group, bounds,
+                            setupDeadline);
+                    proxy = streamProxy;
                 }
 
                 if (proxy != null) {
@@ -257,11 +315,22 @@ public final class SftpClientFactory {
                 session.setConfig(config);
             }
             session.setDaemonThread(true);
-            final Duration connectTimeout = builder.getConnectTimeout(fileSystemOptions);
-            if (connectTimeout != null) {
-                session.connect(DurationUtils.toMillisInt(connectTimeout));
-            } else {
-                session.connect();
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("SFTP bounds for " + hostname + ": session timeout "
+                        + bounds.getSessionTimeout().getValue() + " ms from " + bounds.getSessionTimeout().getSource()
+                        + ", keep alive count " + bounds.getKeepAliveCount().getValue() + " from "
+                        + bounds.getKeepAliveCount().getSource() + ", connect timeout "
+                        + bounds.getConnectTimeout().getValue() + " ms from "
+                        + bounds.getConnectTimeout().getSource());
+            }
+            final int connectTimeoutMillis = setupBound((int) bounds.getConnectTimeout().getValue(), setupDeadline);
+            final WatchedJschSocketFactory socketFactory = new WatchedJschSocketFactory(group, connectTimeoutMillis,
+                    bounds.getWriteStallTimeout().getValue(), setupDeadline);
+            session.setSocketFactory(socketFactory);
+            session.connect(connectTimeoutMillis);
+            socketFactory.endSetup();
+            if (streamProxy != null) {
+                streamProxy.sessionConnected();
             }
         } catch (final Exception exc) {
             throw new FileSystemException("vfs.provider.sftp/connect.error", exc, hostname);
@@ -280,8 +349,22 @@ public final class SftpClientFactory {
         return proxyPort == 0 ? new ProxySOCKS5(proxyHost) : new ProxySOCKS5(proxyHost, proxyPort);
     }
 
-    private static Proxy createStreamProxy(final String proxyHost, final int proxyPort,
-            final FileSystemOptions fileSystemOptions, final SftpFileSystemConfigBuilder builder) {
+    // A timeout of the endpoint, zero for no bound, cut to the time left before a setup deadline when there is one.
+    static int setupBound(final int endpointMillis, final long setupDeadline) throws SocketTimeoutException {
+        if (setupDeadline == 0) {
+            return endpointMillis;
+        }
+        final long left = TimeUnit.NANOSECONDS.toMillis(setupDeadline - System.nanoTime());
+        if (left <= 0) {
+            throw new SocketTimeoutException("The setup of the SFTP session passed its deadline.");
+        }
+        final int bounded = (int) Math.min(left, Integer.MAX_VALUE);
+        return endpointMillis == 0 ? bounded : Math.min(endpointMillis, bounded);
+    }
+
+    private static SftpStreamProxy createStreamProxy(final String proxyHost, final int proxyPort,
+            final FileSystemOptions fileSystemOptions, final SftpFileSystemConfigBuilder builder,
+            final SocketGroup group, final EffectiveBounds bounds, final long setupDeadline) {
         // Use a stream proxy, i.e. it will use a remote host as a proxy
         // and run a command (e.g. netcat) that forwards input/output
         // to the target host.
@@ -294,8 +377,10 @@ public final class SftpClientFactory {
 
         final String proxyCommand = builder.getProxyCommand(fileSystemOptions);
 
-        // Create the stream proxy
-        return new SftpStreamProxy(proxyCommand, proxyUser, proxyHost, proxyPort, proxyPassword, proxyOptions);
+        // Create the stream proxy. It reads the channel to the target with the read timeout of the session to the
+        // target, and its proxy session is a child of the group of that session.
+        return new SftpStreamProxy(proxyCommand, proxyUser, proxyHost, proxyPort, proxyPassword, proxyOptions, group,
+                (int) bounds.getSessionTimeout().getValue(), bounds.getWriteStallTimeout().getValue(), setupDeadline);
     }
 
     private static ProxySOCKS5 createProxySOCKS5(final String proxyHost, final int proxyPort, char[] proxyUsername,
@@ -399,6 +484,36 @@ public final class SftpClientFactory {
     }
 
     private SftpClientFactory() {
+    }
+
+    /**
+     * Puts the session timeout and the keep alive count of the bounds on a session that is not connected yet.
+     * <p>
+     * A system property of zero sets no timeout, and a derived keep alive count keeps the count of JSch.
+     * </p>
+     *
+     * @param session the session.
+     * @param bounds the bounds in effect.
+     * @throws JSchException if JSch refuses the timeout.
+     */
+    static void applyBounds(final Session session, final EffectiveBounds bounds) throws JSchException {
+        final EffectiveBounds.Bound timeout = bounds.getSessionTimeout();
+        if (timeout.getSource() != EffectiveBounds.Source.SYSTEM_PROPERTY || timeout.getValue() > 0) {
+            session.setTimeout((int) timeout.getValue());
+        }
+        final EffectiveBounds.Bound count = bounds.getKeepAliveCount();
+        if (count.getSource() != EffectiveBounds.Source.DERIVED) {
+            session.setServerAliveCountMax((int) count.getValue());
+        }
+        if (timeout.getValue() > 0 && count.getValue() == 0) {
+            final String warning = "The SFTP session timeout is " + timeout.getValue()
+                    + " ms and the keep alive count is 0. A slow server that still answers can lose its session.";
+            if (BARE_TIMEOUT_WARNED.compareAndSet(false, true)) {
+                LOG.warn(warning);
+            } else if (LOG.isDebugEnabled()) {
+                LOG.debug(warning);
+            }
+        }
     }
 
     private static void addIdentity(final JSch jsch, final IdentityInfo info, String passPhrase) throws

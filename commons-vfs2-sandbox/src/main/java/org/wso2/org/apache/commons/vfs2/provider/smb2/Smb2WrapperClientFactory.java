@@ -22,17 +22,24 @@ import com.hierynomus.smbj.SMBClient;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
+
+import java.util.function.Supplier;
 
 public class Smb2WrapperClientFactory {
     private final GenericFileName root;
     private final FileSystemOptions fileSystemOptions;
+    // The manager makes the group of each new client, so an abort of the manager reaches every socket of it.
+    private final Supplier<SocketGroup> socketGroups;
 
-    Smb2WrapperClientFactory (GenericFileName root, FileSystemOptions fileSystemOptions) {
+    Smb2WrapperClientFactory (GenericFileName root, FileSystemOptions fileSystemOptions,
+            Supplier<SocketGroup> socketGroups) {
         this.root = root;
         this.fileSystemOptions = fileSystemOptions;
+        this.socketGroups = socketGroups;
     }
 
     public SMBClient create() throws FileSystemException {
-        return new Smb2ClientWrapper(root, fileSystemOptions);
+        return new Smb2ClientWrapper(root, fileSystemOptions, socketGroups.get());
     }
 }

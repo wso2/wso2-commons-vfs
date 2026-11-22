@@ -16,18 +16,6 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider.ftps;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.commons.net.ftp.FTPSClient;
-import org.wso2.org.apache.commons.vfs2.FileSystemException;
-import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
-import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpClientFactory;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -36,6 +24,26 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+
+import javax.net.ServerSocketFactory;
+import javax.net.SocketFactory;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.net.ftp.FTPReply;
+import org.apache.commons.net.ftp.FTPSClient;
+import org.apache.commons.net.util.SSLContextUtils;
+import org.apache.commons.net.util.TrustManagerUtils;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpClientFactory;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 /**
  * Create FTPSClient instances.
@@ -52,68 +60,99 @@ public final class FtpsClientFactory {
         private final Log log = LogFactory.getLog(getClass());
         private static final String PKIX = "PKIX";
         private static final String JCE_PROVIDER = "security.jce.provider";
+        private static final String FTPS_SCHEME = "ftps";
+        private static final String PROTOCOL = "TLS";
         private FtpsConnectionFactory(final FtpsFileSystemConfigBuilder builder) {
             super(builder);
         }
 
         @Override
-        protected FTPSClient createClient(final FileSystemOptions fileSystemOptions) throws FileSystemException {
-            final FTPSClient client;
-            if (builder.getFtpsMode(fileSystemOptions) == FtpsMode.IMPLICIT) {
-                client = new FTPSClientWithSessionResumption(true);
-            } else {
-                client = new FTPSClientWithSessionResumption();
-            }
-
-            final TrustManager trustManager = builder.getTrustManager(fileSystemOptions);
-            if (trustManager != null) {
-                client.setTrustManager(trustManager);
-            }
-
-            final KeyManager keyManager = builder.getKeyManager(fileSystemOptions);
-            if (keyManager != null) {
-                client.setKeyManager(keyManager);
-            }
-            return client;
+        protected String getScheme() {
+            return FTPS_SCHEME;
         }
 
         @Override
-        protected void preConfigureClient(FileSystemOptions fileSystemOptions) throws Exception {
+        protected FTPSClient createClient(final FileSystemOptions fileSystemOptions) throws Exception {
+            // One context per client serves the control connection and the data connections, so they share one
+            // session cache.
+            final SSLContext context = SSLContextUtils.createSSLContext(PROTOCOL, keyManagers(fileSystemOptions),
+                    trustManagers(fileSystemOptions));
+            return new FTPSClientWithSessionResumption(builder.getFtpsMode(fileSystemOptions) == FtpsMode.IMPLICIT,
+                    context);
+        }
 
-            String KEYSTORE = builder.getKeyStore(fileSystemOptions);
-            String TRUSTSTORE = builder.getTrustStore(fileSystemOptions);
-            String KS_PASSWD = builder.getKeyStorePW(fileSystemOptions);
-            String TS_PASSWD = builder.getTrustStorePW(fileSystemOptions);
-            String KEY_PASSWD = builder.getKeyPW(fileSystemOptions);
-            String KS_TYPE = builder.getKeyStoreType(fileSystemOptions);
-            String TS_TYPE = builder.getTrustStoreType(fileSystemOptions);
+        @Override
+        protected void setSocketFactories(final FTPSClient client, final SocketFactory socketFactory,
+                final ServerSocketFactory serverSocketFactory) {
+            if (client instanceof FTPSClientWithSessionResumption) {
+                ((FTPSClientWithSessionResumption) client).setWatchedFactories(socketFactory, serverSocketFactory);
+            } else {
+                super.setSocketFactories(client, socketFactory, serverSocketFactory);
+            }
+        }
 
-            KeyManagerFactory keyManagerFactory = null;
-            TrustManagerFactory trustManagerFactory = null;
+        // A key manager set in the options in code, else the managers of the configured key store, else none.
+        private KeyManager[] keyManagers(final FileSystemOptions fileSystemOptions) throws Exception {
+            if (builder.isKeyManagerSet(fileSystemOptions)) {
+                final KeyManager keyManager = builder.getKeyManager(fileSystemOptions);
+                return keyManager == null ? null : new KeyManager[] {keyManager};
+            }
+            final String keyStorePath = builder.getKeyStore(fileSystemOptions);
+            if (keyStorePath == null || keyStorePath.trim().isEmpty()) {
+                return null;
+            }
+            final KeyStore keyStore = loadStore(keyStorePath, builder.getKeyStoreType(fileSystemOptions),
+                    builder.getKeyStorePW(fileSystemOptions));
+            final KeyManagerFactory keyManagerFactory;
             try {
-                if (KEYSTORE != null && !KEYSTORE.trim().isEmpty()) {
-                    FileInputStream keystorePath = new FileInputStream(new File(KEYSTORE));
-                    KeyStore keyStore = KeyStore.getInstance(KS_TYPE);
+                keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerType());
+                keyManagerFactory.init(keyStore, builder.getKeyPW(fileSystemOptions).toCharArray());
+            } catch (KeyStoreException e) {
+                log.error("Error occurred when initializing keystores",e);
+                throw e;
+            } catch (NoSuchAlgorithmException e) {
+                log.error("Error when getting the default algorithm",e);
+                throw e;
+            } catch (UnrecoverableKeyException e) {
+                log.error("Unrecoverable Key exception occurred",e);
+                throw e;
+            }
+            return keyManagerFactory.getKeyManagers();
+        }
 
-                    //load key store.
-                    keyStore.load(keystorePath, KS_PASSWD.toCharArray());
-                    keystorePath.close();
+        // A trust manager set in the options in code, else the managers of the configured trust store, else the
+        // trust manager of commons net that checks the dates only, as before.
+        private TrustManager[] trustManagers(final FileSystemOptions fileSystemOptions) throws Exception {
+            if (builder.isTrustManagerSet(fileSystemOptions)) {
+                final TrustManager trustManager = builder.getTrustManager(fileSystemOptions);
+                return trustManager == null ? null : new TrustManager[] {trustManager};
+            }
+            final String trustStorePath = builder.getTrustStore(fileSystemOptions);
+            if (trustStorePath == null || trustStorePath.trim().isEmpty()) {
+                return new TrustManager[] {TrustManagerUtils.getValidateServerCertificateTrustManager()};
+            }
+            final KeyStore trustStore = loadStore(trustStorePath, builder.getTrustStoreType(fileSystemOptions),
+                    builder.getTrustStorePW(fileSystemOptions));
+            final TrustManagerFactory trustManagerFactory;
+            try {
+                trustManagerFactory = TrustManagerFactory.getInstance(getTrustManagerType());
+                trustManagerFactory.init(trustStore);
+            } catch (KeyStoreException e) {
+                log.error("Error occurred when initializing keystores",e);
+                throw e;
+            } catch (NoSuchAlgorithmException e) {
+                log.error("Error when getting the default algorithm",e);
+                throw e;
+            }
+            return trustManagerFactory.getTrustManagers();
+        }
 
-                    // initialize key manager factory
-                    keyManagerFactory = KeyManagerFactory.getInstance(getKeyManagerType());
-                    keyManagerFactory.init(keyStore, KEY_PASSWD.toCharArray());
-                }
-                if (TRUSTSTORE != null && !TRUSTSTORE.trim().isEmpty()) {
-                    FileInputStream truststorePath = new FileInputStream(new File(TRUSTSTORE));
-                    KeyStore trustStore = KeyStore.getInstance(TS_TYPE);
-                    //load trust store.
-                    trustStore.load(truststorePath, TS_PASSWD.toCharArray());
-                    truststorePath.close();
-                    // initialize trust manager factory
-                    trustManagerFactory = TrustManagerFactory.getInstance(getTrustManagerType());
-                    trustManagerFactory.init(trustStore);
-                }
-
+        // The stream of the store is closed on every path.
+        private KeyStore loadStore(final String path, final String type, final String password) throws Exception {
+            try (FileInputStream storeStream = new FileInputStream(new File(path))) {
+                final KeyStore store = KeyStore.getInstance(type);
+                store.load(storeStream, password.toCharArray());
+                return store;
             } catch (KeyStoreException e) {
                 log.error("Error occurred when initializing keystores",e);
                 throw e;
@@ -125,9 +164,6 @@ public final class FtpsClientFactory {
                 throw e;
             } catch (CertificateException e) {
                 log.error("Certificate exception occurred when loading the KeyStores ",e);
-                throw e;
-            } catch (UnrecoverableKeyException e) {
-                log.error("Unrecoverable Key exception occurred",e);
                 throw e;
             }
         }
@@ -142,9 +178,18 @@ public final class FtpsClientFactory {
                     client.execPBSZ(0);
                     client.execPROT(level.name());
                 } catch (final SSLException e) {
-                    throw new FileSystemException("vfs.provider.ftps/data-channel.level", e, level.toString());
+                    // A refused level changes nothing. The level that the server accepted last stays.
+                    if (!isRefusal(client, e)) {
+                        throw new FileSystemException("vfs.provider.ftps/data-channel.level", e, level.toString());
+                    }
                 }
             }
+        }
+
+        // commons net reports a reply other than 200 to PBSZ or PROT as an SSLException with the text of that reply.
+        private static boolean isRefusal(final FTPSClient client, final SSLException e) {
+            return e.getClass() == SSLException.class && client.getReplyCode() != FTPReply.COMMAND_OK
+                    && String.valueOf(e.getMessage()).equals(client.getReplyString());
         }
 
         private static String getKeyManagerType() {
@@ -165,7 +210,7 @@ public final class FtpsClientFactory {
     }
 
     /**
-     * Creates a new connection to the server.
+     * Creates a new connection to the server. Its sockets are in a group of their own that no manager knows.
      *
      * @param hostname The host name.
      * @param port The port.
@@ -181,6 +226,28 @@ public final class FtpsClientFactory {
             throws FileSystemException {
         final FtpsConnectionFactory factory = new FtpsConnectionFactory(FtpsFileSystemConfigBuilder.getInstance());
         return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions);
+    }
+
+    /**
+     * Creates a new connection to the server whose sockets are in the given group.
+     *
+     * @param hostname The host name.
+     * @param port The port.
+     * @param username The user name for authentication.
+     * @param password The user's password.
+     * @param workingDirectory The directory to use.
+     * @param fileSystemOptions The FileSystemOptions.
+     * @param group The group of the new client. It is aborted when the connection fails.
+     * @param windowStart The start of the fast window of the call, on the clock of {@link System#nanoTime()}.
+     * @return The FTPSClient.
+     * @throws FileSystemException if an error occurs.
+     */
+    public static FTPSClient createConnection(final String hostname, final int port, final char[] username,
+            final char[] password, final String workingDirectory, final FileSystemOptions fileSystemOptions,
+            final SocketGroup group, final long windowStart) throws FileSystemException {
+        final FtpsConnectionFactory factory = new FtpsConnectionFactory(FtpsFileSystemConfigBuilder.getInstance());
+        return factory.createConnection(hostname, port, username, password, workingDirectory, fileSystemOptions,
+                null, null, null, null, null, null, group, windowStart);
     }
 
     private FtpsClientFactory() {

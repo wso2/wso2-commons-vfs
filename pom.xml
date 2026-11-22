@@ -37,6 +37,7 @@
     <module>commons-vfs2-bom</module>
     <module>commons-vfs2-distribution</module>
     <module>commons-vfs2-sandbox</module>
+    <module>commons-vfs2-shared</module>
   </modules>
 
   <issueManagement>
@@ -389,7 +390,7 @@
       <dependency>
         <groupId>commons-net</groupId>
         <artifactId>commons-net</artifactId>
-        <version>3.11.1</version>
+        <version>3.9.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -430,6 +431,11 @@
         <groupId>com.github.mwiede</groupId>
         <artifactId>jsch</artifactId>
         <version>2.27.7</version>
+      </dependency>
+      <dependency>
+        <groupId>com.hierynomus</groupId>
+        <artifactId>smbj</artifactId>
+        <version>0.14.0</version>
       </dependency>
       <dependency>
         <groupId>jcifs</groupId>
@@ -614,6 +620,47 @@
       <modules>
         <module>commons-vfs2-sandbox</module>
       </modules>
+    </profile>
+
+    <!-- Runs the tests on the smbj, JSch and commons net jars of a WSO2 Integrator: MI pack in place of the jars
+         from Maven. Set pack.plugins to the wso2/components/plugins folder of the pack. The jar names are the ones
+         of the 4.6.0 pack. -->
+    <profile>
+      <id>pack-libraries</id>
+      <activation>
+        <property>
+          <name>pack.plugins</name>
+        </property>
+      </activation>
+      <properties>
+        <pack.smbj.jar>smbj_0.14.0.wso2v2.jar</pack.smbj.jar>
+        <pack.jsch.jar>jsch_2.27.7.wso2v1.jar</pack.jsch.jar>
+        <pack.commons-net.jar>commons-net_3.9.0.wso2v1.jar</pack.commons-net.jar>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <classpathDependencyExcludes>
+                <classpathDependencyExclude>com.hierynomus:smbj</classpathDependencyExclude>
+                <classpathDependencyExclude>com.hierynomus:asn-one</classpathDependencyExclude>
+                <classpathDependencyExclude>com.github.mwiede:jsch</classpathDependencyExclude>
+                <classpathDependencyExclude>commons-net:commons-net</classpathDependencyExclude>
+              </classpathDependencyExcludes>
+              <additionalClasspathElements>
+                <additionalClasspathElement>${pack.plugins}/${pack.smbj.jar}</additionalClasspathElement>
+                <additionalClasspathElement>${pack.plugins}/${pack.jsch.jar}</additionalClasspathElement>
+                <additionalClasspathElement>${pack.plugins}/${pack.commons-net.jar}</additionalClasspathElement>
+              </additionalClasspathElements>
+              <systemPropertyVariables>
+                <pack.plugins>${pack.plugins}</pack.plugins>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
 
     <profile>

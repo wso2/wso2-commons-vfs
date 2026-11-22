@@ -23,14 +23,17 @@ import org.wso2.org.apache.commons.vfs2.FileSystemConfigBuilder;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.wso2.org.apache.commons.vfs2.provider.URLFileName;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.StringTokenizer;
+import java.util.function.Supplier;
 
 /**
  * A provider for FTP file systems.
@@ -83,17 +86,17 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
         // Create the file system
         final GenericFileName rootName = (GenericFileName) name;
 
+        // The values of the URI go into a private copy. The options of the caller stay as they were passed, and they
+        // stay the key of the file system in the cache.
+        final FileSystemOptions opts = fileSystemOptions == null ? new FileSystemOptions()
+                : (FileSystemOptions) fileSystemOptions.clone();
         FtpFileSystemConfigBuilder builder = FtpFileSystemConfigBuilder.getInstance();
         if (this.defaultTimeout != null && (this.defaultTimeout > 0)) {
-            builder.setConnectTimeout(fileSystemOptions, this.defaultTimeout);
-            builder.setSoTimeout(fileSystemOptions, this.defaultTimeout);
+            builder.setConnectTimeout(opts, this.defaultTimeout);
+            builder.setSoTimeout(opts, this.defaultTimeout);
         }
 
         String queryString = ((URLFileName)(rootName)).getQueryString();
-        FileSystemOptions opts = fileSystemOptions;
-        if (opts == null) {
-            opts = new FileSystemOptions();
-        }
         if (queryString != null && !queryString.isEmpty()) {
             FtpFileSystemConfigBuilder cfgBuilder = FtpFileSystemConfigBuilder.getInstance();
             StringTokenizer st = new StringTokenizer(queryString, "?&!=");
@@ -105,12 +108,22 @@ public class FtpFileProvider extends AbstractOriginatingFileProvider {
             }
         }
 
-        final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts);
+        final FTPClientWrapper ftpClient = new FTPClientWrapper(rootName, opts, getSocketGroups(), windowStart);
         /*
          * FTPClient ftpClient = FtpClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
          * rootName.getUserName(), rootName.getPassword(), rootName.getPath(), fileSystemOptions);
          */
-        return new FtpFileSystem(rootName, ftpClient, fileSystemOptions);
+        return new FtpFileSystem(rootName, ftpClient, fileSystemOptions, opts);
+    }
+
+    /**
+     * Gets the source of the socket groups of new clients. The manager keeps each group, so an abort of the manager
+     * reaches every socket of the clients.
+     *
+     * @return the source.
+     */
+    protected Supplier<SocketGroup> getSocketGroups() {
+        return ((DefaultFileSystemManager) getContext().getFileSystemManager())::newSocketGroup;
     }
 
     @Override

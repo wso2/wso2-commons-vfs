@@ -249,6 +249,27 @@ public final class FtpsFileSystemConfigBuilder extends FtpFileSystemConfigBuilde
     }
 
     /**
+     * Tells whether the options hold a key manager that was set in code.
+     *
+     * @param opts The FileSystemOptions.
+     * @return true when the option is present.
+     */
+    public boolean isKeyManagerSet(final FileSystemOptions opts) {
+        return hasParam(opts, KEY_MANAGER);
+    }
+
+    /**
+     * Tells whether the options hold a trust manager that was set in code. {@link #getTrustManager(FileSystemOptions)}
+     * gives a default when it is not set, so its answer is no proof.
+     *
+     * @param opts The FileSystemOptions.
+     * @return true when the option is present.
+     */
+    public boolean isTrustManagerSet(final FileSystemOptions opts) {
+        return hasParam(opts, TRUST_MANAGER);
+    }
+
+    /**
      * Gets the TrustManager that validates the FTPS server's certificate.
      * <p>
      * If the params do not contain the key for the trust manager, it will return a trust manger that simply checks this

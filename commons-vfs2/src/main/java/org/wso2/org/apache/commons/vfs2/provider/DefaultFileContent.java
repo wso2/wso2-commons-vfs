@@ -816,8 +816,8 @@ public final class DefaultFileContent implements FileContent {
      */
     @Override
     public long write(final FileContent fileContent) throws IOException {
-        try (OutputStream output = fileContent.getOutputStream()) {
-            return write(output);
+        try (InputStream input = getInputStream(); OutputStream output = fileContent.getOutputStream()) {
+            return copy(input, output, WRITE_BUFFER_SIZE);
         }
     }
 
@@ -858,19 +858,19 @@ public final class DefaultFileContent implements FileContent {
      */
     @Override
     public long write(final OutputStream output, final int bufferSize) throws IOException {
-        final InputStream input = getInputStream();
-        long count = 0;
-        try {
-            // This read/write code from Apache Commons IO
-            final byte[] buffer = new byte[bufferSize];
-            int n;
-            while (-1 != (n = input.read(buffer))) {
-                output.write(buffer, 0, n);
-                count += n;
-            }
-        } finally {
-            input.close();
+        try (InputStream input = getInputStream()) {
+            return copy(input, output, bufferSize);
         }
-        return count;
+    }
+
+    private static long copy(final InputStream input, final OutputStream output, final int bufferSize) throws IOException {
+        final byte[] buffer = new byte[bufferSize];
+        long total = 0;
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            output.write(buffer, 0, count);
+            total += count;
+        }
+        return total;
     }
 }

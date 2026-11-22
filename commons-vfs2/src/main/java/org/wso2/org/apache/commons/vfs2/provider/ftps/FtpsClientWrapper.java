@@ -16,6 +16,8 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider.ftps;
 
+import java.util.function.Supplier;
+
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPSClient;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
@@ -23,6 +25,7 @@ import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FTPClientWrapper;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 import org.wso2.org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 
 /**
@@ -37,19 +40,19 @@ import org.wso2.org.apache.commons.vfs2.util.UserAuthenticatorUtils;
 final class FtpsClientWrapper extends FTPClientWrapper {
 
 //    private FTPSClient ftpsClient;
-    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions) throws
-            FileSystemException {
-        super(root, fileSystemOptions);
+    FtpsClientWrapper(final GenericFileName root, final FileSystemOptions fileSystemOptions,
+            final Supplier<SocketGroup> socketGroups) throws FileSystemException {
+        super(root, fileSystemOptions, socketGroups);
     }
 
     @Override
-    protected FTPClient createClient(final GenericFileName rootName, final UserAuthenticationData authData)
-            throws FileSystemException {
+    protected FTPClient createClient(final GenericFileName rootName, final UserAuthenticationData authData,
+            final SocketGroup socketGroup, final long windowStart) throws FileSystemException {
         return FtpsClientFactory.createConnection(rootName.getHostName(), rootName.getPort(),
                 UserAuthenticatorUtils.getData(authData, UserAuthenticationData.USERNAME,
                         UserAuthenticatorUtils.toChar(rootName.getUserName())),
                 UserAuthenticatorUtils.getData(authData, UserAuthenticationData.PASSWORD,
                         UserAuthenticatorUtils.toChar(rootName.getPassword())),
-                rootName.getPath(), getFileSystemOptions());
+                rootName.getPath(), getFileSystemOptions(), socketGroup, windowStart);
     }
 }

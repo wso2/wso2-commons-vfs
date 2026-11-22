@@ -27,7 +27,7 @@ import org.wso2.org.apache.commons.vfs2.util.CryptorFactory;
 /**
  * Implementation for any URL based file system.
  * <p>
- * Parses the URL into user/password/host/port/path. Does not handle a query string (after ?).
+ * Parses the URL into user/password/host/port/path. Retains an optional query separately from the path.
  * </p>
  *
  * @see URLFileNameParser URLFileNameParser for the implementation which also handles the query string too.
@@ -381,6 +381,11 @@ public class HostFileNameParser extends AbstractFileNameParser {
     }
 
     @Override
+    public boolean encodeCharacter(final char ch) {
+        return ch == '?' || super.encodeCharacter(ch);
+    }
+
+    @Override
     public FileName parseUri(final VfsComponentContext context, final FileName base, final String fileName)
             throws FileSystemException {
         // FTP URI are generic URI (as per RFC 2396)
@@ -388,6 +393,10 @@ public class HostFileNameParser extends AbstractFileNameParser {
 
         // Extract the scheme and authority parts
         final Authority auth = extractToPath(context, fileName, name);
+        String query = UriParser.extractQueryString(name);
+        if (query == null && base instanceof URLFileName) {
+            query = ((URLFileName) base).getQueryString();
+        }
 
         // Decode and normalize the file name
         UriParser.canonicalizePath(name, 0, name.length(), this);
@@ -395,6 +404,10 @@ public class HostFileNameParser extends AbstractFileNameParser {
         final FileType fileType = UriParser.normalisePath(name);
         final String path = name.toString();
 
+        if (query != null) {
+            return new URLFileName(auth.scheme, auth.hostName, auth.port, defaultPort, auth.userName, auth.password,
+                    path, fileType, query);
+        }
         return new GenericFileName(auth.scheme, auth.hostName, auth.port, defaultPort, auth.userName, auth.password,
                 path, fileType);
     }

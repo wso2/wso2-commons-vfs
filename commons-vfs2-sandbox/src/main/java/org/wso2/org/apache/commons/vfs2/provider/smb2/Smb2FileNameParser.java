@@ -20,7 +20,9 @@ package org.wso2.org.apache.commons.vfs2.provider.smb2;
 
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.wso2.org.apache.commons.vfs2.provider.HostFileNameParser;
+import org.wso2.org.apache.commons.vfs2.provider.URLFileName;
 import org.wso2.org.apache.commons.vfs2.provider.UriParser;
 import org.wso2.org.apache.commons.vfs2.provider.VfsComponentContext;
 
@@ -90,35 +92,35 @@ public class Smb2FileNameParser extends HostFileNameParser {
     @Override
     public FileName parseUri(final VfsComponentContext context, final FileName base, final String uri) throws FileSystemException {
 
-        FileName parsedFileName = super.parseUri(context, base, uri);
-        String share;
-        if (base == null) {
-            share = extractShareName(parseURIString(parsedFileName.toString()));
+        final GenericFileName parsed = (GenericFileName) super.parseUri(context, base, uri);
+        String path = parsed.getPath();
+        final String share;
+        String query = parsed instanceof URLFileName ? ((URLFileName) parsed).getQueryString() : null;
+        if (base instanceof Smb2FileName) {
+            final Smb2FileName parent = (Smb2FileName) base;
+            share = parent.getShareName();
+            if (query == null) {
+                query = parent.getQueryString();
+            }
         } else {
-            share = extractShareName(parseURIString(base.toString()));
+            final String sharePath = base == null ? path : base.getPath();
+            final String first = sharePath.startsWith("/") ? sharePath.substring(1) : sharePath;
+            final int separator = first.indexOf('/');
+            share = separator < 0 ? first : first.substring(0, separator);
+            if (share.isEmpty()) {
+                throw new FileSystemException("vfs.provider.smb2/missing-share-name.error", parsed.getFriendlyURI());
+            }
         }
-
-        StringBuilder sb = new StringBuilder();
-        Authority auth = extractToPath(parsedFileName.toString(), sb);
-
-        String path;
-
-        if (sb.length() == 0 || (sb.length() == 1 && sb.charAt(0) == '/')) {
-            //this must point to the share root
+        if (path.isEmpty() || "/".equals(path)) {
             path = "/" + share;
-        } else {
-            path = parsedFileName.getPath();
         }
-
-        String relPathFromShare;
         try {
-            relPathFromShare = removeShareFromAbsPath(path, share);
+            path = removeShareFromAbsPath(path, share);
         } catch (Exception e) {
-            throw new FileSystemException("vfs.provider.smb2/share-path-extraction.error", path, e.getCause());
+            throw new FileSystemException("vfs.provider.smb2/share-path-extraction.error", path, e);
         }
-
-        return new Smb2FileName(auth.getScheme(), auth.getHostName(), auth.getPort(), PORT,
-                auth.getUserName(), auth.getPassword(), relPathFromShare, parsedFileName.getType(), share);
+        return new Smb2FileName(parsed.getScheme(), parsed.getHostName(), parsed.getPort(), PORT,
+                parsed.getUserName(), parsed.getPassword(), path, parsed.getType(), share, query);
     }
 
     /**

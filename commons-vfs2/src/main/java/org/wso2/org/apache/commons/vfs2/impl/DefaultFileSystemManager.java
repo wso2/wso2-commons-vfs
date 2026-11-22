@@ -30,9 +30,13 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
@@ -56,6 +60,7 @@ import org.wso2.org.apache.commons.vfs2.cache.SoftRefFilesCache;
 import org.wso2.org.apache.commons.vfs2.operations.FileOperationProvider;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileSystem;
 import org.wso2.org.apache.commons.vfs2.provider.DefaultURLStreamHandler;
 import org.wso2.org.apache.commons.vfs2.provider.FileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.FileReplicator;
@@ -67,6 +72,7 @@ import org.wso2.org.apache.commons.vfs2.provider.VfsComponent;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpConstants;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 /**
  * The default file system manager implementation.
@@ -189,6 +195,31 @@ public class DefaultFileSystemManager implements FileSystemManager {
      */
     private final static String PERMISSION_CHECK = "transport.vfs.AvoidPermissionCheck";
 
+    private static final String ABORT_ALL_REASON = "The file system manager was aborted";
+
+    private static final AbstractFileProvider[] NO_PROVIDERS = {};
+
+    /**
+     * The socket groups of the clients of this manager that hold a socket, a listening socket or a child group. A
+     * group is here from its first socket on, before that socket connects, until it holds nothing. An aborted group
+     * stays until its last socket is closed.
+     */
+    private final ConcurrentHashMap<SocketGroup, Boolean> socketGroups = new ConcurrentHashMap<>();
+
+    /**
+     * Set by {@link #abortAll()}. A group that is made or filled after it is aborted at once.
+     */
+    private volatile boolean aborted;
+
+    /**
+     * Each provider of this manager that caches file systems, once, also when it serves several schemes or is the
+     * default provider. The array never changes. A new array takes its place, so a reader needs no monitor.
+     */
+    private volatile AbstractFileProvider[] cachingProviders = NO_PROVIDERS;
+
+    // A test holds a thread here, between a change of a group and the update of the map.
+    volatile Runnable beforeTrack;
+
 
     /**
      * Constructs a new instance.
@@ -206,6 +237,14 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @param fileSystem The FileSystem to close.
      */
     public void _closeFileSystem(final FileSystem fileSystem) {
+        // The provider that cached the file system closes it. The scheme does not tell that provider. A default
+        // provider serves a scheme of another provider and a scheme that has no provider.
+        final AbstractFileProvider owner = fileSystem instanceof AbstractFileSystem
+                ? ((AbstractFileSystem) fileSystem).getOwner() : null;
+        if (owner != null) {
+            owner.closeFileSystem(fileSystem);
+            return;
+        }
         final FileProvider provider = providers.get(fileSystem.getRootName().getScheme());
         if (provider != null) {
             ((AbstractFileProvider) provider).closeFileSystem(fileSystem);
@@ -311,6 +350,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
 
         // Add to map
         Arrays.stream(urlSchemes).forEach(scheme -> providers.put(scheme, provider));
+        publishCachingProviders();
 
         if (provider instanceof LocalFileProvider && localFileProvider == null) {
             localFileProvider = (LocalFileProvider) provider;
@@ -407,6 +447,8 @@ public class DefaultFileSystemManager implements FileSystemManager {
         fileCacheStrategy = null;
         fileContentInfoFactory = null;
 
+        publishCachingProviders();
+
         init = false;
     }
 
@@ -439,6 +481,152 @@ public class DefaultFileSystemManager implements FileSystemManager {
 
         // just in case the cache didn't call _closeFileSystem
         _closeFileSystem(fileSystem);
+    }
+
+    /**
+     * Makes the socket group of one client of this manager and keeps it, so that {@link #abortAll()} reaches every
+     * socket of that client, also one that is still in its connect.
+     *
+     * @return a new group. It is already aborted when {@link #abortAll()} was called before.
+     */
+    public SocketGroup newSocketGroup() {
+        final SocketGroup group = new SocketGroup() {
+            @Override
+            protected void changed() {
+                track(this);
+            }
+        };
+        // A group with no socket is not kept. Its first socket brings it into the map before that socket connects.
+        if (aborted) {
+            group.abort(ABORT_ALL_REASON);
+        }
+        return group;
+    }
+
+    // Runs after every change of a group, on the thread that made the change.
+    private void track(final SocketGroup group) {
+        final Runnable pause = beforeTrack;
+        if (pause != null) {
+            pause.run();
+        }
+        // The map decides inside one update of this key, on what the group holds at that moment. Two updates of one
+        // key never overlap, and every change is followed by one. So no late update can drop a group that holds a
+        // socket, and none can keep an empty one. The update closes nothing.
+        socketGroups.compute(group, (key, kept) -> key.isEmpty() ? null : Boolean.TRUE);
+        // The flag is read after the update. So an abort at the same moment aborts the group here or in its own walk.
+        if (aborted && !group.isAborted()) {
+            group.abort(ABORT_ALL_REASON);
+        }
+    }
+
+    // For the tests of this package.
+    int socketGroupCount() {
+        return socketGroups.size();
+    }
+
+    /**
+     * Closes every raw socket of this manager: of an idle client, of a client that a call or an open stream holds, and
+     * one that is still in its connect. A thread that is blocked on one of them fails at once on its own thread.
+     * <p>
+     * It sends no command and waits for no reply. It takes no monitor of the manager, of a provider, of a file system
+     * or of the files cache, so any thread may call it and it never blocks. It is safe a second time and next to a
+     * {@link #close()}. The manager takes no new connection after it and is not used again. {@link #close()} is not
+     * part of it. The thread that owns the manager calls that.
+     * </p>
+     */
+    public void abortAll() {
+        aborted = true;
+        // Also a group that another thread is aborting right now. Its open sockets are closed here before the return.
+        for (final SocketGroup group : socketGroups.keySet()) {
+            group.abort(ABORT_ALL_REASON);
+        }
+    }
+
+    /**
+     * Tells from local state whether this manager looks alive. It answers false after {@link #abortAll()}, with no
+     * further step. Else it answers true when every cached file system answers true, and for a manager with no file
+     * system. It makes no remote call and takes no monitor, so any thread may call it.
+     *
+     * @return false after an abort or when a cached file system is not alive by local state.
+     */
+    public boolean isAliveLocally() {
+        if (aborted) {
+            return false;
+        }
+        for (final AbstractFileSystem fileSystem : cachedFileSystems()) {
+            if (!fileSystem.isAliveLocally()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Gets the number of clients that the cached file systems have handed out and not got back. It makes no remote
+     * call and takes no monitor.
+     *
+     * @return the sum over the cached file systems.
+     */
+    public int getHandedOutCount() {
+        int count = 0;
+        for (final AbstractFileSystem fileSystem : cachedFileSystems()) {
+            count += fileSystem.getHandedOutCount();
+        }
+        return count;
+    }
+
+    /**
+     * Gets the number of connections that the cached file systems hold open. It makes no remote call and takes no
+     * monitor.
+     *
+     * @return the sum over the cached file systems.
+     */
+    public int getOpenClientCount() {
+        int count = 0;
+        for (final AbstractFileSystem fileSystem : cachedFileSystems()) {
+            count += fileSystem.getOpenClientCount();
+        }
+        return count;
+    }
+
+    // Each cached file system once, from the lists that the providers published last.
+    private Set<AbstractFileSystem> cachedFileSystems() {
+        final Set<AbstractFileSystem> fileSystems = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (final AbstractFileProvider provider : cachingProviders) {
+            fileSystems.addAll(provider.getCachedFileSystems());
+        }
+        return fileSystems;
+    }
+
+    // Called by the thread that changes the providers, after the change.
+    private void publishCachingProviders() {
+        final Set<AbstractFileProvider> distinct = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (final FileProvider provider : providers.values()) {
+            if (provider instanceof AbstractFileProvider) {
+                distinct.add((AbstractFileProvider) provider);
+            }
+        }
+        if (defaultProvider instanceof AbstractFileProvider) {
+            distinct.add((AbstractFileProvider) defaultProvider);
+        }
+        cachingProviders = distinct.toArray(NO_PROVIDERS);
+    }
+
+    /**
+     * Closes the raw sockets of a file system and then closes it, so that no close step waits on a server.
+     * <p>
+     * The close takes the monitor of the file system. So only the thread that owns the manager calls this.
+     * </p>
+     * <p>
+     * The file system is closed in the provider that cached it, and it leaves that cache. A file system that took
+     * its place in the cache is not touched. A second call for the same file system is safe.
+     * </p>
+     *
+     * @param fileSystem The FileSystem to abort and close.
+     */
+    public void abortAndCloseFileSystem(final FileSystem fileSystem) {
+        ((AbstractFileSystem) fileSystem).abort();
+        closeFileSystem(fileSystem);
     }
 
     /**
@@ -742,6 +930,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
         if (provider != null && !providers.containsValue(provider)) {
             closeComponent(provider);
         }
+        publishCachingProviders();
     }
 
     /**
@@ -829,18 +1018,17 @@ public class DefaultFileSystemManager implements FileSystemManager {
                 }
 
                 String timeoutStr = queryParam.get(SftpConstants.TIMEOUT);
-                Integer timeout = null;
-                if (timeoutStr != null && builder.getTimeout(fileSystemOptions) == null) {
+                if (timeoutStr != null && !builder.isSessionTimeoutSet(fileSystemOptions)) {
                     try {
-                        timeout = Integer.parseInt(timeoutStr);
+                        int timeout = Integer.parseInt(timeoutStr);
+                        builder.setSessionTimeout(fileSystemOptions, Duration.ofMillis(timeout));
                     } catch (NumberFormatException e) {
                         log.warn("Invalid timeout " + timeoutStr + " specified in FileURI.");
                     }
-                    builder.setTimeout(fileSystemOptions, timeout);
                 }
 
                 String connectTimeoutStr = queryParam.get(SftpConstants.CONNECT_TIMEOUT);
-                if (connectTimeoutStr != null && Duration.ZERO.equals(builder.getConnectTimeout(fileSystemOptions))) {
+                if (connectTimeoutStr != null && !builder.isConnectTimeoutSet(fileSystemOptions)) {
                     try {
                         int connectTimeout = Integer.parseInt(connectTimeoutStr);
                         builder.setConnectTimeout(fileSystemOptions, Duration.ofMillis(connectTimeout));
@@ -1185,6 +1373,7 @@ public class DefaultFileSystemManager implements FileSystemManager {
     public void setDefaultProvider(final FileProvider provider) throws FileSystemException {
         setupComponent(provider);
         defaultProvider = provider;
+        publishCachingProviders();
     }
 
     /**

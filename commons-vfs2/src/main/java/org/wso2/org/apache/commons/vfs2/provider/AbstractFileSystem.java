@@ -93,6 +93,9 @@ public abstract class AbstractFileSystem extends AbstractVfsComponent implements
 
     private FileSystemKey cacheKey;
 
+    // The provider that cached this file system. It stays after the close, so a second close finds it again.
+    private volatile AbstractFileProvider owner;
+
     /**
      * open streams counter for this file system
      */
@@ -122,6 +125,54 @@ public abstract class AbstractFileSystem extends AbstractVfsComponent implements
             uri = rootName != null ? rootName.getURI() : null;
         }
         this.rootURI = uri;
+    }
+
+    /**
+     * Closes the raw sockets of every client that this file system has handed out. It sends no command, waits for no
+     * reply and takes no monitor, so any thread may call it, also while another thread is inside a call on this file
+     * system. This base method does nothing, which is right for a file system with no socket.
+     */
+    public void abort() {
+        // No socket to close.
+    }
+
+    /**
+     * Tells from local state whether the connections of this file system look alive. It makes no remote call. A
+     * connection that is half open still looks alive.
+     *
+     * @return true when no connection is known to be closed or aborted. This base method answers true.
+     */
+    public boolean isAliveLocally() {
+        return true;
+    }
+
+    /**
+     * Gets the timeouts that the fork enforces for this file system. It is the answer of
+     * {@link EffectiveBounds#of(String, FileSystemOptions)} for the scheme and the options of this file system. It reads
+     * no socket and makes no remote call, so any thread may call it.
+     *
+     * @return the bounds in effect.
+     */
+    public EffectiveBounds getEffectiveBounds() {
+        return EffectiveBounds.of(getRootName().getScheme(), getFileSystemOptions());
+    }
+
+    /**
+     * Gets the number of clients that this file system has handed out and not got back.
+     *
+     * @return the count. This base method answers zero.
+     */
+    public int getHandedOutCount() {
+        return 0;
+    }
+
+    /**
+     * Gets the number of connections that this file system holds open.
+     *
+     * @return the count. This base method answers zero.
+     */
+    public int getOpenClientCount() {
+        return 0;
     }
 
     /**
@@ -595,6 +646,21 @@ public abstract class AbstractFileSystem extends AbstractVfsComponent implements
 
     void setCacheKey(final FileSystemKey cacheKey) {
         this.cacheKey = cacheKey;
+    }
+
+    void setOwner(final AbstractFileProvider owner) {
+        this.owner = owner;
+    }
+
+    /**
+     * Gets the provider that cached this file system. The manager closes a file system in that provider, because
+     * the scheme of the name does not tell it: a default provider serves a scheme of another provider, and a scheme
+     * that has no provider.
+     *
+     * @return the provider, or null for a file system that no provider cached.
+     */
+    public AbstractFileProvider getOwner() {
+        return owner;
     }
 
     void streamClosed() {

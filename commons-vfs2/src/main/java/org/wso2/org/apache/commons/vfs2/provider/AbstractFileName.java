@@ -41,6 +41,8 @@ public abstract class AbstractFileName implements FileName {
     // ? is a reserved filesystem character for Windows and Unix, so can't be part of a file name.
     // Therefore only # is a reserved char in a URI as part of the path that can be in the file name.
     private static final char[] RESERVED_URI_CHARS = {'#', ' '};
+    private static final char[] SFTP_URI_CHARS = {'#', ' ', '?', '\\'};
+    private static final char[] FTP_URI_CHARS = {'#', ' ', '?'};
 
     /**
      * Checks whether a path fits in a particular scope of another path.
@@ -448,7 +450,15 @@ public abstract class AbstractFileName implements FileName {
                 // Decode the base URI and re-encode with URI special characters
                 uri = UriParser.decode(uri);
 
-                return UriParser.encode(uri, RESERVED_URI_CHARS);
+                switch (getScheme()) {
+                case "sftp":
+                    return UriParser.encode(uri, SFTP_URI_CHARS);
+                case "ftp":
+                case "ftps":
+                    return UriParser.encode(uri, FTP_URI_CHARS);
+                default:
+                    return UriParser.encode(uri, RESERVED_URI_CHARS);
+                }
             } catch (final FileSystemException ignore) { // NOPMD
                 // Default to base URI value?
             }

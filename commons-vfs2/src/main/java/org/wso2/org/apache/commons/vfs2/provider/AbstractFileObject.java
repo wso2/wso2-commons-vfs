@@ -36,6 +36,8 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.function.Uncheck;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.wso2.org.apache.commons.vfs2.Capability;
 import org.wso2.org.apache.commons.vfs2.FileContent;
 import org.wso2.org.apache.commons.vfs2.FileContentInfoFactory;
@@ -54,6 +56,7 @@ import org.wso2.org.apache.commons.vfs2.operations.DefaultFileOperations;
 import org.wso2.org.apache.commons.vfs2.operations.FileOperations;
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
+import org.wso2.org.apache.commons.vfs2.util.TestPoints;
 
 /**
  * A partial file object implementation.
@@ -74,6 +77,8 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
      * Same as {@link BufferedInputStream}.
      */
     public static final int DEFAULT_BUFFER_SIZE = 8192;
+
+    private static final Log LOG = LogFactory.getLog(AbstractFileObject.class);
 
     private static final int INITIAL_LIST_SIZE = 5;
     private static final String DO_GET_INPUT_STREAM_INT = "doGetInputStream(int)";
@@ -481,16 +486,25 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
              * VFS-210 if (getType() == FileType.IMAGINARY) { // File does not exist return false; }
              */
 
+            boolean confirmed = false;
             try {
                 // Delete the file
                 doDelete();
+                confirmed = true;
 
                 // Update cached info
                 handleDelete();
             } catch (final RuntimeException re) {
+                if (confirmed) {
+                    re.addSuppressed(new ConfirmedRemoval(this));
+                }
                 throw re;
             } catch (final Exception exc) {
-                throw new FileSystemException("vfs.provider/delete.error", exc, fileName);
+                final FileSystemException failure = new FileSystemException("vfs.provider/delete.error", exc, fileName);
+                if (confirmed) {
+                    failure.addSuppressed(new ConfirmedRemoval(this));
+                }
+                throw failure;
             }
 
             return true;
@@ -1707,54 +1721,430 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
      */
     @Override
     public void moveTo(final FileObject destFile) throws FileSystemException {
-        if (canRenameTo(destFile)) {
-            if (!getParent().isWriteable()) {
-                throw new FileSystemException("vfs.provider/rename-parent-read-only.error", getName(),
-                        getParent().getName());
+        new Move(destFile, new MoveOptions(true, null, null, null, null), true).run();
+    }
+
+    public void moveTo(final FileObject target, final FileObject tempFile) throws FileSystemException {
+        moveTo(target, new MoveOptions(true, tempFile, null, null, null));
+    }
+
+    public void moveTo(final FileObject target, final MoveOptions options) throws FileSystemException {
+        new Move(target, options, false).run();
+    }
+
+    private static final class ConfirmedRemoval extends Exception {
+        private static final long serialVersionUID = 1L;
+        private final transient FileObject entry;
+
+        ConfirmedRemoval(final FileObject entry) {
+            super("The provider confirmed removal before the notification failed", null, false, false);
+            this.entry = entry;
+        }
+    }
+
+    static boolean confirmedRemoval(final Throwable failure, final FileObject target) throws FileSystemException {
+        for (final Throwable detail : failure.getSuppressed()) {
+            if (detail instanceof ConfirmedRemoval
+                    && ((ConfirmedRemoval) detail).entry == FileObjectUtils.getAbstractFileObject(target)) {
+                return true;
             }
-        } else if (!isWriteable()) {
-            throw new FileSystemException("vfs.provider/rename-read-only.error", getName());
+        }
+        return false;
+    }
+
+    protected enum EntryRelation { SAME, DISTINCT, UNKNOWN }
+
+    protected EntryRelation entryRelation(final FileObject other) throws FileSystemException {
+        return isSameEntry(other) ? EntryRelation.SAME : EntryRelation.DISTINCT;
+    }
+
+    protected final EntryRelation remoteEntry(final FileObject other, final boolean caseUncertain,
+            final boolean sameSettings) throws FileSystemException {
+        final String path = getName().getPathDecoded();
+        final String otherPath = other.getName().getPathDecoded();
+        final boolean exact = path.equals(otherPath);
+        if (!exact && !(caseUncertain && path.equalsIgnoreCase(otherPath))) {
+            return EntryRelation.DISTINCT;
+        }
+        if (getFileSystem() == other.getFileSystem()) {
+            return exact ? EntryRelation.SAME : EntryRelation.UNKNOWN;
+        }
+        final FileName left = getFileSystem().getRootName();
+        final FileName right = other.getFileSystem().getRootName();
+        if (!(left instanceof GenericFileName) || !(right instanceof GenericFileName)
+                || !left.getScheme().equals(right.getScheme())) {
+            return EntryRelation.DISTINCT;
+        }
+        final GenericFileName first = (GenericFileName) left;
+        final GenericFileName second = (GenericFileName) right;
+        if (!NumericHost.same(first.getHostName(), second.getHostName()) || first.getPort() != second.getPort()
+                || !first.getPathDecoded().equals(second.getPathDecoded())) {
+            return EntryRelation.DISTINCT;
+        }
+        if (!Objects.equals(first.getUserName(), second.getUserName())) {
+            return EntryRelation.UNKNOWN;
+        }
+        return exact && sameSettings ? EntryRelation.SAME : EntryRelation.UNKNOWN;
+    }
+
+    /** FTP and SFTP start relative names at the login directory or at the server root selected by the provider. */
+    protected final EntryRelation workingDirectoryEntry(final FileObject other, final boolean loginRoot,
+            final boolean otherLoginRoot, final boolean sameSettings) throws FileSystemException {
+        final GenericFileName first = (GenericFileName) getFileSystem().getRootName();
+        final GenericFileName second = (GenericFileName) other.getFileSystem().getRootName();
+        if (!first.getScheme().equals(second.getScheme()) || first.getPort() != second.getPort()
+                || !NumericHost.same(first.getHostName(), second.getHostName())) {
+            return EntryRelation.DISTINCT;
+        }
+        final String left = workingPath(this, loginRoot);
+        final String right = workingPath(other, otherLoginRoot);
+        if (getFileSystem() == other.getFileSystem()
+                || (loginRoot == otherLoginRoot && sameSettings
+                        && Objects.equals(first.getUserName(), second.getUserName()))) {
+            return left.equals(right) ? EntryRelation.SAME : EntryRelation.DISTINCT;
+        }
+        // An unknown directory prefix can align only equal names or a suffix of complete path components.
+        if (left.equals("/") || right.equals("/") || left.endsWith(right) || right.endsWith(left)) {
+            return EntryRelation.UNKNOWN;
+        }
+        return EntryRelation.DISTINCT;
+    }
+
+    private static String workingPath(final FileObject file, final boolean loginRoot) throws FileSystemException {
+        String path = file.getName().getPathDecoded();
+        if (loginRoot) {
+            final String relative = file.getFileSystem().getRootName().getRelativeName(file.getName());
+            path = ".".equals(relative) ? "/" : "/" + UriParser.decode(relative);
+        }
+        return path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+    }
+
+    final FileType observedType() {
+        synchronized (fileSystem) {
+            return type;
+        }
+    }
+
+    protected boolean isOtherHardLink(final FileObject target) throws FileSystemException {
+        return false;
+    }
+
+    protected boolean isSameEntry(final FileObject other) throws FileSystemException {
+        return getFileSystem() == other.getFileSystem() && getName().getPath().equals(other.getName().getPath());
+    }
+
+    protected boolean isUnsafeTempFor(final FileObject source, final FileObject target) throws FileSystemException {
+        return entryRelation(source) != EntryRelation.DISTINCT || entryRelation(target) != EntryRelation.DISTINCT;
+    }
+
+    /** The state reported to the caller belongs to one attempt. */
+    private final class Move {
+        private final FileObject target;
+        private final MoveOptions options;
+        private final boolean legacy;
+        private final String sourceKey = CommitStep.pointKey(AbstractFileObject.this);
+        private MovePhase phase = MovePhase.RENAME;
+        private String tempPath;
+        private FileObject temp;
+        private boolean oldTargetDeleted;
+
+        Move(final FileObject target, final MoveOptions options, final boolean legacy) {
+            this.legacy = legacy;
+            this.target = target;
+            this.options = options;
+            temp = options.getTempFile();
         }
 
-        if (destFile.exists() && !isSameFile(destFile)) {
-            destFile.deleteAll();
-            // throw new FileSystemException("vfs.provider/rename-dest-exists.error", destFile.getName());
-        }
-
-        if (canRenameTo(destFile)) {
-            // issue rename on same filesystem
+        void run() throws FileSystemException {
             try {
-                attach();
-                // remember type to avoid attach
-                final FileType srcType = getType();
-
-                doRename(destFile);
-
-                FileObjectUtils.getAbstractFileObject(destFile).handleCreate(srcType);
-                destFile.close(); // now the destFile is no longer imaginary. force reattach.
-
-                handleDelete(); // fire delete-events. This file-object (src) is like deleted.
-            } catch (final RuntimeException re) {
-                throw re;
-            } catch (final Exception exc) {
-                throw new FileSystemException("vfs.provider/rename.error", exc, getName(), destFile.getName());
+                final boolean rename = canRenameTo(target);
+                phase = rename ? MovePhase.RENAME : MovePhase.COPY;
+                if (rename) {
+                    final FileObject parent = getParent();
+                    if (parent != null && !parent.isWriteable()) {
+                        throw new FileSystemException("vfs.provider/rename-parent-read-only.error", getName(),
+                                parent.getName());
+                    }
+                } else if (!isWriteable()) {
+                    throw new FileSystemException("vfs.provider/rename-read-only.error", getName());
+                }
+                final FileType type = getType();
+                final EntryRelation relation = entryRelation(target);
+                if (relation == EntryRelation.SAME) {
+                    if (!AtomicOps.existsNow(AbstractFileObject.this)) {
+                        throw failed(new AtomicResult(AtomicOutcome.GONE, null));
+                    }
+                    if (!options.isReplaceExisting()) {
+                        throw failed(new AtomicResult(AtomicOutcome.EXISTS, null));
+                    }
+                    return;
+                }
+                if (!legacy && (AtomicOps.of(target) == null || (rename && AtomicOps.of(AbstractFileObject.this) == null))) {
+                    throw failed(new AtomicResult(AtomicOutcome.UNSUPPORTED, null));
+                }
+                if (temp != null && (temp.getFileSystem() != target.getFileSystem() || AtomicOps.of(temp) == null
+                        || FileObjectUtils.getAbstractFileObject(temp).isUnsafeTempFor(AbstractFileObject.this, target))) {
+                    throw failed(new AtomicResult(AtomicOutcome.REFUSED, "Invalid temp file"));
+                }
+                if (rename && options.isReplaceExisting() && type == FileType.FILE && isOtherHardLink(target)) {
+                    deleteSource(type, true);
+                    return;
+                }
+                if (rename && rename(type, relation)) {
+                    return;
+                }
+                phase = MovePhase.COPY;
+                if (relation == EntryRelation.UNKNOWN) {
+                    throw failed(new AtomicResult(AtomicOutcome.REFUSED, "Cannot distinguish overlapping entries"));
+                }
+                if (legacy && AtomicOps.of(target) == null) {
+                    target.copyFrom(AbstractFileObject.this, Selectors.SELECT_SELF);
+                    if (target.getUpdateLastModified() && fileSystem.hasCapability(Capability.GET_LAST_MODIFIED)
+                            && target.getFileSystem().hasCapability(type == FileType.FOLDER
+                                    ? Capability.SET_LAST_MODIFIED_FOLDER : Capability.SET_LAST_MODIFIED_FILE)) {
+                        target.getContent().setLastModifiedTime(getContent().getLastModifiedTime());
+                    }
+                } else if (type == FileType.FOLDER) {
+                    if (!options.isReplaceExisting() && AtomicOps.existsNow(target)) {
+                        throw failed(new AtomicResult(AtomicOutcome.EXISTS, null));
+                    }
+                    target.createFolder();
+                    setCopiedTime(target, Capability.SET_LAST_MODIFIED_FOLDER);
+                } else {
+                    copy();
+                }
+                deleteSource(type, false);
+            } catch (final MoveFailedException e) {
+                throw e;
+            } catch (final Exception e) {
+                oldTargetDeleted |= confirmedRemoval(e, target);
+                final Fault fault = Faults.of(e);
+                if (fault == Fault.TRANSPORT) {
+                    throw CommitStep.unclear(e, phase, tempPath, oldTargetDeleted, "move", AbstractFileObject.this);
+                }
+                throw failure(e, fault, false, false);
             }
-        } else {
-            // different fs - do the copy/delete stuff
-
-            destFile.copyFrom(this, Selectors.SELECT_SELF);
-
-            if ((destFile.getType().hasContent()
-                    && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FILE)
-                    || destFile.getType().hasChildren()
-                            && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FOLDER))
-                    && fileSystem.hasCapability(Capability.GET_LAST_MODIFIED)) {
-                destFile.getContent().setLastModifiedTime(this.getContent().getLastModifiedTime());
-            }
-
-            deleteSelf();
         }
 
+        private boolean rename(final FileType type, final EntryRelation relation) throws Exception {
+            final AtomicOps ops = AtomicOps.of(AbstractFileObject.this);
+            TestPoints.hold("move.before-rename", sourceKey);
+            if (ops == null) {
+                if (!options.isReplaceExisting()) {
+                    throw failed(new AtomicResult(AtomicOutcome.UNSUPPORTED, null));
+                }
+                doRename(target);
+                events(type);
+                return true;
+            }
+            AtomicResult result;
+            if (options.isReplaceExisting()) {
+                result = CommitStep.replace(ops, tempFile(), target, options.commitOptions());
+                if (fallback(result)) {
+                    if (relation == EntryRelation.UNKNOWN) {
+                        return false;
+                    }
+                    if (AtomicOps.existsNow(target)) {
+                        if (!CommitStep.deleteObservedTarget(target)) {
+                            throw failed(new AtomicResult(AtomicOutcome.REFUSED, "Target delete returned false"));
+                        }
+                        oldTargetDeleted = true;
+                        TestPoints.hold("move.after-target-delete", sourceKey);
+                    }
+                    result = ops.takeAway(target);
+                } else if (result.getOutcome() == AtomicOutcome.DONE && !result.isConnectionLost()) {
+                    TestPoints.hold("move.after-rename-done", sourceKey);
+                }
+            } else {
+                if (type != FileType.FOLDER) {
+                    result = ops.linkExclusive(target, options.probeName(target, tempFile()));
+                    if (result.isConnectionLost()) {
+                        if (result.getOutcome() == AtomicOutcome.DONE) {
+                            throw lostAfterPublication(result);
+                        }
+                        throw failed(result);
+                    }
+                    if (result.getOutcome() == AtomicOutcome.DONE) {
+                        phase = MovePhase.DELETE_SOURCE;
+                        TestPoints.hold("move.after-link", sourceKey);
+                        deleteSource(type, true);
+                        return true;
+                    }
+                    if (!fallback(result)) {
+                        return finishRename(result, type);
+                    }
+                }
+                if (AtomicOps.existsNow(target)) {
+                    throw failed(new AtomicResult(AtomicOutcome.EXISTS, null));
+                }
+                TestPoints.hold("move.no-replace.after-look", sourceKey);
+                result = ops.takeAway(target);
+            }
+            return finishRename(result, type);
+        }
+
+        private boolean fallback(final AtomicResult result) {
+            return !result.isConnectionLost() && result.getOutcome() == AtomicOutcome.UNSUPPORTED;
+        }
+
+        private boolean finishRename(final AtomicResult result, final FileType type) throws MoveFailedException {
+            if (result.isConnectionLost()) {
+                throw failed(result);
+            }
+            switch (result.getOutcome()) {
+            case DONE:
+                events(type);
+                return true;
+            case REFUSED:
+                return false;
+            default:
+                throw failed(result);
+            }
+        }
+
+        private void events(final FileType type) {
+            try {
+                FileObjectUtils.getAbstractFileObject(target).handleCreate(type);
+                target.close();
+                handleDelete();
+            } catch (final Exception e) {
+                LOG.warn("Could not complete the file events after the move", e);
+            }
+        }
+
+        private FileObject tempFile() throws FileSystemException {
+            if (temp == null) {
+                temp = CommitStep.sibling(target, CommitStep.tempName(target.getName().getBaseName(), ".part"));
+            }
+            return temp;
+        }
+
+        private void setCopiedTime(final FileObject destination, final Capability capability) throws FileSystemException {
+            if (target.getUpdateLastModified() && target.getFileSystem().hasCapability(capability)
+                    && fileSystem.hasCapability(Capability.GET_LAST_MODIFIED)) {
+                final long time = getContent().getLastModifiedTime();
+                TestPoints.hold("move.before-time-set", sourceKey);
+                try {
+                    destination.getContent().setLastModifiedTime(time);
+                } catch (final FileSystemException e) {
+                    if (Faults.of(e) != Fault.APPLICATION) {
+                        throw e;
+                    }
+                    LOG.warn(capability == Capability.SET_LAST_MODIFIED_FOLDER
+                            ? "The server refused the modified time on the folder"
+                            : "The server refused the modified time on the temp file", e);
+                }
+            }
+        }
+
+        private void copy() throws Exception {
+            tempPath = tempFile().getName().getPath();
+            TestPoints.hold("move.before-copy", sourceKey);
+            try (InputStream input = getContent().getInputStream();
+                    OutputStream output = temp.getContent().getOutputStream()) {
+                final byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
+                long beforeHold = Long.MAX_VALUE;
+                if (TestPoints.enabled()) {
+                    final String bytes = TestPoints.arguments("move.copy.half", sourceKey).get("bytes");
+                    beforeHold = bytes == null ? 1024L * 1024 : Math.max(1L, Long.parseLong(bytes));
+                }
+                long written = 0;
+                int count;
+                while ((count = input.read(buffer, 0, (int) Math.min(buffer.length, beforeHold))) != -1) {
+                    output.write(buffer, 0, count);
+                    written += count;
+                    beforeHold -= count;
+                    if (beforeHold == 0) {
+                        output.flush();
+                        TestPoints.hold("move.copy.half", sourceKey, "bytes=" + written);
+                        beforeHold = Long.MAX_VALUE;
+                    }
+                }
+            }
+            setCopiedTime(temp, Capability.SET_LAST_MODIFIED_FILE);
+            phase = MovePhase.COMMIT;
+            TestPoints.hold("move.before-commit", sourceKey);
+            final CommitStep.Mode mode = options.isReplaceExisting() ? CommitStep.Mode.OVERWRITE : CommitStep.Mode.CREATE_NEW;
+            final CommitResult result;
+            try {
+                result = CommitStep.commit(temp, target, mode, options.commitOptions(), sourceKey);
+            } catch (final UnclearResultException e) {
+                phase = e.getPhase();
+                oldTargetDeleted |= e.isOldTargetDeleted();
+                throw e;
+            }
+            oldTargetDeleted |= result.isOldTargetDeleted();
+            if (result.getOutcome() != CommitResult.Outcome.COMMITTED || result.isConnectionLost()) {
+                if (result.getOutcome() == CommitResult.Outcome.COMMITTED) {
+                    throw lostAfterPublication(result.getAtomicResult());
+                }
+                final AtomicResult reply = result.getAtomicResult();
+                if (!reply.isConnectionLost()) {
+                    try {
+                        temp.delete();
+                    } catch (final FileSystemException e) {
+                        final MoveFailedException failure = failure(e, fault(reply),
+                                result.getOutcome() == CommitResult.Outcome.TARGET_EXISTS, Faults.of(e) == Fault.TRANSPORT);
+                        throw failure;
+                    }
+                }
+                throw failed(reply);
+            }
+        }
+
+        private UnclearResultException lostAfterPublication(final AtomicResult result) {
+            phase = MovePhase.DELETE_SOURCE;
+            return new UnclearResultException("vfs.provider/atomic-not-known.error", new IOException(result.toString()),
+                    phase, tempPath, oldTargetDeleted, "source delete", getName().getFriendlyURI());
+        }
+
+        private void deleteSource(final FileType type, final boolean linked) throws Exception {
+            phase = MovePhase.DELETE_SOURCE;
+            TestPoints.hold("move.before-source-delete", sourceKey);
+            try {
+                synchronized (fileSystem) {
+                    doDelete();
+                }
+            } catch (final Exception e) {
+                if (type != FileType.FILE || Faults.of(e) != Fault.MISSING) {
+                    throw e;
+                }
+            }
+            if (linked) {
+                events(type);
+                return;
+            }
+            try {
+                handleDelete();
+            } catch (final Exception e) {
+                LOG.warn("Could not complete the file events after the move", e);
+            }
+        }
+
+        private Fault fault(final AtomicResult result) {
+            if (result.getFault() != null) {
+                return result.getFault();
+            }
+            switch (result.getOutcome()) {
+            case GONE:
+                return Fault.MISSING;
+            case BUSY:
+                return Fault.BUSY;
+            default:
+                return Fault.APPLICATION;
+            }
+        }
+
+        private MoveFailedException failed(final AtomicResult result) {
+            return failure(new IOException(result.toString()), fault(result),
+                    !options.isReplaceExisting() && result.getOutcome() == AtomicOutcome.EXISTS, result.isConnectionLost());
+        }
+
+        private MoveFailedException failure(final Throwable cause, final Fault fault, final boolean exists,
+                final boolean lost) {
+            return new MoveFailedException(getName().getFriendlyURI(), target.getName().getFriendlyURI(), cause, fault,
+                    phase, tempPath, oldTargetDeleted, exists, lost);
+        }
     }
 
     /**
@@ -1824,6 +2214,30 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
             detach();
         } catch (final Exception e) {
             throw new FileSystemException("vfs.provider/resync.error", fileName, e);
+        }
+    }
+
+    final void detachAfterCommit() throws FileSystemException {
+        synchronized (fileSystem) {
+            final FileName parentName = getName().getParent();
+            final FileObject cached = parent != null || parentName == null ? parent : fileSystem.getFileFromCache(parentName);
+            if (cached != null) {
+                FileObjectUtils.getAbstractFileObject(cached).invalidateCommitCache();
+            }
+            invalidateCommitCache();
+        }
+    }
+
+    private void invalidateCommitCache() throws FileSystemException {
+        try {
+            if (attached) {
+                detach();
+            } else {
+                doDetach();
+                removeChildrenCache();
+            }
+        } catch (final Exception e) {
+            throw new FileSystemException("vfs.provider/close.error", e, getName());
         }
     }
 
