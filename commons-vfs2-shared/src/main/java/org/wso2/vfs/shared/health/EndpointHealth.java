@@ -446,7 +446,11 @@ public final class EndpointHealth {
         publishCounters();
         exportGauges();
         if (summary) {
-            writeLog(() -> log.debug("Health summary " + snapshot(current)));
+            writeLog(() -> {
+                if (log.isDebugEnabled()) {
+                    log.debug("Health summary " + snapshot(current));
+                }
+            });
         }
     }
 

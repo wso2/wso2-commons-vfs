@@ -42,6 +42,10 @@ public final class NamedLog {
         return new NamedLog(log, "connection", name, limiter);
     }
 
+    public boolean isDebugEnabled() {
+        return log.isDebugEnabled();
+    }
+
     public void debug(final String text) {
         if (log.isDebugEnabled()) {
             log.debug(lines(UriMask.mask(text)));
