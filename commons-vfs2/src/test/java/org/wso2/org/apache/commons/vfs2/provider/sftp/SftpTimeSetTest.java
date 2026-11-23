@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.jcraft.jsch.ChannelSftp;
@@ -81,5 +82,27 @@ public class SftpTimeSetTest {
         assertSame(refused, failure);
         assertEquals(Fault.APPLICATION, Faults.of(failure));
         assertSame(refused, releasedWith);
+    }
+
+    @Test
+    public void setsIndependentOwnerGroupAndOtherBits() throws Exception {
+        final SftpFileObject file = freshFile();
+        file.setPosixMode(0641);
+        verify(channel).chmod(0641, "note");
+        assertEquals(null, releasedWith);
+    }
+
+    @Test
+    public void permissionRepliesRetainTheirClassification() throws Exception {
+        final SftpFileObject file = freshFile();
+        final SftpException denied = new SftpException(ChannelSftp.SSH_FX_PERMISSION_DENIED, "refused");
+        final SftpException lost = new SftpException(ChannelSftp.SSH_FX_CONNECTION_LOST, "connection lost");
+        doThrow(denied, lost).when(channel).chmod(0640, "note");
+        final Exception first = assertThrows(java.io.IOException.class, () -> file.setPosixMode(0640));
+        assertEquals(Fault.APPLICATION, Faults.of(first));
+        assertSame(denied, releasedWith);
+        final Exception second = assertThrows(java.io.IOException.class, () -> file.setPosixMode(0640));
+        assertEquals(Fault.TRANSPORT, Faults.of(second));
+        assertSame(lost, releasedWith);
     }
 }

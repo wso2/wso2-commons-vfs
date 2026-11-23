@@ -713,6 +713,27 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         return true;
     }
 
+    /** Sets the requested POSIX mode using the file system's channel. */
+    public synchronized void setPosixMode(final int mode) throws IOException {
+        if (mode < 0 || mode > 07777) {
+            throw new IllegalArgumentException("Invalid POSIX mode");
+        }
+        final ChannelSftp channel = getAbstractFileSystem().getChannel();
+        Throwable failure = null;
+        try {
+            channel.chmod(mode, quote(relPath));
+            attrs = null;
+        } catch (final SftpException error) {
+            failure = error;
+            throw new FileSystemException(error);
+        } catch (final RuntimeException | Error error) {
+            failure = error;
+            throw error;
+        } finally {
+            release(channel, failure);
+        }
+    }
+
     private synchronized void flushStat() throws IOException, SftpException {
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         Throwable failure = null;
