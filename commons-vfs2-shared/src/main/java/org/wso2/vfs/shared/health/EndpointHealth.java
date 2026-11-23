@@ -250,6 +250,11 @@ public final class EndpointHealth {
                 ? new Poll(false, true, true, elapsedMillis.getAsLong(), old.outcome) : old);
     }
 
+    /** Finish a scheduled tick that did no source work, preserving the previous observation. */
+    public void pollSkipped() {
+        poll.updateAndGet(previous -> new Poll(false, true, false, elapsedMillis.getAsLong(), previous.outcome));
+    }
+
     public void pollFinished(final boolean rootReached, final Classification failure) {
         State outcome = State.OK;
         if (failure == null) {

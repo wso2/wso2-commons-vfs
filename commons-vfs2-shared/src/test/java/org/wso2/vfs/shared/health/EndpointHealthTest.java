@@ -93,6 +93,40 @@ class EndpointHealthTest {
     }
 
     @Test
+    void skippedTickTracksSchedulerProgressWithoutReplacingTheLastOutcome() {
+        EndpointHealth endpoint = health(10000);
+        endpoint.pollStarted();
+        clock.set(10);
+        endpoint.pollSkipped();
+        assertEquals(0L, endpoint.snapshot().get("lastSuccess"));
+        at(endpoint, 180009, EndpointHealth.State.OK, "first skip arms the idle timer");
+        at(endpoint, 180010, EndpointHealth.State.DOWN, "stall at the idle bound");
+        endpoint.pollStarted();
+        endpoint.pollFinished(true, null);
+        at(endpoint, clock.get(), EndpointHealth.State.OK);
+        Map<String, Object> afterSuccess = endpoint.snapshot();
+        clock.incrementAndGet();
+        endpoint.pollStarted();
+        endpoint.pollSkipped();
+        at(endpoint, clock.get(), EndpointHealth.State.OK);
+        assertEquals(afterSuccess, endpoint.snapshot());
+        endpoint.pollStarted();
+        endpoint.pollFinished(false, transport(log));
+        at(endpoint, clock.get(), EndpointHealth.State.DOWN);
+        Map<String, Object> afterFailure = endpoint.snapshot();
+        clock.incrementAndGet();
+        endpoint.pollStarted();
+        endpoint.pollSkipped();
+        at(endpoint, clock.get(), EndpointHealth.State.DOWN);
+        assertEquals(afterFailure, endpoint.snapshot());
+        clock.incrementAndGet();
+        endpoint.pollStarted();
+        endpoint.pollFinished(true, null);
+        at(endpoint, clock.get(), EndpointHealth.State.OK);
+        assertTrue((Long) endpoint.snapshot().get("lastSuccess") > (Long) afterSuccess.get("lastSuccess"));
+    }
+
+    @Test
     void digestReadsKeepThePollHealthyForTenScanWindows() throws Exception {
         EndpointHealth endpoint = health(10000);
         endpoint.pollStarted();
