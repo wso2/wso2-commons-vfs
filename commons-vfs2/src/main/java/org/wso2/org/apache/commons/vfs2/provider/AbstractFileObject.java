@@ -1988,18 +1988,14 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
         }
 
         private boolean finishRename(final AtomicResult result, final FileType type) throws MoveFailedException {
-            if (result.isConnectionLost()) {
-                throw failed(result);
-            }
-            switch (result.getOutcome()) {
-            case DONE:
+            if (result.getOutcome() == AtomicOutcome.DONE) {
                 events(type);
                 return true;
-            case REFUSED:
-                return false;
-            default:
-                throw failed(result);
             }
+            if (result.getOutcome() == AtomicOutcome.REFUSED && !result.isConnectionLost()) {
+                return false;
+            }
+            throw failed(result);
         }
 
         private void events(final FileType type) {

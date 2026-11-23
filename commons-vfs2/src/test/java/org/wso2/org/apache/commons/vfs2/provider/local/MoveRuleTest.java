@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -161,8 +162,22 @@ public class MoveRuleTest {
     }
 
     @Test
-    void knownOutcomeWithLostConnectionNeverFallsBack() throws Exception {
-        for (AtomicOutcome outcome : AtomicOutcome.values()) {
+    void confirmedRenameWithLostConnectionMovesTheBytesOnce() throws Exception {
+        doAnswer(call -> {
+            call.callRealMethod();
+            return new AtomicResult(AtomicOutcome.DONE, "close", Collections.emptyList(), true);
+        }).when(source).renameReplacing(eq(target), any(), any());
+        source.moveTo(target, options(true));
+        moved();
+        verify(source).renameReplacing(eq(target), any(), any());
+        verify(source, never()).getContent();
+        verify(target, never()).delete();
+        assertFalse(Files.exists(staging));
+    }
+
+    @Test
+    void noncompletionWithLostConnectionNeverFallsBack() throws Exception {
+        for (AtomicOutcome outcome : EnumSet.complementOf(EnumSet.of(AtomicOutcome.DONE))) {
             doReturn(new AtomicResult(outcome, "cleanup", Collections.emptyList(), true)).when(source)
                     .renameReplacing(eq(target), any(), any());
             MoveFailedException error = assertThrows(MoveFailedException.class, () -> source.moveTo(target, options(true)));

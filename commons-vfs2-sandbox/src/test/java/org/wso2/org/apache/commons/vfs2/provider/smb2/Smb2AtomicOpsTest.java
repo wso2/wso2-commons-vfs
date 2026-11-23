@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.EnumSet;
@@ -58,6 +60,12 @@ import com.hierynomus.smbj.share.DiskEntry;
 import com.hierynomus.smbj.share.File;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.wso2.org.apache.commons.vfs2.FileListener;
+import org.wso2.org.apache.commons.vfs2.cache.DefaultFilesCache;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.provider.VfsComponentContext;
 import org.junit.jupiter.api.function.Executable;
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
@@ -418,6 +426,86 @@ public class Smb2AtomicOpsTest {
         assertEquals(AtomicOutcome.DONE, result.getOutcome());
         assertTrue(result.isConnectionLost());
         assertFalse(clientKept());
+    }
+
+    // Only the SMB server and connection are doubles. The public move uses the provider's actual rename,
+    // handle cleanup, client pool and file events. A folder selects takeAway on a no-replace move.
+    private final class PublicRename {
+        final Smb2FileObject source = file("in/src");
+        final Smb2FileObject target = file("in/dst");
+        final FileListener listener = mock(FileListener.class);
+        final MoveOptions options;
+        final DiskEntry entry;
+
+        PublicRename(final boolean replace) throws Exception {
+            final DefaultFileSystemManager manager = new DefaultFileSystemManager();
+            manager.setFilesCache(new DefaultFilesCache());
+            final VfsComponentContext context = mock(VfsComponentContext.class);
+            when(context.getFileSystemManager()).thenReturn(manager);
+            fileSystem.setContext(context);
+            fileSystem.addListener(source, listener);
+            fileSystem.addListener(target, listener);
+            client.info(Smb2ClientWrapperTest.info(!replace));
+            doThrow(status(NtStatus.STATUS_OBJECT_NAME_NOT_FOUND)).when(client.share).open(eq("in\\dst"),
+                    eq(Smb2Doubles.METADATA), isNull(), eq(SMB2ShareAccess.ALL), eq(SMB2CreateDisposition.FILE_OPEN),
+                    isNull());
+            entry = replace ? renameHandle("in\\src") : folderHandle("in\\src");
+            options = new MoveOptions(replace, file("in/stage"), null, file("in/probeA"), file("in/probeB"));
+        }
+
+        void move() throws FileSystemException {
+            source.moveTo(target, options);
+        }
+
+        void verifyHandleAndClient(final boolean lost) throws Exception {
+            verify(entry).rename("in\\dst", options.isReplaceExisting());
+            verify(entry).close();
+            verifyNoMoreInteractions(entry);
+            verifyNoInteractions(spare.share);
+            assertEquals(lost, client.group.isAborted());
+            assertEquals(lost ? 1 : 0, client.closes.get());
+            assertSame(lost ? spare.wrapper : client.wrapper, fileSystem.getClient());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true, false", "true, true", "false, false", "false, true"})
+    public void confirmedPublicRenameCompletesAndNotifiesEvenWhenCloseLosesTheClient(
+            final boolean replace, final boolean closeLosesClient) throws Exception {
+        final PublicRename call = new PublicRename(replace);
+        if (closeLosesClient) {
+            doThrow(transport()).when(call.entry).close();
+        }
+        call.move();
+        verify(call.listener).fileCreated(argThat(event -> event.getFile() == call.target));
+        verify(call.listener).fileDeleted(argThat(event -> event.getFile() == call.source));
+        verifyNoMoreInteractions(call.listener);
+        call.verifyHandleAndClient(closeLosesClient);
+    }
+
+    @Test
+    public void refusedPublicRenameFollowedByCloseLossStaysDefinite() throws Exception {
+        final PublicRename call = new PublicRename(true);
+        doThrow(status(NtStatus.STATUS_ACCESS_DENIED)).when(call.entry).rename(anyString(), anyBoolean());
+        doThrow(transport()).when(call.entry).close();
+        final MoveFailedException error = assertThrows(MoveFailedException.class, call::move);
+        assertEquals(Fault.APPLICATION, error.getFault());
+        assertEquals(MovePhase.RENAME, error.getPhase());
+        assertFalse(error.isCommitConfirmed());
+        assertTrue(error.isConnectionLost());
+        verifyNoInteractions(call.listener);
+        call.verifyHandleAndClient(true);
+    }
+
+    @Test
+    public void missingPublicRenameReplyStaysUnclear() throws Exception {
+        final PublicRename call = new PublicRename(true);
+        final SMBRuntimeException cause = transport();
+        doThrow(cause).when(call.entry).rename(anyString(), anyBoolean());
+        final UnclearResultException error = unclear(MovePhase.RENAME, null, cause, call::move);
+        assertFalse(error.isCommitConfirmed());
+        verifyNoInteractions(call.listener);
+        call.verifyHandleAndClient(true);
     }
 
     @Test
