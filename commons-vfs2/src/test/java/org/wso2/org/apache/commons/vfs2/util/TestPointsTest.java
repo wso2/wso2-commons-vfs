@@ -358,6 +358,29 @@ public class TestPointsTest {
     }
 
     @Test
+    public void copyHashesRawAndEscapedDeploymentUrls() throws Exception {
+        final Path junit = Paths.get(Test.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        final Path archive = Files.copy(junit, base.resolve("{component} %7B+copy.jar"));
+        final String escaped = archive.toUri().toASCIIString();
+        final String raw = escaped.replace("%7Bcomponent%7D", "{component}");
+        assertFalse(raw.equals(escaped));
+        for (final String location : Arrays.asList(raw, escaped)) {
+            final Path dir = Files.createTempDirectory(base, "origins");
+            System.setProperty(DIR, dir.toString());
+            final URL classes = TestPoints.class.getProtectionDomain().getCodeSource().getLocation();
+            try (URLClassLoader loader = new URLClassLoader(new URL[] {new URL(location), classes}, null)) {
+                final Class<?> anchor = Class.forName(Test.class.getName(), false, loader);
+                final Class<?> points = Class.forName(TestPoints.class.getName(), true, loader);
+                points.getMethod("copy", String.class, Class[].class).invoke(null, "origin", new Class<?>[] {anchor});
+                final Map<String, String> record = fields(Files.readAllLines(dir.resolve("origin.1/events.log")).get(0));
+                assertEquals("copy-started", record.get("point"));
+                assertEquals(sha256(archive), record.get("sha256." + anchor.getName()));
+                assertEquals("-", record.get("sha256." + TestPoints.class.getName()));
+            }
+        }
+    }
+
+    @Test
     public void linesOfTwoThreadsNeverMix() throws Exception {
         final int each = 1_000;
         final CountDownLatch go = new CountDownLatch(1);

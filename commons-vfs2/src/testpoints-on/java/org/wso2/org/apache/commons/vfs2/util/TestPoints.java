@@ -20,6 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -308,7 +309,11 @@ public final class TestPoints {
         }
         final URL location = source.getLocation();
         try {
-            final Path path = Paths.get(location.toURI());
+            // The component loader can leave braces unescaped in a local deployment URL.
+            final String external = location.toExternalForm();
+            final URI uri = "file".equals(location.getProtocol())
+                ? URI.create(external.replace("{", "%7B").replace("}", "%7D")) : location.toURI();
+            final Path path = Paths.get(uri);
             if (!Files.isRegularFile(path)) {
                 return new String[] {path.toString(), "-"};
             }
