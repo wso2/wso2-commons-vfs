@@ -16,6 +16,7 @@
  */
 package org.wso2.vfs.shared.health;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -70,6 +71,21 @@ public final class EndpointHealth {
 
     public void observeRuntime(final RuntimeMetrics metrics) {
         runtimeMetrics = metrics;
+    }
+
+    /** The inbound health entry outlives its deployed consumer. Return the installed observer as its owner token. */
+    public RuntimeMetrics observeInboundSessions(final RuntimeMetrics owner) {
+        final WeakReference<RuntimeMetrics> reference = new WeakReference<>(owner);
+        final RuntimeMetrics observer = () -> {
+            final RuntimeMetrics live = reference.get();
+            return live == null ? 0 : live.getOpenClientCount();
+        };
+        observeRuntime(observer);
+        return observer;
+    }
+
+    public boolean observesRuntime(final RuntimeMetrics observer) {
+        return runtimeMetrics == observer;
     }
 
     private static final class Flagged {
