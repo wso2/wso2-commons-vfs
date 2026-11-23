@@ -1752,7 +1752,27 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
         return false;
     }
 
-    protected enum EntryRelation { SAME, DISTINCT, UNKNOWN }
+    /** Whether two file objects identify the same directory entry. */
+    public enum EntryRelation { SAME, DISTINCT, UNKNOWN }
+
+    /**
+     * Compares the entries using the source provider's move identity rules. Standard decorators are unwrapped.
+     * Remote providers use locally known namespace information. A local provider may read parent directory metadata.
+     *
+     * @param source the source file object
+     * @param target the target file object
+     * @return the provider's relation, or UNKNOWN if either object hides its provider
+     * @throws FileSystemException if the provider cannot complete the comparison
+     */
+    public static EntryRelation compareEntries(final FileObject source, final FileObject target)
+            throws FileSystemException {
+        if (!FileObjectUtils.isInstanceOf(source, AbstractFileObject.class)
+                || !FileObjectUtils.isInstanceOf(target, AbstractFileObject.class)) {
+            return EntryRelation.UNKNOWN;
+        }
+        return FileObjectUtils.getAbstractFileObject(source)
+                .entryRelation(FileObjectUtils.getAbstractFileObject(target));
+    }
 
     protected EntryRelation entryRelation(final FileObject other) throws FileSystemException {
         return isSameEntry(other) ? EntryRelation.SAME : EntryRelation.DISTINCT;

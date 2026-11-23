@@ -70,6 +70,8 @@ import org.junit.jupiter.api.function.Executable;
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject.EntryRelation;
 import org.wso2.org.apache.commons.vfs2.provider.MoveFailedException;
 import org.wso2.org.apache.commons.vfs2.provider.MoveOptions;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
@@ -693,6 +695,15 @@ public class Smb2AtomicOpsTest {
         client.metadataOpenFails(status(NtStatus.STATUS_OBJECT_NAME_NOT_FOUND));
         assertFalse(file("in/a.csv").statNow().isThere());
         assertFalse(file("in").folderExistsNow());
+    }
+
+    @Test
+    public void publicIdentityKeepsSmbCaseUncertaintyWithoutBorrowingAClient() throws Exception {
+        Smb2FileObject source = file("in/Report");
+        assertEquals(EntryRelation.SAME, AbstractFileObject.compareEntries(source, file("in/Report")));
+        assertEquals(EntryRelation.UNKNOWN, AbstractFileObject.compareEntries(source, file("in/report")));
+        assertEquals(EntryRelation.DISTINCT, AbstractFileObject.compareEntries(source, file("in/other")));
+        verifyNoInteractions(client.share, spare.share);
     }
 
     @Test

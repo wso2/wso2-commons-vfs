@@ -19,13 +19,18 @@ package org.wso2.org.apache.commons.vfs2.provider;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.time.Duration;
+
 import com.jcraft.jsch.Session;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.FileType;
 import org.wso2.org.apache.commons.vfs2.auth.StaticUserAuthenticator;
+import org.wso2.org.apache.commons.vfs2.impl.DecoratedFileObject;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileObject.EntryRelation;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileObject;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystem;
 import org.wso2.org.apache.commons.vfs2.provider.ftp.FtpFileSystemConfigBuilder;
@@ -45,8 +50,12 @@ public class RemoteMoveIdentityTest {
         }
 
         View(String scheme, String host, int port, String rootPath, boolean loginRoot, boolean opaqueLogin) {
+            this(scheme, host, port, rootPath, loginRoot, opaqueLogin, new FileSystemOptions());
+        }
+
+        View(String scheme, String host, int port, String rootPath, boolean loginRoot, boolean opaqueLogin,
+                FileSystemOptions options) {
             root = new GenericFileName(scheme, host, port, port, "reader", null, rootPath, FileType.FOLDER) { };
-            FileSystemOptions options = new FileSystemOptions();
             if (opaqueLogin) {
                 DefaultFileSystemConfigBuilder.getInstance().setUserAuthenticator(options,
                         new StaticUserAuthenticator(null, "reader", "fixture"));
@@ -103,6 +112,47 @@ public class RemoteMoveIdentityTest {
                 new View(protocol, 1022, "/virtual", true, false).entry("/virtual/work/report")));
         assertEquals(AbstractFileObject.EntryRelation.DISTINCT, absolute.entryRelation(
                 new View(protocol, 1022, "/archive", false, false).entry("/archive/work/report")));
+    }
+
+    @Test
+    void publicIdentityComparesTimeoutViewsAndPreservesUncertainty() throws Exception {
+        for (String protocol : new String[] {"ftp", "sftp"}) {
+            View first = new View(protocol, 1022, "/", false, false);
+            FileSystemOptions options = new FileSystemOptions();
+            Duration timeout = Duration.ofSeconds(3);
+            if ("ftp".equals(protocol)) {
+                FtpFileSystemConfigBuilder.getInstance().setConnectTimeout(options, timeout);
+            } else {
+                SftpFileSystemConfigBuilder.getInstance().setConnectTimeout(options, timeout);
+            }
+            View second = new View(protocol, "localhost", 1022, "/", false, false, options);
+            FileObject source = first.entry("/report");
+            FileObject alias = new DecoratedFileObject(new DecoratedFileObject(second.entry("/report")));
+            assertEquals(EntryRelation.SAME, AbstractFileObject.compareEntries(source, alias));
+            assertEquals(EntryRelation.SAME, AbstractFileObject.compareEntries(alias, source));
+            assertEquals(EntryRelation.DISTINCT, AbstractFileObject.compareEntries(source, second.entry("/other")));
+            assertEquals(EntryRelation.DISTINCT, AbstractFileObject.compareEntries(source,
+                    new View(protocol, 1023, "/", false, false).entry("/report")));
+            assertEquals(EntryRelation.UNKNOWN, AbstractFileObject.compareEntries(source,
+                    new View(protocol, 1022, "/", false, true).entry("/report")));
+        }
+    }
+
+    @Test
+    void publicIdentityLeavesOpaqueObjectsUnknownAndPropagatesProviderErrors() throws Exception {
+        AbstractFileObject<?> source = spy(new View("sftp", 1022, "/", false, false).entry("/report"));
+        FileObject target = new View("ftp", 1022, "/", false, false).entry("/report");
+        assertEquals(EntryRelation.DISTINCT, AbstractFileObject.compareEntries(source, target));
+        assertEquals(EntryRelation.DISTINCT, AbstractFileObject.compareEntries(target, source));
+        FileObject opaque = mock(FileObject.class);
+        assertEquals(EntryRelation.UNKNOWN, AbstractFileObject.compareEntries(source, new DecoratedFileObject(opaque)));
+        assertEquals(EntryRelation.UNKNOWN, AbstractFileObject.compareEntries(opaque, target));
+        verifyNoInteractions(opaque);
+
+        FileSystemException failure = new FileSystemException("identity check failed");
+        doThrow(failure).when(source).entryRelation(target);
+        assertSame(failure, assertThrows(FileSystemException.class, () -> AbstractFileObject.compareEntries(
+                new DecoratedFileObject(source), new DecoratedFileObject(target))));
     }
 
     @Test
