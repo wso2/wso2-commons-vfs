@@ -31,6 +31,7 @@ import org.wso2.vfs.shared.log.UriMask;
 /** One complete post action record. Only a checked staging record can become canonical. */
 public final class FailState {
     public enum Outcome { SUCCESS, FAILURE }
+    public enum MoveOrigin { ORDINARY, FALLBACK }
     public enum Action { DELETE, MOVE, MOVE_AFTER_FAILED_MOVE, NONE }
     static final int LIMIT = 8192;
     public final FileIdentity identity;
@@ -39,6 +40,7 @@ public final class FailState {
     public final boolean legacy;
     public final Outcome outcome;
     public final Action failed;
+    public final MoveOrigin moveOrigin;
     public final Action next;
     public final String failedTarget;
     public final String target;
@@ -50,7 +52,7 @@ public final class FailState {
     final List<String> staging = new ArrayList<>();
 
     FailState(FileIdentity identity, String name, long written, boolean legacy, Outcome outcome, Action failed,
-            Action next, String failedTarget, String target, ActionResult action, int attempts, long due,
+            Action next, MoveOrigin moveOrigin, String failedTarget, String target, ActionResult action, int attempts, long due,
             boolean flagged, String error) {
         this.identity = identity;
         this.name = name;
@@ -58,6 +60,7 @@ public final class FailState {
         this.legacy = legacy;
         this.outcome = outcome;
         this.failed = failed;
+        this.moveOrigin = moveOrigin;
         this.next = next;
         this.failedTarget = failedTarget;
         this.target = target;
@@ -128,6 +131,9 @@ public final class FailState {
         line(body, "origin", legacy ? "legacy" : "new");
         line(body, "outcome", outcome);
         line(body, "failed", failed);
+        if (moveOrigin != null) {
+            line(body, "moveOrigin", moveOrigin);
+        }
         line(body, "next", next);
         if (failedTarget != null) {
             line(body, "failedTarget", escape(failedTarget));
@@ -231,6 +237,10 @@ public final class FailState {
             Outcome outcome = Outcome.valueOf(required(fields, "outcome"));
             Action failed = Action.valueOf(required(fields, "failed"));
             Action next = Action.valueOf(required(fields, "next"));
+            MoveOrigin moveOrigin = fields.containsKey("moveOrigin") ? MoveOrigin.valueOf(fields.get("moveOrigin")) : null;
+            if (moveOrigin != null && (failed != Action.MOVE || legacy)) {
+                return null;
+            }
             ActionResult.Step step = ActionResult.Step.valueOf(required(fields, "step"));
             String temp = path(fields, "temp", step == ActionResult.Step.COMMIT
                     || step == ActionResult.Step.AFTER_DELETE);
@@ -242,7 +252,7 @@ public final class FailState {
                 return null;
             }
             return new FailState(id, name, Long.parseLong(required(fields, "written")), legacy, outcome, failed, next,
-                    path(fields, "failedTarget", failed == Action.MOVE),
+                    moveOrigin, path(fields, "failedTarget", failed == Action.MOVE),
                     path(fields, "target", next == Action.MOVE || next == Action.MOVE_AFTER_FAILED_MOVE), action,
                     attempts, Long.parseLong(required(fields, "due")), bool(fields, "flagged"), fields.get("error"));
         } catch (IllegalArgumentException | CharacterCodingException malformed) {

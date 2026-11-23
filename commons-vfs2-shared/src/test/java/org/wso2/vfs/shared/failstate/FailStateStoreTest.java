@@ -154,6 +154,117 @@ class FailStateStoreTest {
     }
 
     @Test
+    void writeResultKeepsTheDispositionAndTheFailureOfThisCall() throws Exception {
+        params.retryMillis = 0;
+        for (boolean retry : Arrays.asList(false, true)) {
+            for (String stage : Arrays.asList("ordinary", "refused", "lost", "release")) {
+                use("result" + stage + retry);
+                Files.write(data, new byte[] {3, 4});
+                if (retry) {
+                    startFailure();
+                    wall.incrementAndGet();
+                }
+                HeldLock held = acquire(null);
+                FailStateStore.BeginResult begin = store.beginFile(io, held, uri);
+                assertEquals(retry ? RETRY : PROCESS, begin.decision);
+                LockIo observed = new LockIo(manager, null) {
+                    @Override
+                    public FileObject resolve(String name) throws FileSystemException {
+                        if (stage.equals("release") && name.endsWith("/" + data.getFileName() + ".lock")
+                                && Files.exists(marker)) {
+                            try {
+                                if (record().attempts == (retry ? 1 : 0)) {
+                                    throw fault(Fault.TRANSPORT);
+                                }
+                            } catch (FileSystemException failure) {
+                                throw failure;
+                            } catch (Exception failure) {
+                                throw new AssertionError(failure);
+                            }
+                        }
+                        if ((stage.equals("refused") || stage.equals("lost")) && !name.endsWith(".lock")) {
+                            throw fault(stage.equals("lost") ? Fault.TRANSPORT : Fault.APPLICATION);
+                        }
+                        return super.resolve(name);
+                    }
+                };
+                FailStateStore.WriteResult result = retry
+                        ? store.retryFailureResult(observed, held, begin.state, FailState.Action.DELETE, null, refused)
+                        : store.recordFailureResult(observed, held, begin.identity, FailState.Outcome.SUCCESS,
+                                FailState.Action.DELETE, null, refused);
+                if (stage.equals("ordinary")) {
+                    assertEquals(WRITTEN, result.disposition);
+                    assertNull(result.failure);
+                    released(held);
+                } else if (stage.equals("release")) {
+                    assertEquals(WRITTEN, result.disposition);
+                    assertTrue(result.failure.getKind().isTransport());
+                    assertEquals(retry ? 1 : 0, record().attempts);
+                    assertEquals(LockOutcome.Kind.ENDED, held.verifyOwner(io).kind);
+                } else {
+                    assertEquals(PENDING, result.disposition);
+                    assertEquals(stage.equals("lost"), result.failure.getKind().isTransport());
+                    assertEquals(LockOutcome.Kind.OURS, held.verifyOwner(io).kind);
+                    wall.addAndGet(1800001);
+                    assertEquals(1, store.runPending(io).written);
+                    released(held);
+                }
+            }
+        }
+    }
+
+    @Test
+    void sameRelativeTargetRetainsTheFailedMoveDestinationAcrossMarkerReads() throws Exception {
+        params.retryMillis = 0;
+        params.moveAfterFailedMove = id -> "daily.csv";
+        HeldLock first = acquire(null);
+        FileIdentity id = store.beginFile(io, first, uri).identity;
+        assertEquals(WRITTEN, store.recordFailureResult(io, first, id, FailState.Outcome.SUCCESS,
+                FailState.Action.MOVE, "daily.csv", refused).disposition);
+        released(first);
+        FailState primary = record();
+        assertEquals("daily.csv", primary.failedTarget);
+        assertEquals("daily.csv", primary.target);
+        assertEquals(FailState.MoveOrigin.ORDINARY, primary.moveOrigin);
+        assertEquals(FailState.Action.MOVE_AFTER_FAILED_MOVE, primary.next);
+        wall.incrementAndGet();
+        HeldLock second = acquire(null);
+        FailState due = store.beginFile(io, second, uri).state;
+        assertEquals(WRITTEN, store.retryFailureResult(io, second, due, FailState.Action.MOVE_AFTER_FAILED_MOVE,
+                "daily.csv", refused).disposition);
+        released(second);
+        FailState fallback = record();
+        assertEquals(primary.failedTarget, fallback.failedTarget);
+        assertEquals(primary.target, fallback.target);
+        assertEquals(FailState.MoveOrigin.FALLBACK, fallback.moveOrigin);
+        assertEquals(FailState.Action.MOVE, fallback.failed);
+        assertEquals(1, fallback.attempts);
+    }
+
+    @Test
+    void failureBeforeRetryActionRetainsBothRecordedPathsAndTheEarlierMoveOrigin() throws Exception {
+        params.retryMillis = 0;
+        params.moveAfterFailedMove = id -> "fallback" + wall.get() + ".csv";
+        HeldLock first = acquire(null);
+        FileIdentity id = store.beginFile(io, first, uri).identity;
+        assertEquals(WRITTEN, store.recordFailure(io, first, id, FailState.Outcome.SUCCESS, FailState.Action.MOVE,
+                "original.csv", refused));
+        FailState original = record();
+        wall.addAndGet(1000);
+        HeldLock next = acquire(null);
+        FailState previous = store.beginFile(io, next, uri).state;
+        assertEquals(WRITTEN, store.retryUnchanged(io, next, previous, null).disposition);
+        FailState retained = record();
+        assertEquals(original.failedTarget, retained.failedTarget);
+        assertEquals(original.target, retained.target);
+        assertEquals(original.moveOrigin, retained.moveOrigin);
+        assertEquals(original.action.phase, retained.action.phase);
+        assertEquals(original.attempts + 1, retained.attempts);
+        assertTrue(retained.written > original.written);
+        released(next);
+    }
+
+    @Test
     void takeoverDropsOnlyThePendingThresholdContribution() throws Exception {
         params.flagAfter = 12;
         params.retryMillis = 0;

@@ -70,6 +70,16 @@ import org.wso2.vfs.shared.write.TempNames;
 public final class FailStateStore {
     public enum Decision { PROCESS, SKIP, RETRY, FILE_GONE, TRANSPORT_ERROR }
     public enum Write { WRITTEN, NOT_NEEDED, PENDING }
+    public static final class WriteResult {
+        public final Write disposition;
+        public final Classification failure;
+
+        private WriteResult(Write disposition, Classification failure) {
+            this.disposition = disposition;
+            this.failure = failure;
+        }
+    }
+
     public enum Peek { SKIP, LOOK }
     public enum Match { MATCH, MATCH_INFERRED, DIFFERENT, ABSENT, TRANSPORT_ERROR }
 
@@ -776,7 +786,7 @@ public final class FailStateStore {
             if (record == null) {
                 long now = wall.getAsLong();
                 record = new FailState(old == null ? id : old, name, now, true, found.canonical.outcome,
-                        FailState.Action.DELETE, FailState.Action.NONE, null, null,
+                        FailState.Action.DELETE, FailState.Action.NONE, null, null, null,
                         new ActionResult(ActionResult.Step.NONE, true, null, false, null), 0, now, false, null);
                 Pending conversion = new Pending(held, record, true);
                 try {
@@ -874,9 +884,11 @@ public final class FailStateStore {
             next = FailState.Action.MOVE_AFTER_FAILED_MOVE;
             target = parameters.moveAfterFailedMove.apply(id);
         }
+        FailState.MoveOrigin origin = failed == FailState.Action.MOVE_AFTER_FAILED_MOVE ? FailState.MoveOrigin.FALLBACK
+                : failed == FailState.Action.MOVE ? FailState.MoveOrigin.ORDINARY : null;
         FailState record = new FailState(id, base(id.uri), written, false, outcome,
                 failed == FailState.Action.MOVE_AFTER_FAILED_MOVE ? FailState.Action.MOVE : failed,
-                next, failedTarget, target, action, count, due(written, count), count >= parameters.flagAfter,
+                next, origin, failedTarget, target, action, count, due(written, count), count >= parameters.flagAfter,
                 action.failure == null ? null : action.failure.getStatusText());
         if (old != null) {
             record.staging.addAll(old.staging);
@@ -1009,29 +1021,58 @@ public final class FailStateStore {
         }
     }
 
-    private Write first(LockIo io, Pending p) {
+    private WriteResult first(LockIo io, Pending p) {
+        Classification cause = null;
         event(p);
         if (io != null) {
             try {
                 Write written = attempt(io, p);
                 release(io, p);
-                return written;
+                return new WriteResult(written, p.endFailure);
             } catch (Failure failure) {
+                cause = failure.classification;
                 log.warn("The fail state write is pending for " + p.record.identity.uri);
             }
         }
         retain(p);
-        return Write.PENDING;
+        return new WriteResult(Write.PENDING, cause);
     }
 
     public Write recordFailure(LockIo io, HeldLock held, FileIdentity id, FailState.Outcome outcome,
+            FailState.Action failed, String target, ActionResult action) {
+        return recordFailureResult(io, held, id, outcome, failed, target, action).disposition;
+    }
+
+    public WriteResult recordFailureResult(LockIo io, HeldLock held, FileIdentity id, FailState.Outcome outcome,
             FailState.Action failed, String target, ActionResult action) {
         return first(io, new Pending(held, next(id, null, outcome, failed, target, action), false));
     }
 
     public Write retryFailed(LockIo io, HeldLock held, FailState previous, FailState.Action failed,
             String target, ActionResult action) {
+        return retryFailureResult(io, held, previous, failed, target, action).disposition;
+    }
+
+    public WriteResult retryFailureResult(LockIo io, HeldLock held, FailState previous, FailState.Action failed,
+            String target, ActionResult action) {
         FailState record = next(previous.identity, previous, previous.outcome, failed, target, action);
+        return retryWrite(io, held, previous, record);
+    }
+
+    public WriteResult retryUnchanged(LockIo io, HeldLock held, FailState previous, Classification failure) {
+        int count = previous.attempts == Integer.MAX_VALUE ? Integer.MAX_VALUE : previous.attempts + 1;
+        long written = Math.max(wall.getAsLong(), previous.written == Long.MAX_VALUE ? Long.MAX_VALUE : previous.written + 1);
+        ActionResult old = previous.action;
+        ActionResult action = new ActionResult(old.step, old.clear, old.temp, old.committed, old.phase, failure);
+        FailState record = new FailState(previous.identity, previous.name, written, false, previous.outcome,
+                previous.failed, previous.next, previous.moveOrigin, previous.failedTarget, previous.target, action,
+                count, due(written, count), count >= parameters.flagAfter,
+                failure == null ? null : failure.getStatusText());
+        record.staging.addAll(previous.staging);
+        return retryWrite(io, held, previous, record);
+    }
+
+    private WriteResult retryWrite(LockIo io, HeldLock held, FailState previous, FailState record) {
         Pending write = new Pending(held, record, true);
         write.provisionalThreshold = reportThreshold(record) && !previous.flagged;
         return first(io, write);
