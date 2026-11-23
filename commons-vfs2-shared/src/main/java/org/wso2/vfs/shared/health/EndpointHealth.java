@@ -57,6 +57,21 @@ public final class EndpointHealth {
 
     public enum Breaker { CLOSED, OPEN, HALF_OPEN }
 
+    /** Local readings from the connection pool or current inbound generation. */
+    public interface RuntimeMetrics {
+        int getOpenClientCount();
+
+        default Breaker getBreakerState() {
+            return Breaker.CLOSED;
+        }
+    }
+
+    private volatile RuntimeMetrics runtimeMetrics;
+
+    public void observeRuntime(final RuntimeMetrics metrics) {
+        runtimeMetrics = metrics;
+    }
+
     private static final class Flagged {
         final long count;
         final List<String> paths;
@@ -190,12 +205,12 @@ public final class EndpointHealth {
         }
     }
 
-    private void exportGauges() {
+    private void exportGauges(final long sessions) {
         for (final MetricsExporter exporter : exporters) {
             exporter.setGauge(this, MetricsExporter.Metric.LAST_SUCCESS, lastSuccess.get() / 1000.0);
             exporter.setGauge(this, MetricsExporter.Metric.PENDING, failStatesPending.get());
             exporter.setGauge(this, MetricsExporter.Metric.FLAGGED, count(flags.get(Flag.FAIL_STATE)));
-            exporter.setGauge(this, MetricsExporter.Metric.OPEN_SESSIONS, openSessions.get());
+            exporter.setGauge(this, MetricsExporter.Metric.OPEN_SESSIONS, sessions);
         }
     }
 
@@ -371,11 +386,23 @@ public final class EndpointHealth {
     }
 
     private State computeState() {
+        return computeState(breakerState(runtimeMetrics));
+    }
+
+    private Breaker breakerState(final RuntimeMetrics metrics) {
+        return metrics == null ? breaker.get() : metrics.getBreakerState();
+    }
+
+    private long openSessionCount(final RuntimeMetrics metrics) {
+        return metrics == null ? openSessions.get() : metrics.getOpenClientCount();
+    }
+
+    private State computeState(final Breaker mode) {
         final Poll sample = poll.get();
         if (sample.paused) {
             return State.PAUSED;
         }
-        if (kind == HealthRegistry.Kind.CONNECTION && breaker.get() == Breaker.OPEN) {
+        if (kind == HealthRegistry.Kind.CONNECTION && mode == Breaker.OPEN) {
             return State.BREAKER_OPEN;
         }
         final long interval = scanInterval;
@@ -431,7 +458,10 @@ public final class EndpointHealth {
 
     private void publish(final boolean summary) {
         final Poll sample = poll.get();
-        final State current = observed.updateAndGet(previous -> computeState());
+        final RuntimeMetrics metrics = runtimeMetrics;
+        final Breaker mode = breakerState(metrics);
+        final long sessions = openSessionCount(metrics);
+        final State current = observed.updateAndGet(previous -> computeState(mode));
         if (current == State.PAUSED && sample.paused) {
             publishedPause = sample;
         }
@@ -439,7 +469,7 @@ public final class EndpointHealth {
         if (previous != current) {
             exported = current;
             exportState(previous, current);
-            final String message = "Health changed to " + current + ". " + snapshot(current);
+            final String message = "Health changed to " + current + ". " + snapshot(current, mode, sessions);
             if (current == State.DOWN) {
                 writeLog(() -> log.error(message));
             } else if (current == State.DEGRADED) {
@@ -449,21 +479,24 @@ public final class EndpointHealth {
             }
         }
         publishCounters();
-        exportGauges();
+        exportGauges(sessions);
         if (summary) {
             writeLog(() -> {
                 if (log.isDebugEnabled()) {
-                    log.debug("Health summary " + snapshot(current));
+                    log.debug("Health summary " + snapshot(current, mode, sessions));
                 }
             });
         }
     }
 
     public Map<String, Object> snapshot() {
-        return snapshot(state());
+        final RuntimeMetrics metrics = runtimeMetrics;
+        final Breaker mode = breakerState(metrics);
+        final State current = metrics != null && kind == HealthRegistry.Kind.CONNECTION ? computeState(mode) : state();
+        return snapshot(current, mode, openSessionCount(metrics));
     }
 
-    private Map<String, Object> snapshot(final State state) {
+    private Map<String, Object> snapshot(final State state, final Breaker mode, final long sessions) {
         final Map<String, Object> values = new LinkedHashMap<>();
         values.put("state", state.name());
         values.put("lastSuccess", lastSuccess.get());
@@ -490,8 +523,8 @@ public final class EndpointHealth {
             details.put(flag.name(), detail);
         });
         values.put("flags", details);
-        values.put("breakerState", breaker.get().name());
-        values.put("openSessions", openSessions.get());
+        values.put("breakerState", mode.name());
+        values.put("openSessions", sessions);
         return values;
     }
 

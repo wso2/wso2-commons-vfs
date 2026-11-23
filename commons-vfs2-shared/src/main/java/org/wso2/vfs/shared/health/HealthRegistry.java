@@ -113,13 +113,24 @@ public final class HealthRegistry {
         return COPY.connection(connector, name);
     }
 
+    public static ConnectionRegistration registerConnection(final String connector, final String name,
+            final EndpointHealth.RuntimeMetrics metrics) {
+        return COPY.connection(connector, name, metrics);
+    }
+
     ConnectionRegistration connection(final String identity, final String name) {
+        return connection(identity, name, null);
+    }
+
+    private ConnectionRegistration connection(final String identity, final String name,
+            final EndpointHealth.RuntimeMetrics metrics) {
         final String connector = "{org.wso2.carbon.connector}file".equals(identity) ? "file" : identity;
         final NamedLog log = namedLog(Kind.CONNECTION, name);
         final Object reporter = reporter(Kind.CONNECTION, connector, name, log);
         synchronized (this) {
             final List<String> key = Arrays.asList(Kind.CONNECTION.name(), connector, name);
             final EndpointHealth health = entry(key, Kind.CONNECTION, name, 0, log, reporter);
+            health.observeRuntime(metrics);
             return attach(key, connector, health, true);
         }
     }

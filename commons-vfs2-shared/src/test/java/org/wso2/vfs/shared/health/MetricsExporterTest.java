@@ -192,7 +192,8 @@ class MetricsExporterTest {
         assertArrayEquals(new String[]{"INBOUND", "second"}, reporter.labelsKeptByLibrary.get(1));
         first.pollStarted();
         try {
-            first.openSessions(4);
+            first.observeRuntime(() -> 4);
+            assertEquals(4L, first.snapshot().get("openSessions"));
             first.failStatesPending(3);
             first.flag(EndpointHealth.Flag.FAIL_STATE, "file:///data");
             first.lockContention();
