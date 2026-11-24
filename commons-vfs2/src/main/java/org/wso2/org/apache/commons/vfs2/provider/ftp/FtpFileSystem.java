@@ -195,7 +195,8 @@ public class FtpFileSystem extends AbstractFileSystem {
     public FtpClient getClient() throws FileSystemException {
         final FtpClient idle = idleClient.getAndSet(null);
         if (idle != null) {
-            if (idle.isConnected()) {
+            // The state of its sockets, and then what an idle read found.
+            if (idle.isConnected() && idle.isAliveLocally()) {
                 return idle;
             }
             // A closed or aborted client is not handed out. Its sockets are closed with no command.
@@ -275,18 +276,27 @@ public class FtpFileSystem extends AbstractFileSystem {
     }
 
     /**
-     * Tells from local state whether the idle client and every client that is out are connected and not aborted.
+     * Tells from local state whether the idle client and every client that is out are connected and not aborted. The
+     * idle client also gets a read of 1 ms on its control connection, because a socket stays connected after the server
+     * closes it. The idle client leaves its slot for that read, so no caller takes it meanwhile. Nothing is sent.
      *
      * @return false when one of them is closed or aborted.
      */
     @Override
     public boolean isAliveLocally() {
+        final FtpClient idle = idleClient.getAndSet(null);
+        boolean alive = true;
+        if (idle != null) {
+            alive = idle.probeIdle();
+            // A closed client goes back too. The next getClient discards it, so this check sends nothing.
+            putClient(idle);
+        }
         for (final FtpClient client : clients) {
-            if (!client.isAliveLocally()) {
+            if (client != idle && !client.isAliveLocally()) {
                 return false;
             }
         }
-        return true;
+        return alive;
     }
 
     /**

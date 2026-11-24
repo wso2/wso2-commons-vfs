@@ -19,6 +19,8 @@ package org.wso2.org.apache.commons.vfs2.provider.ftp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -66,6 +68,8 @@ public class FTPClientWrapper implements FtpClient {
     // The owner thread changes the client. Another thread may abort its group.
     private volatile FTPClient ftpClient;
     private volatile SocketGroup group;
+    // The client whose idle read found the control connection closed. It is never used again.
+    private volatile FTPClient closedOnProbe;
 
     /**
      * A command of commons net on one client.
@@ -287,14 +291,59 @@ public class FTPClientWrapper implements FtpClient {
 
     @Override
     public boolean isAliveLocally() {
+        return isConnectedLocally() && ftpClient != closedOnProbe;
+    }
+
+    // The local socket state only. A client that an idle read found closed still counts here, so that a close of the
+    // file system closes its sockets.
+    private boolean isConnectedLocally() {
         final FTPClient client = ftpClient;
         final SocketGroup current = group;
         return client != null && current != null && !current.isAborted() && client.isConnected();
     }
 
+    /**
+     * Reads the control connection of the idle client for at most 1 ms. An idle client has no reply due, so an end of
+     * stream, a byte or an error means that the server closed the connection or is closing it, as with a 421 reply.
+     * The read sends nothing. A wait that ends with no data leaves the connection as it was, also with TLS.
+     *
+     * @return true when nothing arrived within the wait.
+     */
+    @Override
+    public boolean probeIdle() {
+        if (!isAliveLocally()) {
+            return false;
+        }
+        final FTPClient client = ftpClient;
+        if (!(client instanceof ControlSocketView)) {
+            return true;
+        }
+        final Socket socket = ((ControlSocketView) client).controlSocket();
+        boolean quiet = false;
+        if (socket != null) {
+            try {
+                final int timeout = socket.getSoTimeout();
+                try {
+                    socket.setSoTimeout(1);
+                    socket.getInputStream().read();
+                } catch (final SocketTimeoutException e) {
+                    quiet = true;
+                } finally {
+                    socket.setSoTimeout(timeout);
+                }
+            } catch (final IOException | RuntimeException e) {
+                quiet = false;
+            }
+        }
+        if (!quiet) {
+            closedOnProbe = client;
+        }
+        return quiet;
+    }
+
     @Override
     public boolean isConnected() throws FileSystemException {
-        return isAliveLocally();
+        return isConnectedLocally();
     }
 
     @Override

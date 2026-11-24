@@ -29,6 +29,7 @@ import javax.net.ssl.SSLSocket;
 
 import org.apache.commons.net.ftp.FTPSClient;
 import org.wso2.org.apache.commons.vfs2.SSLConnectionException;
+import org.wso2.org.apache.commons.vfs2.provider.ftp.ControlSocketView;
 
 /**
  * An FTPS client whose data connections resume the TLS session of the control connection.
@@ -38,7 +39,7 @@ import org.wso2.org.apache.commons.vfs2.SSLConnectionException;
  * the session that it cached for the control connection. No reflection is used. The watchdog closes the plain socket.
  * </p>
  */
-public class FTPSClientWithSessionResumption extends FTPSClient {
+public class FTPSClientWithSessionResumption extends FTPSClient implements ControlSocketView {
 
     private static final String PRIVATE = "P";
 
@@ -149,5 +150,15 @@ public class FTPSClientWithSessionResumption extends FTPSClient {
             }
             throw e;
         }
+    }
+
+    /**
+     * Gets the control socket. After the TLS negotiation it is the TLS socket.
+     *
+     * @return the socket, or null when the client is not connected.
+     */
+    @Override
+    public Socket controlSocket() {
+        return _socket_;
     }
 }

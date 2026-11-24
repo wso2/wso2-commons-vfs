@@ -828,7 +828,7 @@ public final class FtpClientFactory {
 
         @Override
         protected FTPClient createClient(final FileSystemOptions fileSystemOptions) {
-            return new FTPClient();
+            return new ControlFTPClient();
         }
 
         @Override

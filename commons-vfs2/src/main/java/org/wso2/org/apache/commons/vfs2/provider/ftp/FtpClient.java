@@ -261,6 +261,16 @@ public interface FtpClient {
     }
 
     /**
+     * Tells whether an idle client can still be used. The caller holds the client, so no command runs on it. It sends
+     * nothing to the server.
+     *
+     * @return true when the client looks alive.
+     */
+    default boolean probeIdle() {
+        return isAliveLocally();
+    }
+
+    /**
      * Returns an OutputStream through which data can be written to append to a file on the server with the given name.
      *
      * @param relPath The name of the remote file.
