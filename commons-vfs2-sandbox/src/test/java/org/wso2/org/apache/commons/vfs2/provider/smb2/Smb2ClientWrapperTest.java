@@ -24,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -65,6 +67,7 @@ import com.hierynomus.mssmb2.SMBApiException;
 import com.hierynomus.protocol.transport.TransportException;
 import com.hierynomus.smbj.SmbConfig;
 import com.hierynomus.smbj.common.SMBRuntimeException;
+import com.hierynomus.smbj.share.Directory;
 import org.junit.jupiter.api.Test;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
@@ -372,6 +375,33 @@ public class Smb2ClientWrapperTest {
         verify(masked.share).open(PATH, EnumSet.of(AccessMask.GENERIC_READ, AccessMask.DELETE),
                 EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL), EnumSet.of(SMB2ShareAccess.FILE_SHARE_WRITE),
                 SMB2CreateDisposition.FILE_OPEN, EnumSet.of(SMB2CreateOptions.FILE_NO_COMPRESSION));
+    }
+
+    // Windows Server 2025 refuses a folder create that asks for GENERIC_ALL. The open takes the configured mask, and
+    // GENERIC_ALL only when no mask is configured.
+    @Test
+    public void folderCreateOpensWithTheConfiguredMaskAndGenericAllOnlyByDefault() throws Exception {
+        final Smb2Doubles.Client client = new Smb2Doubles.Client();
+        final Directory created = mock(Directory.class);
+        doReturn(created).when(client.share).openDirectory(anyString(), any(), any(), any(), any(), any());
+        client.wrapper.createFolder(PATH);
+        verify(client.share).openDirectory(PATH, EnumSet.of(AccessMask.GENERIC_ALL),
+                EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL), EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+                SMB2CreateDisposition.FILE_OPEN_IF, EnumSet.of(SMB2CreateOptions.FILE_DIRECTORY_FILE));
+        verify(created).close();
+
+        final FileSystemOptions options = new FileSystemOptions();
+        BUILDER.setDiskShareAccessMask(options, new ArrayList<>(Arrays.asList("MAXIMUM_ALLOWED")));
+        final Smb2Doubles.Client masked = new Smb2Doubles.Client(options, null);
+        final Directory maskedFolder = mock(Directory.class);
+        doReturn(maskedFolder).when(masked.share).openDirectory(anyString(), any(), any(), any(), any(), any());
+        masked.wrapper.createFolder(PATH);
+        verify(masked.share).openDirectory(PATH, EnumSet.of(AccessMask.MAXIMUM_ALLOWED),
+                EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL), EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+                SMB2CreateDisposition.FILE_OPEN_IF, EnumSet.of(SMB2CreateOptions.FILE_DIRECTORY_FILE));
+        verify(masked.share, never()).openDirectory(anyString(), eq(EnumSet.of(AccessMask.GENERIC_ALL)), any(), any(),
+                any(), any());
+        verify(maskedFolder).close();
     }
 
     @Test
