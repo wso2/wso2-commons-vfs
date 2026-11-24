@@ -18,6 +18,7 @@ package org.wso2.vfs.shared.write;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,9 +53,17 @@ public class TempNamesTest {
         }
     }
 
+    // A name whose creation second is older than the floor is a foreign file, even when its shape fits.
+    @Test
+    public void nameWithACreationSecondBelowTheFloorIsNotOurs() {
+        assertNull(TempNames.parse("x.0t85rzzaaaaaaa.part", ".part"));
+        assertNull(TempNames.parse("x.0000000aaaaaaa.part", ".part"));
+        assertNotNull(TempNames.parse("x.0t85s00aaaaaaa.part", ".part"));
+    }
+
     @Test
     public void parsesOnlyFullAsciiTokens() {
-        assertEquals(0, TempNames.parse("x.0000000aaaaaaa.part", ".part").createdSeconds());
+        assertEquals(TempNames.FLOOR_SECONDS, TempNames.parse("x.0t85s00aaaaaaa.part", ".part").createdSeconds());
         assertEquals(78364164095L, TempNames.parse("x.zzzzzzzaaaaaaa.part", ".part").createdSeconds());
         for (final String name : new String[] {"a.part", "x.abcd.part", ".0000000aaaaaaa.part",
                 "x.0000000Aaaaaaa.part", "x.0000000aaaaaa!.part", "x.0000000aaaaaaa.next",

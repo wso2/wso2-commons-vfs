@@ -24,6 +24,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class TempNames {
     private static final int WIDTH = 7;
     private static final long SPACE = 78364164096L; // 36 to the power of 7.
+    // 1 January 2026, before the first release of this code. A name whose creation second is older is not ours, so a
+    // foreign file whose characters read as an old time is never taken for a temp file.
+    static final long FLOOR_SECONDS = 1767225600L;
     private static final ConcurrentMap<String, TempName> ACTIVE = new ConcurrentHashMap<>();
 
     private TempNames() {
@@ -55,7 +58,8 @@ public final class TempNames {
                 return null;
             }
         }
-        return new TempName(name, name.substring(0, start - 1), Long.parseLong(name.substring(start, start + WIDTH), 36));
+        final long created = Long.parseLong(name.substring(start, start + WIDTH), 36);
+        return created < FLOOR_SECONDS ? null : new TempName(name, name.substring(0, start - 1), created);
     }
 
     public static boolean inUse(final String name) {

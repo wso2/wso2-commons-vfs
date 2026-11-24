@@ -79,7 +79,8 @@ class TempCleanupTest {
     }
 
     private Path old(String target, String suffix) throws Exception {
-        return Files.write(folder.resolve(target + ".00000000000001" + suffix), new byte[] {1});
+        // The floor of the creation second, far older than any stale age.
+        return Files.write(folder.resolve(target + ".0t85s000000001" + suffix), new byte[] {1});
     }
 
     @Test
@@ -154,7 +155,7 @@ class TempCleanupTest {
         Path cut = old("b.fail", ".next");
         Files.write(cut, new byte[0]);
         Path business = Files.write(folder.resolve("data.next"), new byte[] {1});
-        Path directory = Files.createDirectory(folder.resolve("dir.00000000000001.next"));
+        Path directory = Files.createDirectory(folder.resolve("dir.0t85s000000001.next"));
         Path ordinary = old("other", ".next");
         assertEquals(0, next.sweep(io, uri).removed());
         mono.addAndGet(HOUR);
