@@ -38,6 +38,7 @@ import com.hierynomus.smb.SMBPacketData;
 import com.hierynomus.smbj.SMBClient;
 import com.hierynomus.smbj.SmbConfig;
 import com.hierynomus.smbj.auth.AuthenticationContext;
+import com.hierynomus.smbj.common.Pooled;
 import com.hierynomus.smbj.common.SMBRuntimeException;
 import com.hierynomus.smbj.connection.Connection;
 import com.hierynomus.smbj.paths.PathResolveException;
@@ -70,6 +71,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.function.BooleanSupplier;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -166,7 +168,7 @@ public class Smb2ClientWrapper extends SMBClient {
                 .withSoTimeout((int) bounds.getSocketTimeout().getValue())
                 .withSocketFactory(new WatchedSocketFactory(group, (int) bounds.getConnectTimeout().getValue(),
                         bounds.getWriteStallTimeout().getValue()))
-                .withTransportLayerFactory(new ReaderWatch(lost))
+                .withTransportLayerFactory(new ReaderWatch(group::isAborted, lost))
                 .build();
     }
 
@@ -181,9 +183,11 @@ public class Smb2ClientWrapper extends SMBClient {
         private final DirectTcpTransportFactory<SMBPacketData<?>, SMBPacket<?, ?>> direct =
                 new DirectTcpTransportFactory<>();
 
+        private final BooleanSupplier aborted;
         private final Runnable lost;
 
-        ReaderWatch(final Runnable lost) {
+        ReaderWatch(final BooleanSupplier aborted, final Runnable lost) {
+            this.aborted = aborted;
             this.lost = lost;
         }
 
@@ -191,11 +195,11 @@ public class Smb2ClientWrapper extends SMBClient {
         public TransportLayer<SMBPacket<?, ?>> createTransportLayer(
                 final PacketHandlers<SMBPacketData<?>, SMBPacket<?, ?>> handlers, final SmbConfig config) {
             return direct.createTransportLayer(new PacketHandlers<>(handlers.getSerializer(),
-                    watch(handlers.getReceiver(), lost), handlers.getPacketFactory()), config);
+                    watch(handlers.getReceiver(), aborted, lost), handlers.getPacketFactory()), config);
         }
 
         static PacketReceiver<SMBPacketData<?>> watch(final PacketReceiver<SMBPacketData<?>> receiver,
-                final Runnable lost) {
+                final BooleanSupplier aborted, final Runnable lost) {
             return new PacketReceiver<SMBPacketData<?>>() {
                 @Override
                 public void handle(final SMBPacketData<?> packet) throws TransportException {
@@ -204,6 +208,12 @@ public class Smb2ClientWrapper extends SMBClient {
 
                 @Override
                 public void handleError(final Throwable error) {
+                    // Our side closed the sockets first, at a stop or at a bound. smbj still fails the waiting
+                    // requests, and one more lease makes its own close return before it logs off each session on the
+                    // closed transport, which logged an ERROR for each share. The forced close of this client follows.
+                    if (aborted.getAsBoolean() && receiver instanceof Pooled) {
+                        ((Pooled<?>) receiver).lease();
+                    }
                     lost.run();
                     receiver.handleError(error);
                 }

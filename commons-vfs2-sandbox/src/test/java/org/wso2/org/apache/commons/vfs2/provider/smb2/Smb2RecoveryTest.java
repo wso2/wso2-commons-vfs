@@ -68,6 +68,7 @@ import com.hierynomus.mssmb2.SMBApiException;
 import com.hierynomus.protocol.transport.PacketHandlers;
 import com.hierynomus.protocol.transport.PacketReceiver;
 import com.hierynomus.protocol.transport.TransportException;
+import com.hierynomus.smbj.common.Pooled;
 import com.hierynomus.smb.SMBPacket;
 import com.hierynomus.smb.SMBPacketData;
 import com.hierynomus.smbj.SMBClient;
@@ -241,13 +242,45 @@ public class Smb2RecoveryTest {
             }
         };
         final PacketReceiver<SMBPacketData<?>> watched = Smb2ClientWrapper.ReaderWatch.watch(smbj,
-                client.wrapper::connectionLost);
+                client.group::isAborted, client.wrapper::connectionLost);
         watched.handle(mock(SMBPacketData.class));
         assertTrue(client.wrapper.isAliveLocally());
         final TransportException end = new TransportException("EOF while reading packet");
         watched.handleError(end);
         assertEquals(Arrays.asList("packet aborted=false", "error aborted=true socket closed=true alive=false"), order);
         assertSame(end, seen.get());
+    }
+
+    // A receiver as smbj has it: the close after a reader error logs off the sessions only when the last lease goes.
+    static final class PooledReceiver extends Pooled<PooledReceiver> implements PacketReceiver<SMBPacketData<?>> {
+        final List<String> cleanup = new ArrayList<>();
+
+        @Override
+        public void handle(final SMBPacketData<?> packet) {
+        }
+
+        @Override
+        public void handleError(final Throwable error) {
+            if (release()) {
+                cleanup.add("logoff of the sessions");
+            }
+        }
+    }
+
+    @Test
+    public void readerErrorAfterOurAbortLeavesNoLogoffOnTheClosedTransport() throws Exception {
+        final Client stopped = new Client();
+        final PooledReceiver first = new PooledReceiver();
+        stopped.wrapper.abort();
+        Smb2ClientWrapper.ReaderWatch.watch(first, stopped.group::isAborted, stopped.wrapper::connectionLost)
+                .handleError(new TransportException("EOF while reading packet"));
+        assertEquals(new ArrayList<String>(), first.cleanup);
+        // A connection that the server lost still gets the cleanup of smbj, as before.
+        final Client lost = new Client();
+        final PooledReceiver second = new PooledReceiver();
+        Smb2ClientWrapper.ReaderWatch.watch(second, lost.group::isAborted, lost.wrapper::connectionLost)
+                .handleError(new TransportException("EOF while reading packet"));
+        assertEquals(Arrays.asList("logoff of the sessions"), second.cleanup);
     }
 
     @Test
