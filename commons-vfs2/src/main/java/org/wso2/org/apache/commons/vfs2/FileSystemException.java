@@ -37,10 +37,14 @@ public class FileSystemException extends IOException {
     /** URL pattern */
     private static final Pattern URL_PATTERN = Pattern.compile("[a-zA-Z0-9]+://.*");
 
-    // The password of the user info runs to the last @ before the host. It may hold a slash or another @, or white
-    // space when it holds no slash. UriMask of the shared module uses the same pattern.
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
-            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)(?:[^\\s/]*(?:\\s+[^\\s/]+)+|[^\\s]*)"
+    /** Password pattern */
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
+
+    // The password of the user info runs to the last @ before the host. It may hold white space or another @ when it
+    // holds no slash, or a slash when it holds no white space. No quantifier nests. UriMask of the shared module uses
+    // the same pattern.
+    private static final Pattern ADDRESS_PASSWORD_PATTERN = Pattern.compile(
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)(?:[^/]*|[^\\s]*)"
                     + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
 
     // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
@@ -186,7 +190,9 @@ public class FileSystemException extends IOException {
                 // mask passwords (VFS-169)
                 final Matcher urlMatcher = URL_PATTERN.matcher(value);
                 if (urlMatcher.find()) {
-                    value = PASSWORD_PATTERN.matcher(value).replaceAll("$1***$2");
+                    value = ADDRESS_PASSWORD_PATTERN.matcher(value).replaceAll("$1***$2");
+                    // The old pass also masks a user name with white space, which the first pass does not.
+                    value = PASSWORD_PATTERN.matcher(value).replaceFirst(":***@");
                     value = QUERY_SECRET_PATTERN.matcher(value).replaceAll("$1***");
                 }
                 this.info[i] = value;

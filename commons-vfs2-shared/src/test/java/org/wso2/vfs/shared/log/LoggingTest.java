@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.impl.SimpleLog;
@@ -46,11 +48,39 @@ public class LoggingTest {
     @Test
     public void whiteSpaceInPassword() {
         assertEquals("sftp://user:***@host/in", UriMask.mask("sftp://user:my pass@host/in"));
+        assertEquals("sftp://user:***@host/in", UriMask.mask("sftp://user:pass @host/in"));
         assertEquals("Could not move sftp://u:***@h/a to ftp://x:***@g/b",
                 UriMask.mask("Could not move sftp://u:p q@h/a to ftp://x:y@g/b"));
         // An address with no password stays as it is, also when the text after it holds an @.
         assertEquals("sftp://host:22/in held by user@example.com",
                 UriMask.mask("sftp://host:22/in held by user@example.com"));
+    }
+
+    // Runs the work on a thread with a small stack, so a pattern that recurses once per word fails here.
+    private static String onSmallStack(final Callable<String> work) throws InterruptedException {
+        final AtomicReference<Object> result = new AtomicReference<>();
+        final Thread thread = new Thread(null, () -> {
+            try {
+                result.set(work.call());
+            } catch (final Throwable error) {
+                result.set(error);
+            }
+        }, "small-stack", 256 * 1024);
+        thread.start();
+        thread.join();
+        if (result.get() instanceof Throwable) {
+            throw new AssertionError("The mask failed on a small stack", (Throwable) result.get());
+        }
+        return (String) result.get();
+    }
+
+    @Test
+    public void manyWordsWithNoSlashAfterAnAddressDoNotOverflowASmallStack() throws Exception {
+        final StringBuilder text = new StringBuilder("Could not connect to sftp://host:22");
+        for (int i = 0; i < 5000; i++) {
+            text.append(" word");
+        }
+        assertEquals(text.toString(), onSmallStack(() -> UriMask.mask(text.toString())));
     }
 
     @Test
