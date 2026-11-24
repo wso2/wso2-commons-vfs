@@ -35,6 +35,7 @@ import org.apache.commons.logging.impl.SimpleLog;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileProvider;
@@ -81,6 +82,43 @@ public class LoggingTest {
             text.append(" word");
         }
         assertEquals(text.toString(), onSmallStack(() -> UriMask.mask(text.toString())));
+    }
+
+    // One table for the log mask and the error of a file system. Each row gives the input and the wanted result, and
+    // both classes give the same. The rows that stay as they are hold no password.
+    private static final String[][] MASK_TABLE = {
+        {"sftp://user:my pass@host/in/a.txt", "sftp://user:***@host/in/a.txt"},
+        {"sftp://user:pass @host/in", "sftp://user:***@host/in"},
+        {"sftp://user: pass@host/in", "sftp://user:***@host/in"},
+        {"sftp://user:pa/ss@host/in", "sftp://user:***@host/in"},
+        {"sftp://rig:p@ss@host:22/in", "sftp://rig:***@host:22/in"},
+        {"sftp://user:p@a/ss@host/in", "sftp://user:***@host/in"},
+        {"sftp://user:p@x y@host/in", "sftp://user:***@host/in"},
+        {"smb2://John Smith:pw@server/share/in", "smb2://John Smith:***@server/share/in"},
+        {"smb2://DOM;John Smith:p w@server/share/in", "smb2://DOM;John Smith:***@server/share/in"},
+        {"Could not move sftp://u:p q@h/a to ftp://x:y@g/b", "Could not move sftp://u:***@h/a to ftp://x:***@g/b"},
+        {"copy sftp://u:p@host1 to sftp://u2:p2@host2/x", "copy sftp://u:***@host1 to sftp://u2:***@host2/x"},
+        {"sftp://user:pw@[fe80::1]/in", "sftp://user:***@[fe80::1]/in"},
+        {"sftp://host:22/in held by user@example.com", "sftp://host:22/in held by user@example.com"},
+        {"http://host:8080/path and mail a@b.c", "http://host:8080/path and mail a@b.c"},
+        {"sftp://user:***@host/in", "sftp://user:***@host/in"},
+        // A known limit: a password with white space and a slash together is not masked.
+        {"sftp://user:my pa/ss@host/in", "sftp://user:my pa/ss@host/in"},
+    };
+
+    @Test
+    public void theLogMaskAndTheErrorOfAFileSystemGiveTheSameResult() throws Exception {
+        for (final String[] row : MASK_TABLE) {
+            assertEquals(row[1], UriMask.mask(row[0]), row[0]);
+            assertEquals(row[1], new FileSystemException("vfs.provider/rename.error", row[0]).getInfo()[0], row[0]);
+        }
+        final StringBuilder text = new StringBuilder("Could not connect to sftp://host:22");
+        for (int i = 0; i < 5000; i++) {
+            text.append(" word");
+        }
+        assertEquals(text.toString(), onSmallStack(() -> UriMask.mask(text.toString())));
+        assertEquals(text.toString(), onSmallStack(() -> new FileSystemException("vfs.provider/rename.error",
+                text.toString()).getInfo()[0]));
     }
 
     @Test

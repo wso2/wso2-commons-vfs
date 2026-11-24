@@ -40,12 +40,13 @@ public class FileSystemException extends IOException {
     /** Password pattern */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
 
-    // The password of the user info runs to the last @ before the host. It may hold white space or another @ when it
-    // holds no slash, or a slash when it holds no white space. No quantifier nests. UriMask of the shared module uses
-    // the same pattern.
+    // The password of the user info runs to the last @ before the host, in two passes with one form each. The first
+    // takes a password with no slash, the second one with no white space. The user name may hold white space. No
+    // quantifier nests. UriMask of the shared module uses the same passes.
     private static final Pattern ADDRESS_PASSWORD_PATTERN = Pattern.compile(
-            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)(?:[^/]*|[^\\s]*)"
-                    + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?#]*:)[^/]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+    private static final Pattern ADDRESS_PASSWORD_WITH_SLASH_PATTERN = Pattern.compile(
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?#]*:)[^\\s]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
 
     // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
     // The FTP option passive is not a secret and stays readable. UriMask of the shared module uses the same names.
@@ -191,6 +192,7 @@ public class FileSystemException extends IOException {
                 final Matcher urlMatcher = URL_PATTERN.matcher(value);
                 if (urlMatcher.find()) {
                     value = ADDRESS_PASSWORD_PATTERN.matcher(value).replaceAll("$1***$2");
+                    value = ADDRESS_PASSWORD_WITH_SLASH_PATTERN.matcher(value).replaceAll("$1***$2");
                     // The old pass also masks a user name with white space, which the first pass does not.
                     value = PASSWORD_PATTERN.matcher(value).replaceFirst(":***@");
                     value = QUERY_SECRET_PATTERN.matcher(value).replaceAll("$1***");
