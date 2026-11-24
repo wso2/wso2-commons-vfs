@@ -615,7 +615,7 @@ class FailStateStoreTest {
     }
 
     @Test
-    void releaseDropsTheStoreOfAnEndpointAndGivesUpItsPendingHandles() throws Exception {
+    void releaseDropsOnlyAStoreWithNoPendingWrite() throws Exception {
         String name = endpoint + "-release";
         FailStateStore old = FailStateStore.forEndpoint(name, params, locks, health);
         HeldLock held = acquire(null);
@@ -623,19 +623,19 @@ class FailStateStoreTest {
         Files.createFile(marker);
         assertEquals(PENDING, old.recordFailure(io, held, identity, FailState.Outcome.FAILURE,
                 FailState.Action.DELETE, null, refused));
+        // A store with a pending write stays, and the write keeps the file guarded in this node.
+        assertFalse(FailStateStore.release(name, old));
+        assertSame(old, FailStateStore.forEndpoint(name, params, locks, health));
         assertEquals(LockOutcome.Kind.BUSY_LOCAL, locks.acquire(io, uri, ShareLock.Mode.LISTENER, null).kind);
         // A store that the name does not map to is left alone.
-        FailStateStore.release(name, store);
-        assertSame(old, FailStateStore.forEndpoint(name, params, locks, health));
-        FailStateStore.release(name, old);
-        FailStateStore next = FailStateStore.forEndpoint(name, params, locks, health);
-        assertNotSame(old, next);
-        assertEquals(0, old.runPending(io).pending);
-        // The handle of the dropped write is given up, so the path is free in this node again.
-        LockOutcome again = locks.acquire(io, uri, ShareLock.Mode.LISTENER, null);
-        assertEquals(LockOutcome.Kind.ACQUIRED, again.kind);
-        again.handle.releaseChecked(io);
-        FailStateStore.release(name, next);
+        assertFalse(FailStateStore.release(name, store));
+        // A store with no pending write is dropped, and the next deploy of the name gets a new one.
+        String other = endpoint + "-idle";
+        FailStateStore idle = FailStateStore.forEndpoint(other, params, locks, health);
+        assertTrue(FailStateStore.release(other, idle));
+        FailStateStore next = FailStateStore.forEndpoint(other, params, locks, health);
+        assertNotSame(idle, next);
+        assertTrue(FailStateStore.release(other, next));
     }
 
     @Test

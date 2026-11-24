@@ -218,8 +218,6 @@ public final class FailStateStore {
     private final LongSupplier nanos;
     private final Set<String> knownStates = new HashSet<>();
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
-    // Set when the endpoint is gone. Guarded by the lock of pending.
-    private boolean closed;
     private final Map<String, CacheEntry> cache = bounded();
     private final Map<String, Note> emptySince = bounded();
     private final Map<String, Map<String, Note>> stray = bounded();
@@ -240,20 +238,12 @@ public final class FailStateStore {
                 () -> TestPoints.wallMillis("store"), () -> TestPoints.nanoTime("store")));
     }
 
-    // The endpoint of this name is gone, so a redeploy builds a new store with its new values. The pending writes are
-    // dropped, as part 2 has it for a redeploy, and their handles are given up, so their paths are free in this node.
-    public static void release(String name, FailStateStore store) {
-        if (STORES.remove(name, store)) {
-            List<Pending> dropped;
-            synchronized (store.pending) {
-                store.closed = true;
-                dropped = new ArrayList<>(store.pending.values());
-                store.pending.clear();
-                store.health.stateWritesPending(0);
-            }
-            for (Pending p : dropped) {
-                p.handle.abandon();
-            }
+    // The endpoint of this name is gone. A store with no pending write is dropped, so the next deploy of the name
+    // builds a new store with its new values. A store with a pending write stays as it is, because its lock still
+    // guards the file and the next deploy of the name in this node, also after a deactivate, retries the write.
+    public static boolean release(String name, FailStateStore store) {
+        synchronized (store.pending) {
+            return store.pending.isEmpty() && STORES.remove(name, store);
         }
     }
 
@@ -984,14 +974,9 @@ public final class FailStateStore {
         p.due = due(wall.getAsLong(), 0);
         p.handle.pendingStateWrite();
         synchronized (pending) {
-            if (!closed) {
-                pending.put(p.record.identity.uri, p);
-                health.stateWritesPending(pending.size());
-                return;
-            }
+            pending.put(p.record.identity.uri, p);
+            health.stateWritesPending(pending.size());
         }
-        // The endpoint is gone, so a late write gives up its handle at once.
-        p.handle.abandon();
     }
 
     private void finished(Pending p) {
