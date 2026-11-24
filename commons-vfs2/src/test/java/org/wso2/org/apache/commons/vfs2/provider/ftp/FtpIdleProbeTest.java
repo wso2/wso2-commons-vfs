@@ -226,6 +226,23 @@ public class FtpIdleProbeTest {
         }
     }
 
+    // The hand out of an idle client reads it too, so a path that never calls the check, as a poll of the inbound,
+    // gets a new client and not the one that the server closed.
+    @Test
+    public void handOutOfAnIdleClientThatTheServerClosedGivesANewClient() throws Exception {
+        final FtpFileSystem fileSystem = idleFileSystem();
+        final FtpClient idle = fileSystem.getClient();
+        fileSystem.putClient(idle);
+        control.last().close();
+        // The close reaches the client at once on the loopback, so the next hand out sees it.
+        Thread.sleep(200);
+
+        final FtpClient next = fileSystem.getClient();
+        assertNotSame(idle, next, "The closed client is not handed out");
+        assertEquals(2, control.sockets.size(), "The new client has its own connection");
+        fileSystem.putClient(next);
+    }
+
     @Test
     public void quietServerKeepsTheIdleClientAliveAndUsable() throws Exception {
         final FtpFileSystem fileSystem = idleFileSystem();
