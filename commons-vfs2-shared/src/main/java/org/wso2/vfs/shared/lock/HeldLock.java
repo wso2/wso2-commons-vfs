@@ -131,7 +131,10 @@ public final class HeldLock {
         try {
             return LockOutcome.of(owner.read(io, lockUri).same(entry.value) ? OURS : TAKEN_OVER);
         } catch (final ShareLock.Failure error) {
-            if (error.cause.getKind() == ErrorKind.MISSING) {
+            // A read that failed with no transport error gets a fresh look. SFTP and SMB2 answer the read of a lock
+            // that is gone with an error that does not say "missing", so only the look tells that the lock was
+            // taken over. A lock that is there and can not be read stays a failed check.
+            if (!error.cause.getKind().isTransport()) {
                 try {
                     if (!owner.exists(io, lockUri)) {
                         return LockOutcome.of(TAKEN_OVER);
