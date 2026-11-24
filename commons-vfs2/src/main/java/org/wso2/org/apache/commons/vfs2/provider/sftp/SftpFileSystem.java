@@ -226,6 +226,16 @@ public class SftpFileSystem extends AbstractFileSystem {
     }
 
     /**
+     * Ends this file system for good. A close of the link alone, as the public freeUnusedResources does for a file
+     * system that stays in the cache, does not, and the next call connects again, as in the base library.
+     */
+    @Override
+    public void close() {
+        isFileSystemClosed = true;
+        super.close();
+    }
+
+    /**
      * Creates a file object. This method is called only if the requested file is not cached.
      */
     @Override
@@ -235,7 +245,6 @@ public class SftpFileSystem extends AbstractFileSystem {
 
     @Override
     protected void doCloseCommunicationLink() {
-        isFileSystemClosed = true;
         if (idleChannel != null) {
             synchronized (this) {
                 if (idleChannel != null) {
