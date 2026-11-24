@@ -28,7 +28,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -338,18 +337,29 @@ public class DefaultFileSystemManager implements FileSystemManager {
      * @throws FileSystemException if an error occurs adding the provider.
      */
     public void addProvider(final String[] urlSchemes, final FileProvider provider) throws FileSystemException {
-        // fail duplicate schemes
+        // Fail a scheme that a provider of another class has. The same class again is a second copy of the same
+        // configuration, for example when one class loader sees the jar of two applications, so it is skipped.
+        final List<String> added = new ArrayList<>();
         for (final String scheme : urlSchemes) {
-            if (providers.containsKey(scheme)) {
+            final FileProvider registered = providers.get(scheme);
+            if (registered == null) {
+                added.add(scheme);
+            } else if (registered.getClass() != provider.getClass()) {
                 throw new FileSystemException("vfs.impl/multiple-providers-for-scheme.error", scheme);
+            } else if (getLogger().isDebugEnabled()) {
+                getLogger().debug("The provider of scheme " + scheme + " is registered already. "
+                        + provider.getClass().getName() + " is not added again.");
             }
+        }
+        if (added.isEmpty()) {
+            return;
         }
 
         // Contextualise the component (if not already)
         setupComponent(provider);
 
         // Add to map
-        Arrays.stream(urlSchemes).forEach(scheme -> providers.put(scheme, provider));
+        added.forEach(scheme -> providers.put(scheme, provider));
         publishCachingProviders();
 
         if (provider instanceof LocalFileProvider && localFileProvider == null) {
