@@ -37,8 +37,11 @@ public class FileSystemException extends IOException {
     /** URL pattern */
     private static final Pattern URL_PATTERN = Pattern.compile("[a-zA-Z0-9]+://.*");
 
-    /** Password pattern */
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
+    // The password of the user info runs to the last @ before the host. It may hold a slash or another @, or white
+    // space when it holds no slash. UriMask of the shared module uses the same pattern.
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)(?:[^\\s/]*(?:\\s+[^\\s/]+)+|[^\\s]*)"
+                    + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
 
     // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
     // The FTP option passive is not a secret and stays readable. UriMask of the shared module uses the same names.
@@ -183,7 +186,7 @@ public class FileSystemException extends IOException {
                 // mask passwords (VFS-169)
                 final Matcher urlMatcher = URL_PATTERN.matcher(value);
                 if (urlMatcher.find()) {
-                    value = PASSWORD_PATTERN.matcher(value).replaceFirst(":***@");
+                    value = PASSWORD_PATTERN.matcher(value).replaceAll("$1***$2");
                     value = QUERY_SECRET_PATTERN.matcher(value).replaceAll("$1***");
                 }
                 this.info[i] = value;

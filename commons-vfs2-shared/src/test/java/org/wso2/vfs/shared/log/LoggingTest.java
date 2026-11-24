@@ -44,6 +44,16 @@ public class LoggingTest {
     }
 
     @Test
+    public void whiteSpaceInPassword() {
+        assertEquals("sftp://user:***@host/in", UriMask.mask("sftp://user:my pass@host/in"));
+        assertEquals("Could not move sftp://u:***@h/a to ftp://x:***@g/b",
+                UriMask.mask("Could not move sftp://u:p q@h/a to ftp://x:y@g/b"));
+        // An address with no password stays as it is, also when the text after it holds an @.
+        assertEquals("sftp://host:22/in held by user@example.com",
+                UriMask.mask("sftp://host:22/in held by user@example.com"));
+    }
+
+    @Test
     public void atInPassword() {
         assertEquals("sftp://rig:***@host:22/in", UriMask.mask("sftp://rig:p@ss@host:22/in"));
     }

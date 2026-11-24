@@ -49,6 +49,17 @@ public class FileSystemExceptionTest {
     }
 
     /**
+     * A password with white space or a slash is masked to the last @ before the host, as the log mask does.
+     */
+    @Test
+    public void testMasksPasswordWithWhiteSpaceOrSlash() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/rename.error",
+                "sftp://user:my pass@host/in", "sftp://rig:pa/ss@host/in");
+        assertEquals("sftp://user:***@host/in", fse.getInfo()[0]);
+        assertEquals("sftp://rig:***@host/in", fse.getInfo()[1]);
+    }
+
+    /**
      * Tests a {@link FileSystemException} containing info with a nested URL containing a complete basic authentication.
      */
     @Test

@@ -22,8 +22,10 @@ import java.util.regex.Pattern;
 import org.wso2.org.apache.commons.vfs2.FileName;
 
 public final class UriMask {
+    // The password runs to the last @ before the host. It may hold a slash or another @, or white space when it holds
+    // no slash, so it never runs into the text after an address. FileSystemException uses the same pattern.
     private static final Pattern PASSWORD = Pattern.compile(
-            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)[^\\s]*"
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)(?:[^\\s/]*(?:\\s+[^\\s/]+)+|[^\\s]*)"
                     + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
     // The same names as the query mask of FileSystemException. The FTP option passive is not a secret.
     private static final Pattern OPTION = Pattern.compile(
