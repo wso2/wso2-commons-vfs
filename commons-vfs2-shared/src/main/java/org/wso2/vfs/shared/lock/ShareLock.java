@@ -498,7 +498,9 @@ public final class ShareLock {
             }
             return false;
         }
-        if (!releasable(key, found) || exists(io, data)) {
+        // A lock that does not parse as ours may belong to another party, so the sweep never takes it. The transport
+        // touches only the lock of a file that it takes.
+        if (found.time == 0 || !releasable(key, found) || exists(io, data)) {
             return false;
         }
         final LockOutcome result = takeover(io, data, found);

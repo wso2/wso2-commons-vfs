@@ -78,6 +78,35 @@ class LockBoundariesTest {
     }
 
     @Test
+    void theSweepNeverTakesALockThatDoesNotParseAsOurs() throws Exception {
+        String name = UUID.randomUUID().toString();
+        String folder = "file:///tmp/" + name + "/";
+        EndpointHealth health = HealthRegistry.register(HealthRegistry.Kind.INBOUND, name, 5000);
+        AtomicLong wall = new AtomicLong(1000000000L);
+        AtomicLong clock = new AtomicLong();
+        ShareLock locks = new ShareLock(name, true, 60000, health, health.namedLog(), wall::get, clock::get);
+        ShareLockTest.Server io = new ShareLockTest.Server();
+        Map<String, FolderListing.Metadata> files = new LinkedHashMap<>();
+        FolderListing.Metadata metadata = new FolderListing.Metadata(1, 1);
+        try {
+            files.put("foreign.lock", metadata);
+            io.files.put(folder + "foreign.lock", "a lock of another party".getBytes(StandardCharsets.UTF_8));
+            files.put("ours.lock", metadata);
+            io.files.put(folder + "ours.lock", LockValue.create(wall.get() - 120000, UUID.randomUUID().toString()).bytes);
+            assertEquals(1, locks.sweepOrphans(io, FolderListing.of(folder, files)));
+            assertFalse(io.files.containsKey(folder + "ours.lock"));
+            files.remove("ours.lock");
+            // Well past the stale age the foreign lock with no data file is still there.
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(120));
+            wall.addAndGet(120000);
+            assertEquals(0, locks.sweepOrphans(io, FolderListing.of(folder, files)));
+            assertTrue(io.files.containsKey(folder + "foreign.lock"));
+        } finally {
+            HealthRegistry.unregister(HealthRegistry.Kind.INBOUND, name);
+        }
+    }
+
+    @Test
     void oneListingCapsOnlyOrphanCandidatesAndNeverRemovesTheListedSibling() throws Exception {
         String name=UUID.randomUUID().toString();
         String folder="file:///tmp/"+name+"/";
