@@ -61,6 +61,9 @@ public final class ProgressWatchdog {
 
     private static final Set<WatchedOutputStream> REGISTRY = ConcurrentHashMap.newKeySet();
 
+    // The requests that wait for a reply now. They count in the state as the streams do.
+    private static final Set<Wait> WAITS = ConcurrentHashMap.newKeySet();
+
     // How many streams are registered, and since when none is. A change puts a new object here, so a reader gets the
     // count and the time of one moment, and one empty time of the registry is one object.
     private static final AtomicReference<State> STATE = new AtomicReference<>(new State(0, false, 0));
@@ -107,9 +110,56 @@ public final class ProgressWatchdog {
             // It was registered before.
             count(-1);
         }
+        ensureWatcher();
+    }
+
+    private static void ensureWatcher() {
         synchronized (THREAD_LOCK) {
             if (watcher == null) {
                 watcher = start(ProgressWatchdog::run, THREAD_NAME);
+            }
+        }
+    }
+
+    /**
+     * A request that waits for the reply of a server, for example on a protocol whose library reads a reply with no
+     * time limit. When no progress came for the bound, the watcher aborts the socket group of the request, and the
+     * waiting call fails on its own thread. A wait with the bound zero is not watched.
+     */
+    public static final class Wait {
+        private final SocketGroup group;
+        private final long boundNanos;
+        private final String host;
+        // When the wait started or last made progress. Zero while nothing waits.
+        private volatile long since;
+
+        public Wait(final SocketGroup group, final long boundMillis, final String host) {
+            this.group = group;
+            this.boundNanos = TimeUnit.MILLISECONDS.toNanos(Math.max(0, boundMillis));
+            this.host = host;
+        }
+
+        /**
+         * Starts the wait, or renews it when a part of the reply came.
+         */
+        public void progress() {
+            if (boundNanos == 0) {
+                return;
+            }
+            since = now();
+            if (WAITS.add(this)) {
+                count(1);
+                ensureWatcher();
+            }
+        }
+
+        /**
+         * Ends the wait. A later progress starts it again.
+         */
+        public void end() {
+            since = 0;
+            if (WAITS.remove(this)) {
+                count(-1);
             }
         }
     }
@@ -216,6 +266,32 @@ public final class ProgressWatchdog {
                 // One stream must not end the scan of the others, and it must not end the watcher.
                 report("The write watchdog could not check a stream.", e);
             }
+        }
+        for (final Wait wait : WAITS) {
+            try {
+                check(wait, now);
+            } catch (final RuntimeException e) {
+                report("The write watchdog could not check a request.", e);
+            }
+        }
+    }
+
+    private static void check(final Wait wait, final long now) {
+        final long since = wait.since;
+        if (wait.group.isAborted()) {
+            wait.end();
+            return;
+        }
+        if (since == 0 || now - since <= wait.boundNanos || wait.since != since) {
+            return;
+        }
+        final String reason = "A request to " + wait.host + " got no reply for "
+                + TimeUnit.NANOSECONDS.toMillis(now - since) + " ms";
+        final boolean first = wait.group.claim(reason);
+        wait.group.abort(reason);
+        wait.end();
+        if (first) {
+            report(reason + ". The watchdog closes the sockets of this connection.", null);
         }
     }
 

@@ -42,6 +42,7 @@ import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractFileSystem;
 import org.wso2.org.apache.commons.vfs2.provider.EffectiveBounds;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
+import org.wso2.org.apache.commons.vfs2.util.ProgressWatchdog;
 import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 import com.jcraft.jsch.ChannelExec;
@@ -157,6 +158,10 @@ public class SftpFileSystem extends AbstractFileSystem {
     // The time that the open of an SFTP channel may take, from the bounds in effect. Zero means no bound.
     private final int channelOpenMillis;
 
+    // How long one request may wait for its reply: the session timeout times (keep alive count plus 1). Zero when the
+    // session timeout is off.
+    private final long requestBoundMillis;
+
     /**
      * Cache for the user ID (-1 when not set)
      * <p>
@@ -199,7 +204,10 @@ public class SftpFileSystem extends AbstractFileSystem {
             final FileSystemOptions fileSystemOptions) {
         super(rootName, null, fileSystemOptions);
         this.link = new Link(session, group);
-        channelOpenMillis = (int) EffectiveBounds.of("sftp", fileSystemOptions).getConnectTimeout().getValue();
+        final EffectiveBounds bounds = EffectiveBounds.of("sftp", fileSystemOptions);
+        channelOpenMillis = (int) bounds.getConnectTimeout().getValue();
+        final long sessionTimeout = bounds.getSessionTimeout().getValue();
+        requestBoundMillis = sessionTimeout <= 0 ? 0 : sessionTimeout * (bounds.getKeepAliveCount().getValue() + 1);
         final SftpFileSystemConfigBuilder configBuilder = SftpFileSystemConfigBuilder.getInstance();
         if (configBuilder.isDisableDetectExecChannel(fileSystemOptions)
                 || "true".equalsIgnoreCase(configBuilder.getAvoidPermissionCheck(fileSystemOptions))) {
@@ -414,6 +422,44 @@ public class SftpFileSystem extends AbstractFileSystem {
     }
 
     /**
+     * A request on a channel, which can renew its wait when a part of the reply came.
+     *
+     * @param <T> the result.
+     */
+    interface Request<T> {
+        T run(ProgressWatchdog.Wait wait) throws SftpException;
+    }
+
+    /**
+     * Runs one request on a channel under the bound of a request. JSch reads an SFTP reply with no time limit while the
+     * server answers the keep alive, so the watchdog aborts the sockets of the session when the bound passes with no
+     * reply. Only the time inside the request counts, never the time a caller holds the channel between requests.
+     */
+    <T> T request(final ChannelSftp channel, final Request<T> request) throws SftpException {
+        final ProgressWatchdog.Wait wait = waitFor(channel);
+        wait.progress();
+        try {
+            return request.run(wait);
+        } finally {
+            wait.end();
+        }
+    }
+
+    // A wait on the group of the session of the channel. A channel of a session that is no longer the current one
+    // gets no bound, because its group is not the one to abort.
+    ProgressWatchdog.Wait waitFor(final ChannelSftp channel) {
+        final Link current = link;
+        boolean own;
+        try {
+            own = channel.getSession() == current.session;
+        } catch (final JSchException e) {
+            own = false;
+        }
+        return new ProgressWatchdog.Wait(current.group, own ? requestBoundMillis : 0,
+                ((GenericFileName) getRootName()).getHostName());
+    }
+
+    /**
      * Returns an SFTP channel to the server.
      *
      * @return new or reused channel, never null.
@@ -453,7 +499,11 @@ public class SftpFileSystem extends AbstractFileSystem {
             final String workingDirectory = getRootName().getPath();
             if (workingDirectory != null && (userDirIsRoot == null || !userDirIsRoot.booleanValue())) {
                 try {
-                    channel.cd(quote(workingDirectory));
+                    final ChannelSftp fresh = channel;
+                    request(fresh, wait -> {
+                        fresh.cd(quote(workingDirectory));
+                        return null;
+                    });
                 } catch (final SftpException e) {
                     // A channel that is not in the work directory is never pooled.
                     channel.disconnect();

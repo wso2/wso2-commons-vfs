@@ -31,7 +31,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -101,6 +104,12 @@ final class SftpTestServer implements Closeable {
 
     private volatile long replyDelayMillis;
 
+    // SFTP packet types whose requests the subsystem holds, and for how long. A hold of -1 lasts until the release.
+    // The SSH layer answers keep alives on its own threads all the time.
+    private final Map<Integer, Long> holds = new ConcurrentHashMap<>();
+
+    private volatile CountDownLatch released = new CountDownLatch(1);
+
     // The one command whose reply is delayed, or null for every command.
     private volatile String delayedCommand;
 
@@ -158,7 +167,24 @@ final class SftpTestServer implements Closeable {
         server.setPort(0);
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyDir.resolve("key.ser").toString()));
         server.setPasswordAuthenticator((user, password, session) -> user.equals(password));
-        server.setSubsystemFactories(Collections.<NamedFactory<Command>>singletonList(new SftpSubsystem.Factory()));
+        server.setSubsystemFactories(Collections.<NamedFactory<Command>>singletonList(new NamedFactory<Command>() {
+            @Override
+            public String getName() {
+                return "sftp";
+            }
+
+            @Override
+            public Command create() {
+                return new SftpSubsystem() {
+                    @Override
+                    protected void process(final Buffer buffer) throws IOException {
+                        // The buffer starts with the length of the packet, then its type.
+                        hold(buffer.array()[buffer.rpos() + 4] & 0xff);
+                        super.process(buffer);
+                    }
+                };
+            }
+        }));
         server.setFileSystemFactory(session -> new AbstractSftpProviderTestCase.TestFileSystemView(root.toString(),
                 session.getUsername()));
         server.setCommandFactory(commandFactory);
@@ -280,6 +306,37 @@ final class SftpTestServer implements Closeable {
         replyDelayMillis = replyMillis;
     }
 
+    // Holds each SFTP request of the given packet types for the time, or with -1 until releaseHolds.
+    void holdRequests(final long millis, final int... types) {
+        for (final int type : types) {
+            holds.put(type, millis);
+        }
+    }
+
+    // Ends every hold and lets the held requests go on.
+    void releaseHolds() {
+        holds.clear();
+        final CountDownLatch old = released;
+        released = new CountDownLatch(1);
+        old.countDown();
+    }
+
+    private void hold(final int type) {
+        final Long millis = holds.get(type);
+        if (millis == null) {
+            return;
+        }
+        if (millis >= 0) {
+            sleep(millis);
+            return;
+        }
+        try {
+            released.await();
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     void setIds(final String userId, final String groupIds) {
         uid = userId;
         groups = groupIds;
@@ -299,6 +356,7 @@ final class SftpTestServer implements Closeable {
 
     @Override
     public void close() throws IOException {
+        releaseHolds();
         final List<Exception> failures = new ArrayList<>();
         for (final Closeable closeable : open) {
             try {

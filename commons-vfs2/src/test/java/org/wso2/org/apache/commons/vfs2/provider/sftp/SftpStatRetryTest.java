@@ -22,7 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -34,7 +37,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Vector;
 
 import org.junit.jupiter.api.Test;
 import org.wso2.org.apache.commons.vfs2.FileNotFoundException;
@@ -281,12 +283,12 @@ public class SftpStatRetryTest {
     public void listingStopsAtTheFirstFailureWithACause() throws Exception {
         final ChannelSftp lister = channel(true);
         final SftpException cut = broken();
-        when(lister.ls(anyString())).thenThrow(cut);
+        doThrow(cut).when(lister).ls(anyString(), any(ChannelSftp.LsEntrySelector.class));
         final Channels fileSystem = listing(lister);
         assertSame(cut, assertThrows(SftpException.class, () -> list(fileSystem)));
         verify(lister, never()).pwd();
         verify(lister, never()).cd(anyString());
-        verify(lister).ls(anyString());
+        verify(lister).ls(anyString(), any(ChannelSftp.LsEntrySelector.class));
         assertSame(lister, fileSystem.released.get(1)[0]);
         assertTrue(!fileSystem.wentBack(1));
     }
@@ -294,9 +296,9 @@ public class SftpStatRetryTest {
     @Test
     public void listingAfterAReplyChangesIntoTheFolderAndBack() throws Exception {
         final ChannelSftp lister = channel(true);
-        when(lister.ls("in")).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(lister).ls(eq("in"), any(ChannelSftp.LsEntrySelector.class));
         when(lister.pwd()).thenReturn("/home");
-        when(lister.ls(".")).thenReturn(new Vector<>());
+        doNothing().when(lister).ls(eq("."), any(ChannelSftp.LsEntrySelector.class));
         final Channels fileSystem = listing(lister);
         assertEquals(0, list(fileSystem).length);
         verify(lister).cd("in");
@@ -307,9 +309,9 @@ public class SftpStatRetryTest {
     @Test
     public void listingAfterAReplyQuotesTheLiteralFolderAndRestoresTheLiteralWorkingDirectory() throws Exception {
         final ChannelSftp lister = channel(true);
-        when(lister.ls("in\\*")).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(lister).ls(eq("in\\*"), any(ChannelSftp.LsEntrySelector.class));
         when(lister.pwd()).thenReturn("/home?");
-        when(lister.ls(".")).thenReturn(new Vector<>());
+        doNothing().when(lister).ls(eq("."), any(ChannelSftp.LsEntrySelector.class));
         final Channels fileSystem = listing(lister);
         assertEquals(0, new SftpFileObject(
                 (GenericFileName) FOLDER.createName("/in*", FileType.FOLDER),
@@ -322,10 +324,10 @@ public class SftpStatRetryTest {
     @Test
     public void listingStopsAtAFailureWithACauseInTheFolderAndDoesNotChangeBack() throws Exception {
         final ChannelSftp lister = channel(true);
-        when(lister.ls("in")).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(lister).ls(eq("in"), any(ChannelSftp.LsEntrySelector.class));
         when(lister.pwd()).thenReturn("/home");
         final SftpException cut = broken();
-        when(lister.ls(".")).thenThrow(cut);
+        doThrow(cut).when(lister).ls(eq("."), any(ChannelSftp.LsEntrySelector.class));
         final Channels fileSystem = listing(lister);
         assertSame(cut, assertThrows(SftpException.class, () -> list(fileSystem)));
         verify(lister, never()).cd("/home");
@@ -335,9 +337,9 @@ public class SftpStatRetryTest {
     @Test
     public void listingThatCanNotChangeBackReportsTheChangeBackAndDropsTheChannel() throws Exception {
         final ChannelSftp lister = channel(true);
-        when(lister.ls("in")).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(lister).ls(eq("in"), any(ChannelSftp.LsEntrySelector.class));
         when(lister.pwd()).thenReturn("/home");
-        when(lister.ls(".")).thenReturn(new Vector<>());
+        doNothing().when(lister).ls(eq("."), any(ChannelSftp.LsEntrySelector.class));
         final SftpException back = reply(ChannelSftp.SSH_FX_PERMISSION_DENIED);
         doThrow(back).when(lister).cd("/home");
         final Channels fileSystem = listing(lister);
@@ -351,10 +353,10 @@ public class SftpStatRetryTest {
     @Test
     public void listingThatFailsAndCanNotChangeBackReportsTheChangeBackWithTheListFailure() throws Exception {
         final ChannelSftp lister = channel(true);
-        when(lister.ls("in")).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(lister).ls(eq("in"), any(ChannelSftp.LsEntrySelector.class));
         when(lister.pwd()).thenReturn("/home");
         final SftpException listFailure = reply(ChannelSftp.SSH_FX_PERMISSION_DENIED);
-        when(lister.ls(".")).thenThrow(listFailure);
+        doThrow(listFailure).when(lister).ls(eq("."), any(ChannelSftp.LsEntrySelector.class));
         final SftpException back = reply(ChannelSftp.SSH_FX_PERMISSION_DENIED);
         doThrow(back).when(lister).cd("/home");
         final Channels fileSystem = listing(lister);

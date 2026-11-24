@@ -66,6 +66,7 @@ import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.org.apache.commons.vfs2.util.MonitorInputStream;
 import org.wso2.org.apache.commons.vfs2.util.MonitorOutputStream;
 import org.wso2.org.apache.commons.vfs2.util.PosixPermissions;
+import org.wso2.org.apache.commons.vfs2.util.ProgressWatchdog;
 import org.wso2.org.apache.commons.vfs2.util.RandomAccessMode;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
 
@@ -107,11 +108,11 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         private final NotedInput source;
 
         SftpInputStream(final ChannelSftp channel, final InputStream in) {
-            this(channel, new NotedInput(in));
+            this(channel, new NotedInput(channel, in));
         }
 
         SftpInputStream(final ChannelSftp channel, final InputStream in, final int bufferSize) {
-            this(channel, new NotedInput(in), bufferSize);
+            this(channel, new NotedInput(channel, in), bufferSize);
         }
 
         private SftpInputStream(final ChannelSftp channel, final NotedInput source) {
@@ -148,7 +149,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         private final NotedOutput target;
 
         SftpOutputStream(final ChannelSftp channel, final OutputStream out) {
-            this(channel, new NotedOutput(out));
+            this(channel, new NotedOutput(channel, out));
         }
 
         private SftpOutputStream(final ChannelSftp channel, final NotedOutput target) {
@@ -173,42 +174,56 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
 
         private volatile Throwable failure;
 
-        NotedInput(final InputStream in) {
+        // One read or write of the stream gets the bound of a request, the time between two does not.
+        private final ProgressWatchdog.Wait wait;
+
+        NotedInput(final ChannelSftp channel, final InputStream in) {
             super(in);
+            wait = getAbstractFileSystem().waitFor(channel);
         }
 
         @Override
         public int read() throws IOException {
+            wait.progress();
             try {
                 return super.read();
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         @Override
         public int read(final byte[] buffer, final int offset, final int length) throws IOException {
+            wait.progress();
             try {
                 return super.read(buffer, offset, length);
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         @Override
         public long skip(final long count) throws IOException {
+            wait.progress();
             try {
                 return super.skip(count);
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         @Override
         public void close() throws IOException {
+            wait.progress();
             try {
                 try {
                     checkStreamClose();
@@ -218,6 +233,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
@@ -235,43 +252,57 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
 
         private volatile Throwable failure;
 
-        NotedOutput(final OutputStream out) {
+        // One read or write of the stream gets the bound of a request, the time between two does not.
+        private final ProgressWatchdog.Wait wait;
+
+        NotedOutput(final ChannelSftp channel, final OutputStream out) {
             super(out);
+            wait = getAbstractFileSystem().waitFor(channel);
         }
 
         @Override
         public void write(final int value) throws IOException {
+            wait.progress();
             try {
                 out.write(value);
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         @Override
         public void write(final byte[] buffer, final int offset, final int length) throws IOException {
+            wait.progress();
             try {
                 out.write(buffer, offset, length);
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         @Override
         public void flush() throws IOException {
+            wait.progress();
             try {
                 out.flush();
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
         // The stream above flushes before it closes, so the close does not flush again.
         @Override
         public void close() throws IOException {
+            wait.progress();
             try {
                 try {
                     checkStreamClose();
@@ -281,6 +312,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             } catch (final IOException | RuntimeException e) {
                 note(e);
                 throw e;
+            } finally {
+                wait.end();
             }
         }
 
@@ -316,7 +349,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         Throwable failure = null;
         try {
-            channel.mkdir(relPath);
+            send(channel, () -> channel.mkdir(relPath));
         } catch (final Throwable e) {
             failure = e;
             throw e;
@@ -337,9 +370,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             final boolean file = isFile();
             try {
                 if (file) {
-                    channel.rm(quote(relPath));
+                    send(channel, () -> channel.rm(quote(relPath)));
                 } else {
-                    channel.rmdir(quote(relPath));
+                    send(channel, () -> channel.rmdir(quote(relPath)));
                 }
             } catch (final Throwable e) {
                 failure = e;
@@ -402,7 +435,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
                 throw new FileSystemException("vfs.provider/read-not-file.error", getName());
             }
             try {
-                inputStream = channel.get(quote(relPath));
+                inputStream = request(channel, wait -> channel.get(quote(relPath)));
             } catch (final SftpException e) {
                 release(channel, e);
                 if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE && e.getCause() == null) {
@@ -438,7 +471,9 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
 
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         try {
-            return new SftpOutputStream(channel, channel.put(quote(relPath), bAppend ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE));
+            final OutputStream out = request(channel,
+                    wait -> channel.put(quote(relPath), bAppend ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE));
+            return new SftpOutputStream(channel, out);
         } catch (final Throwable ex) {
             release(channel, ex);
             throw ex;
@@ -569,6 +604,42 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
     }
 
     /**
+     * A request with no result, for {@link #send}.
+     */
+    private interface Call {
+        void run() throws SftpException;
+    }
+
+    // One request under the bound of a request of the file system.
+    private <T> T request(final ChannelSftp channel, final SftpFileSystem.Request<T> request) throws SftpException {
+        return getAbstractFileSystem().request(channel, request);
+    }
+
+    private void send(final ChannelSftp channel, final Call call) throws SftpException {
+        request(channel, wait -> {
+            call.run();
+            return null;
+        });
+    }
+
+    private SftpATTRS statOn(final ChannelSftp channel) throws SftpException {
+        return request(channel, wait -> channel.stat(quote(relPath)));
+    }
+
+    // A listing renews its wait with each entry, so a folder that keeps answering is never cut.
+    private Vector<LsEntry> ls(final ChannelSftp channel, final String path) throws SftpException {
+        return request(channel, wait -> {
+            final Vector<LsEntry> entries = new Vector<>();
+            channel.ls(path, entry -> {
+                wait.progress();
+                entries.add(entry);
+                return ChannelSftp.LsEntrySelector.CONTINUE;
+            });
+            return entries;
+        });
+    }
+
+    /**
      * Lists this folder on the channel. A failure with a cause, which is a broken connection, stops at once and the
      * caller discards the channel with its session. After a reply of the server the old way runs: a change into the
      * folder and a list of ".", and then the change back. A channel that can not change back is in the wrong folder,
@@ -581,7 +652,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
     private Vector<?> list(final ChannelSftp channel, final Throwable[] failure) throws Exception {
         try {
             // try the direct way to list the directory on the server to avoid too many round trips
-            return channel.ls(quote(relPath));
+            return ls(channel, quote(relPath));
         } catch (final SftpException e) {
             if (!SftpFileSystem.isReplyOrSuccess(e)) {
                 failure[0] = e;
@@ -591,8 +662,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         String workingDirectory = null;
         try {
             if (relPath != null) {
-                workingDirectory = channel.pwd();
-                channel.cd(quote(relPath));
+                workingDirectory = request(channel, wait -> channel.pwd());
+                send(channel, () -> channel.cd(quote(relPath)));
             }
         } catch (final SftpException ex) {
             failure[0] = ex;
@@ -604,7 +675,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         Vector<?> vector = null;
         SftpException lsEx = null;
         try {
-            vector = channel.ls(quote("."));
+            vector = ls(channel, quote("."));
         } catch (final SftpException ex) {
             failure[0] = ex;
             if (!SftpFileSystem.isReplyOrSuccess(ex)) {
@@ -614,7 +685,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         }
         if (relPath != null) {
             try {
-                channel.cd(quote(workingDirectory));
+                final String back = workingDirectory;
+                send(channel, () -> channel.cd(quote(back)));
             } catch (final SftpException xe) {
                 failure[0] = xe;
                 channel.disconnect();
@@ -641,7 +713,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         Throwable failure = null;
         try {
-            channel.rename(quote(relPath), quote(newSftpFileObject.relPath));
+            send(channel, () -> channel.rename(quote(relPath), quote(newSftpFileObject.relPath)));
         } catch (final Throwable e) {
             failure = e;
             throw e;
@@ -721,7 +793,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         Throwable failure = null;
         try {
-            channel.chmod(mode, quote(relPath));
+            send(channel, () -> channel.chmod(mode, quote(relPath)));
             attrs = null;
         } catch (final SftpException error) {
             failure = error;
@@ -738,7 +810,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final ChannelSftp channel = getAbstractFileSystem().getChannel();
         Throwable failure = null;
         try {
-            channel.setStat(quote(relPath), attrs);
+            send(channel, () -> channel.setStat(quote(relPath), attrs));
         } catch (final Throwable e) {
             failure = e;
             throw e;
@@ -757,7 +829,8 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         // Using InputStream directly from the channel
         // is much faster than the memory method.
         try {
-            return new SftpInputStream(channel, channel.get(quote(path), null, filePointer));
+            final InputStream in = request(channel, wait -> channel.get(quote(path), null, filePointer));
+            return new SftpInputStream(channel, in);
         } catch (final SftpException e) {
             release(channel, e);
             throw new FileSystemException(e);
@@ -844,7 +917,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final SftpFileSystem fileSystem = getAbstractFileSystem();
         ChannelSftp channel = fileSystem.getChannel();
         try {
-            setStat(channel.stat(quote(relPath)));
+            setStat(statOn(channel));
         } catch (final SftpException e) {
             if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE && e.getCause() == null) {
                 release(channel, e);
@@ -867,7 +940,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             }
             channel = fileSystem.getChannel();
             try {
-                setStat(channel.stat(quote(relPath)));
+                setStat(statOn(channel));
             } catch (final SftpException retryEx) {
                 final boolean connected = channel.isConnected();
                 release(channel, retryEx);
@@ -993,7 +1066,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
                 return;
             }
             try {
-                channel.rm(quote(path));
+                send(channel, () -> channel.rm(quote(path)));
             } catch (final Exception e) {
                 if (!isReply(e)) {
                     discard();
@@ -1165,7 +1238,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final String point = pointKey(targetName);
         final Exception refusal;
         try {
-            call.channel.hardlink(quote(source), quote(target));
+            send(call.channel, () -> call.channel.hardlink(quote(source), quote(target)));
             fileSystem.markLinks(key);
             return call.result(AtomicOutcome.DONE, null);
         } catch (final Exception e) {
@@ -1183,7 +1256,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         }
         Exception lookError = null;
         try {
-            call.channel.lstat(quote(target));
+            request(call.channel, wait -> call.channel.lstat(quote(target)));
         } catch (final Exception e) {
             lookError = e;
         }
@@ -1207,7 +1280,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             throw call.interruptedBefore("probe link");
         }
         try {
-            call.channel.hardlink(quote(source), quote(probe));
+            send(call.channel, () -> call.channel.hardlink(quote(source), quote(probe)));
         } catch (final Exception e) {
             if (!isReply(e)) {
                 throw call.notKnown("probe link", e);
@@ -1251,7 +1324,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             final String scratch = sibling(relPath, scratchName);
             call.tempPath = sibling(getName().getPath(), scratchName);
             try {
-                call.channel.put(new ByteArrayInputStream(content), quote(scratch));
+                send(call.channel, () -> call.channel.put(new ByteArrayInputStream(content), quote(scratch)));
             } catch (final Exception e) {
                 if (!isReply(e)) {
                     throw call.notKnown("write of the scratch file", e);
@@ -1321,7 +1394,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             final Exception refusal;
             call.beforeFirst();
             try {
-                call.channel.rename(quote(relPath), quote(targetPath));
+                send(call.channel, () -> call.channel.rename(quote(relPath), quote(targetPath)));
                 return call.result(AtomicOutcome.DONE, null);
             } catch (final Exception e) {
                 if (!isReply(e)) {
@@ -1342,7 +1415,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
                 return call.result(AtomicOutcome.REFUSED, detail(refusal));
             }
             try {
-                call.channel.lstat(quote(targetPath));
+                request(call.channel, wait -> call.channel.lstat(quote(targetPath)));
             } catch (final Exception e) {
                 if (!isReply(e)) {
                     call.discard();
@@ -1376,7 +1449,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
                 return testLost(call, refusal, probeA, probeB);
             }
             try {
-                call.channel.put(new ByteArrayInputStream(PROBE_CONTENT), quote(probe));
+                send(call.channel, () -> call.channel.put(new ByteArrayInputStream(PROBE_CONTENT), quote(probe)));
             } catch (final Exception e) {
                 if (!isReply(e)) {
                     return testLost(call, refusal, probeA, probeB);
@@ -1392,7 +1465,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             return testLost(call, refusal, probeA, probeB);
         }
         try {
-            call.channel.rename(quote(probeA), quote(probeB));
+            send(call.channel, () -> call.channel.rename(quote(probeA), quote(probeB)));
             call.remove(probeB);
             getAbstractFileSystem().markReplaces(folder);
             return call.result(AtomicOutcome.REFUSED, refusal);
@@ -1406,7 +1479,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             return testLost(call, refusal, probeA, probeB);
         }
         try {
-            call.channel.rm(quote(probeB));
+            send(call.channel, () -> call.channel.rm(quote(probeB)));
         } catch (final Exception e) {
             if (!isReply(e)) {
                 return testLost(call, refusal, probeA, probeB);
@@ -1419,7 +1492,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             return testLost(call, refusal, probeA, probeB);
         }
         try {
-            call.channel.rename(quote(probeA), quote(probeB));
+            send(call.channel, () -> call.channel.rename(quote(probeA), quote(probeB)));
         } catch (final Exception e) {
             if (!isReply(e)) {
                 return testLost(call, refusal, probeA, probeB);
@@ -1454,7 +1527,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         // The check discards the channel when it throws.
         call.beforeFirst();
         try {
-            call.channel.rename(quote(relPath), quote(awayPath));
+            send(call.channel, () -> call.channel.rename(quote(relPath), quote(awayPath)));
             return call.result(AtomicOutcome.DONE, null);
         } catch (final Exception e) {
             if (!isReply(e)) {
@@ -1478,7 +1551,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         }
         Throwable failure = null;
         try {
-            return channel.lstat(quote(relPath));
+            return request(channel, wait -> channel.lstat(quote(relPath)));
         } catch (final Exception e) {
             failure = e;
             if (isReply(e) && isNoSuchFile(e)) {
