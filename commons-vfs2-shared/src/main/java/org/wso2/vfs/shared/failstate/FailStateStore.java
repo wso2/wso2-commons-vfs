@@ -504,7 +504,17 @@ public final class FailStateStore {
             try (FileObject source = io.resolve(sibling(uri, stage)); FileObject target = io.resolve(suffix(uri, ".fail"))) {
                 AtomicOps ops = AtomicOps.of(source);
                 if (ops == null) {
-                    throw new IOException("The provider does not support a marker rename.");
+                    // A provider with no atomic calls renames with the plain calls of the base library. A replace is
+                    // not known there, so the caller deletes and then renames.
+                    if (replace) {
+                        return AtomicOutcome.UNSUPPORTED;
+                    }
+                    target.refresh();
+                    if (target.exists()) {
+                        return AtomicOutcome.EXISTS;
+                    }
+                    source.moveTo(target);
+                    return AtomicOutcome.DONE;
                 }
                 AtomicResult result;
                 if (replace) {
@@ -625,10 +635,21 @@ public final class FailStateStore {
                 List<String> names = new ArrayList<>();
                 try (FileObject folder = io.resolve(parent(uri))) {
                     AtomicOps ops = AtomicOps.of(folder);
-                    if (ops == null || !ops.folderExistsNow()) {
-                        throw new IOException("The marker folder could not be listed.");
+                    final FileObject[] files;
+                    if (ops == null) {
+                        // A provider with no atomic calls lists with the plain calls of the base library.
+                        folder.refresh();
+                        if (!folder.isFolder()) {
+                            throw new IOException("The marker folder could not be listed.");
+                        }
+                        files = folder.getChildren();
+                    } else {
+                        if (!ops.folderExistsNow()) {
+                            throw new IOException("The marker folder could not be listed.");
+                        }
+                        files = ops.listConfirmedFolder(folder, new HashMap<>());
                     }
-                    for (FileObject file : ops.listConfirmedFolder(folder, new HashMap<>())) {
+                    for (FileObject file : files) {
                         try (FileObject child = file) {
                             String candidate = child.getName().getBaseName();
                             String target = ReservedNames.stagingTarget(candidate);

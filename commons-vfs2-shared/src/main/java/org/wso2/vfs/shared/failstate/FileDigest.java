@@ -40,7 +40,12 @@ public final class FileDigest {
         try (FileObject file = io.resolve(uri)) {
             AtomicOps ops = AtomicOps.of(file);
             if (ops == null) {
-                throw new IOException("The provider does not support a fresh stat.");
+                // A provider with no atomic calls gets the plain look of the base library, as existsNow does.
+                file.refresh();
+                if (!file.exists()) {
+                    return StatNow.notThere();
+                }
+                return StatNow.there(file.getContent().getSize(), file.getContent().getLastModifiedTime(), false);
             }
             return ops.statNow();
         }
