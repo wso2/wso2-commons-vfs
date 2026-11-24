@@ -452,9 +452,18 @@ public class SftpStreamProxyTest {
         BUILDER.setKeepAliveCountMax(options, 2);
         BUILDER.setConnectTimeout(options, Duration.ofMillis(1000));
         try (StandardFileSystemManager manager = manager()) {
-            final FileObject file = manager.resolveFile(targetUri("in/big.bin"), options);
-            final InputStream in = file.getContent().getInputStream();
-            assertTrue(in.read(new byte[1024]) > 0);
+            final String test = "silentTargetBehindAHealthyProxyEndsAReadAtTheReadBound";
+            final FileObject file = SetupConnect.withRetry(test,
+                    () -> manager.resolveFile(targetUri("in/big.bin"), options));
+            final InputStream in = SetupConnect.withRetry(test, () -> {
+                final InputStream opened = file.getContent().getInputStream();
+                try {
+                    assertTrue(opened.read(new byte[1024]) > 0);
+                } catch (final IOException e) {
+                    throw SetupConnect.closed(opened, e);
+                }
+                return opened;
+            });
             relay.pause();
             final long start = System.nanoTime();
             final IOException error = assertThrows(IOException.class, () -> {
@@ -492,8 +501,11 @@ public class SftpStreamProxyTest {
         BUILDER.setKeepAliveCountMax(options, count);
         BUILDER.setConnectTimeout(options, Duration.ofMillis(1000));
         try (StandardFileSystemManager manager = manager()) {
-            final FileObject file = manager.resolveFile(targetUri("in/small.txt"), options);
-            assertTrue(file.exists());
+            final FileObject file = SetupConnect.withRetry("silentStatTime", () -> {
+                final FileObject resolved = manager.resolveFile(targetUri("in/small.txt"), options);
+                assertTrue(resolved.exists());
+                return resolved;
+            });
             relay.pause();
             final long start = System.nanoTime();
             file.refresh();

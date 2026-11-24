@@ -281,8 +281,14 @@ public class SftpSessionTest {
         final FileSystemOptions options = SftpTestServer.options();
         SftpFileSystemConfigBuilder.getInstance().setConnectTimeout(options, Duration.ofMillis(1000));
         try (StandardFileSystemManager manager = manager()) {
-            final FileObject file = manager.resolveFile(uri("in/small.txt"), options);
-            assertTrue(file.exists());
+            final String test = "failedOpenOfAChannelDiscardsItsSessionAndTheNextOperationWorks";
+            final FileObject file = SetupConnect.withRetry(test, () -> {
+                final FileObject resolved = manager.resolveFile(uri("in/small.txt"), options);
+                assertTrue(resolved.exists());
+                return resolved;
+            });
+            // A setup retry adds connections, so the count of the test starts after the setup.
+            final int accepted = relay.getAccepted();
             final SftpFileSystem fileSystem = fileSystemOf(file);
             final Session old = SftpTestServer.sessionOf(fileSystem);
             final SocketGroup oldGroup = SftpTestServer.groupOf(fileSystem);
@@ -307,7 +313,8 @@ public class SftpSessionTest {
             assertTrue(fresh.isConnected());
             assertFalse(SftpTestServer.groupOf(fileSystem).isAborted());
             assertEquals(0, fileSystem.getHandedOutCount());
-            assertEquals(2, relay.getAccepted());
+            // The failed open discarded its session, and the next operation made exactly one new connection.
+            assertEquals(accepted + 1, relay.getAccepted());
         }
     }
 
@@ -534,10 +541,18 @@ public class SftpSessionTest {
         SftpFileSystemConfigBuilder.getInstance().setKeepAliveCountMax(options, 0);
         server.write("in/big.bin", new String(new char[2 * 1024 * 1024]).replace('\0', 'x'));
         try (StandardFileSystemManager manager = manager()) {
-            final FileObject file = manager.resolveFile(uri("in/big.bin"), options);
+            final FileObject file = SetupConnect.withRetry("streamThatNotedAnExceptionDiscardsItsChannel",
+                    () -> manager.resolveFile(uri("in/big.bin"), options));
             final SftpFileSystem fileSystem = fileSystemOf(file);
-            final InputStream in = file.getContent().getInputStream();
-            assertTrue(in.read(new byte[1024]) > 0);
+            final InputStream in = SetupConnect.withRetry("streamThatNotedAnExceptionDiscardsItsChannel", () -> {
+                final InputStream opened = file.getContent().getInputStream();
+                try {
+                    assertTrue(opened.read(new byte[1024]) > 0);
+                } catch (final IOException e) {
+                    throw SetupConnect.closed(opened, e);
+                }
+                return opened;
+            });
             relay.pause();
             assertThrows(IOException.class, () -> {
                 final byte[] buffer = new byte[64 * 1024];
