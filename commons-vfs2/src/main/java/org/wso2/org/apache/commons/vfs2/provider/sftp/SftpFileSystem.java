@@ -227,7 +227,7 @@ public class SftpFileSystem extends AbstractFileSystem {
 
     /**
      * Ends this file system for good. A close of the link alone, as the public freeUnusedResources does for a file
-     * system that stays in the cache, does not, and the next call connects again, as in the base library.
+     * system that stays in the cache, does not, and the next call connects again, as in 2.2.x.
      */
     @Override
     public void close() {
@@ -697,9 +697,8 @@ public class SftpFileSystem extends AbstractFileSystem {
                 }
                 current = link;
                 if (!current.session.isConnected()) {
-                    // Clean up the stale session/channel directly rather than via doCloseCommunicationLink(),
-                    // which marks the file system as permanently closed for putChannel()'s pooling decision.
-                    // This is a reconnect on the same instance, not a teardown.
+                    // Clean up the stale session and its idle channel, then connect again. This is a reconnect
+                    // on the same instance, not a teardown.
                     if (idleChannel != null) {
                         idleChannel.disconnect();
                         idleChannel = null;

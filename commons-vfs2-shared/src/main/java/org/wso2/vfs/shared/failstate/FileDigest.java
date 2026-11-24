@@ -40,7 +40,7 @@ public final class FileDigest {
         try (FileObject file = io.resolve(uri)) {
             AtomicOps ops = AtomicOps.of(file);
             if (ops == null) {
-                // A provider with no atomic calls gets the plain look of the base library, as existsNow does.
+                // A provider with no atomic calls gets the plain look of the FileObject interface, as existsNow does.
                 file.refresh();
                 if (!file.exists()) {
                     return StatNow.notThere();

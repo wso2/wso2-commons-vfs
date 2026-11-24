@@ -1721,8 +1721,8 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
      */
     @Override
     public void moveTo(final FileObject destFile) throws FileSystemException {
-        // The one argument form keeps the body of the base library for every other user of this jar. Only
-        // moveTo(target, options) runs the move with its commit rules.
+        // The one argument form keeps the body of the 2.10.x base, which has the same move rule as 2.2.x, for every
+        // other user of this jar. Only moveTo(target, options) runs the move with its commit rules.
         if (canRenameTo(destFile)) {
             if (!getParent().isWriteable()) {
                 throw new FileSystemException("vfs.provider/rename-parent-read-only.error", getName(),

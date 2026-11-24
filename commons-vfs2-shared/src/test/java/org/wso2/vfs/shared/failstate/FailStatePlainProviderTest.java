@@ -1,18 +1,19 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright (c) 2026, WSO2 LLC. (http://www.wso2.org) All Rights Reserved.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.wso2.vfs.shared.failstate;
 
@@ -36,8 +37,9 @@ import org.wso2.vfs.shared.lock.LockOutcome;
 import org.wso2.vfs.shared.lock.ShareLock;
 
 /**
- * A failed file of a provider with no atomic calls, such as RAM or the jcifs SMB of the base library, gets its fail
- * state through the plain calls of the base library: the marker is written, renamed into place and read back.
+ * A failed file of a provider with no atomic calls, such as RAM or smb:// with the provider for jcifs 1.3.17, gets
+ * its fail state through the plain calls of the FileObject interface: the marker is written, renamed into place and
+ * read back.
  */
 class FailStatePlainProviderTest {
 

@@ -504,8 +504,8 @@ public final class FailStateStore {
             try (FileObject source = io.resolve(sibling(uri, stage)); FileObject target = io.resolve(suffix(uri, ".fail"))) {
                 AtomicOps ops = AtomicOps.of(source);
                 if (ops == null) {
-                    // A provider with no atomic calls renames with the plain calls of the base library. A replace is
-                    // not known there, so the caller deletes and then renames.
+                    // A provider with no atomic calls renames with the plain calls of the FileObject interface. A
+                    // replace is not known there, so the caller deletes and then renames.
                     if (replace) {
                         return AtomicOutcome.UNSUPPORTED;
                     }
@@ -637,7 +637,7 @@ public final class FailStateStore {
                     AtomicOps ops = AtomicOps.of(folder);
                     final FileObject[] files;
                     if (ops == null) {
-                        // A provider with no atomic calls lists with the plain calls of the base library.
+                        // A provider with no atomic calls lists with the plain calls of the FileObject interface.
                         folder.refresh();
                         if (!folder.isFolder()) {
                             throw new IOException("The marker folder could not be listed.");
