@@ -52,6 +52,7 @@ import org.wso2.org.apache.commons.vfs2.impl.StandardFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicCapabilities.Answer;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOps;
 import org.wso2.org.apache.commons.vfs2.provider.MoveFailedException;
+import org.wso2.org.apache.commons.vfs2.provider.MoveOptions;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOutcome;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicResult;
 import org.wso2.org.apache.commons.vfs2.provider.Fault;
@@ -60,6 +61,7 @@ import org.wso2.org.apache.commons.vfs2.provider.MovePhase;
 import org.wso2.org.apache.commons.vfs2.provider.StatNow;
 import org.wso2.org.apache.commons.vfs2.provider.UnclearResultException;
 import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilder;
+import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 
 /**
  * The calls of AtomicOps on FTP and FTPS, part 3 section 6.7, on a scripted server with a command trace. No look
@@ -633,7 +635,8 @@ public class FtpAtomicOpsTest {
         source.getParent().isWriteable();
         server.reply("RNTO", null, 553, 1);
         server.reply("LIST", "d", 425, 2);
-        final MoveFailedException failure = assertThrows(MoveFailedException.class, () -> source.moveTo(target),
+        final MoveFailedException failure = assertThrows(MoveFailedException.class,
+                () -> FileObjectUtils.getAbstractFileObject(source).moveTo(target, new MoveOptions(true, null, null, null, null)),
                 () -> commands(0).toString());
         assertEquals(Fault.APPLICATION, Faults.of(failure));
         assertTrue(failure.isConnectionLost());

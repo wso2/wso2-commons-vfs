@@ -93,7 +93,7 @@ public class RemoteMoveIdentityTest {
             doReturn(true).when(from).isWriteable();
             doReturn(FileType.FILE).when(from).getType();
             doThrow(new AssertionError("staging opened before validation")).when(from).getContent();
-            assertFalse(assertThrows(MoveFailedException.class, () -> from.moveTo(overlap)).isTargetExists());
+            assertFalse(assertThrows(MoveFailedException.class, () -> from.moveTo(overlap, new MoveOptions(true, null, null, null, null))).isTargetExists());
             assertFalse(assertThrows(MoveFailedException.class, () -> from.moveTo(other, overlap)).isTargetExists());
             verify(from, never()).getContent();
         }

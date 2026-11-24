@@ -1053,7 +1053,7 @@ public class SftpAtomicOpsTest {
             FileObject alias = new DecoratedFileObject(manager.resolveFile(one.uri("in/source"), changed));
             FileObject target = manager.resolveFile(one.uri("in/dest"), changed);
             assertEquals("SAME", String.valueOf(source.entryRelation(alias)));
-            source.moveTo(alias);
+            source.moveTo(alias, new MoveOptions(true, null, null, null, null));
             assertTrue(assertThrows(MoveFailedException.class, () -> source.moveTo(alias,
                     new MoveOptions(false, null, null, null, null))).isTargetExists());
             for (FileObject temp : new FileObject[] {alias, new DecoratedFileObject(target)}) {
@@ -1066,20 +1066,21 @@ public class SftpAtomicOpsTest {
                     new StaticUserAuthenticator(null, SftpTestServer.USER, SftpTestServer.USER));
             FileObject overlap = manager.resolveFile(one.uri("in/source"), opaque);
             assertEquals("UNKNOWN", String.valueOf(source.entryRelation(overlap)));
-            assertFalse(assertThrows(MoveFailedException.class, () -> source.moveTo(overlap)).isTargetExists());
+            assertFalse(assertThrows(MoveFailedException.class, () -> source.moveTo(overlap, new MoveOptions(true, null, null, null, null))).isTargetExists());
             assertEquals("DISTINCT", String.valueOf(source.entryRelation(manager.resolveFile(one.uri("in/dest"), opaque))));
             FileObject opaqueDest = manager.resolveFile(one.uri("in/dest"), opaque);
             assertFalse(assertThrows(MoveFailedException.class, () -> source.moveTo(opaqueDest, overlap)).isTargetExists());
             assertEquals("source", Files.readString(src));
             assertEquals("old target", Files.readString(dst));
             Path unrelated = one.write("in/unrelated", "different bytes");
-            manager.resolveFile(one.uri("in/unrelated"), options).moveTo(opaqueDest);
+            FileObjectUtils.getAbstractFileObject(manager.resolveFile(one.uri("in/unrelated"), options))
+                    .moveTo(opaqueDest, new MoveOptions(true, null, null, null, null));
             assertFalse(Files.exists(unrelated));
             assertEquals("different bytes", Files.readString(dst));
             Path separate = two.write("in/source", "separate");
             FileObject different = manager.resolveFile(two.uri("in/source"), changed);
             assertEquals("DISTINCT", String.valueOf(source.entryRelation(different)));
-            source.moveTo(different);
+            source.moveTo(different, new MoveOptions(true, null, null, null, null));
             assertEquals("source", Files.readString(separate));
             assertFalse(Files.exists(src));
             assertEquals("different bytes", Files.readString(dst));

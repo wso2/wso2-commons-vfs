@@ -1721,7 +1721,56 @@ public abstract class AbstractFileObject<AFS extends AbstractFileSystem> impleme
      */
     @Override
     public void moveTo(final FileObject destFile) throws FileSystemException {
-        new Move(destFile, new MoveOptions(true, null, null, null, null), true).run();
+        // The one argument form keeps the body of the base library for every other user of this jar. Only
+        // moveTo(target, options) runs the move with its commit rules.
+        if (canRenameTo(destFile)) {
+            if (!getParent().isWriteable()) {
+                throw new FileSystemException("vfs.provider/rename-parent-read-only.error", getName(),
+                        getParent().getName());
+            }
+        } else if (!isWriteable()) {
+            throw new FileSystemException("vfs.provider/rename-read-only.error", getName());
+        }
+
+        if (destFile.exists() && !isSameFile(destFile)) {
+            destFile.deleteAll();
+            // throw new FileSystemException("vfs.provider/rename-dest-exists.error", destFile.getName());
+        }
+
+        if (canRenameTo(destFile)) {
+            // issue rename on same filesystem
+            try {
+                attach();
+                // remember type to avoid attach
+                final FileType srcType = getType();
+
+                doRename(destFile);
+
+                FileObjectUtils.getAbstractFileObject(destFile).handleCreate(srcType);
+                destFile.close(); // now the destFile is no longer imaginary. force reattach.
+
+                handleDelete(); // fire delete-events. This file-object (src) is like deleted.
+            } catch (final RuntimeException re) {
+                throw re;
+            } catch (final Exception exc) {
+                throw new FileSystemException("vfs.provider/rename.error", exc, getName(), destFile.getName());
+            }
+        } else {
+            // different fs - do the copy/delete stuff
+
+            destFile.copyFrom(this, Selectors.SELECT_SELF);
+
+            if ((destFile.getType().hasContent()
+                    && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FILE)
+                    || destFile.getType().hasChildren()
+                            && destFile.getFileSystem().hasCapability(Capability.SET_LAST_MODIFIED_FOLDER))
+                    && fileSystem.hasCapability(Capability.GET_LAST_MODIFIED)) {
+                destFile.getContent().setLastModifiedTime(this.getContent().getLastModifiedTime());
+            }
+
+            deleteSelf();
+        }
+
     }
 
     public void moveTo(final FileObject target, final FileObject tempFile) throws FileSystemException {

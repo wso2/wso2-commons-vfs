@@ -647,7 +647,7 @@ public class FtpClientHygieneTest {
         final FileObject source = resolve("/small.txt");
         final FileObject target = resolve("/moved.txt");
         server.reply("RNTO", null, 553, 1);
-        source.moveTo(target);
+        FileObjectUtils.getAbstractFileObject(source).moveTo(target, new MoveOptions(true, null, null, null, null));
         assertArrayEquals(SMALL, Files.readAllBytes(new File(home, "moved.txt").toPath()));
         assertFalse(new File(home, "small.txt").exists());
         assertEquals(1, server.count("RETR", "small.txt"));
@@ -664,7 +664,8 @@ public class FtpClientHygieneTest {
         assertTransportReplyDiscards("MKD", () -> resolve("/m").createFolder());
         final FileObject source = resolve("/small.txt");
         assertTrue(source.exists());
-        assertTransportReplyDiscards("RNTO", () -> source.moveTo(resolve("/moved.txt")));
+        assertTransportReplyDiscards("RNTO",
+                () -> FileObjectUtils.getAbstractFileObject(source).moveTo(resolve("/moved.txt"), new MoveOptions(true, null, null, null, null)));
         final FileObject read = resolve("/d/f.txt");
         assertTrue(read.exists());
         assertTransportReplyDiscards("RETR", () -> read.getContent().getInputStream().close());
@@ -801,7 +802,7 @@ public class FtpClientHygieneTest {
         assertEquals("SAME", String.valueOf(source.entryRelation(alias)));
         assertEquals("DISTINCT", String.valueOf(source.entryRelation(destination)));
         assertEquals(baseline, server.trace().size());
-        source.moveTo(alias);
+        source.moveTo(alias, new MoveOptions(true, null, null, null, null));
         assertTrue(assertThrows(MoveFailedException.class,
                 () -> source.moveTo(alias, new MoveOptions(false, null, null, null, null))).isTargetExists());
         assertThrows(MoveFailedException.class, () -> source.moveTo(destination, alias));

@@ -299,11 +299,11 @@ public class MoveRuleTest {
     @Test
     void mountedSelfMoveKeepsExistingNameAndMissingSelfFails() throws Exception {
         source.setIsMounted(true);
-        source.moveTo(source);
+        source.moveTo(source, new MoveOptions(true, null, null, null, null));
         assertArrayEquals(next, Files.readAllBytes(src));
         assertTrue(assertThrows(MoveFailedException.class, () -> source.moveTo(source, options(false))).isTargetExists());
         Files.delete(src);
-        assertThrows(MoveFailedException.class, () -> source.moveTo(source));
+        assertThrows(MoveFailedException.class, () -> source.moveTo(source, new MoveOptions(true, null, null, null, null)));
         assertFalse(Files.exists(staging));
     }
 
@@ -439,7 +439,7 @@ public class MoveRuleTest {
         try (StandardFileSystemManager other = new StandardFileSystemManager()) {
             other.init();
             final FileObject same = new DecoratedFileObject(other.resolveFile(alias.resolve("source").toUri()));
-            source.moveTo(same);
+            source.moveTo(same, new MoveOptions(true, null, null, null, null));
             assertArrayEquals(next, Files.readAllBytes(src));
             final MoveFailedException exists = assertThrows(MoveFailedException.class,
                     () -> source.moveTo(same, new MoveOptions(false, null, null, null, null)));
@@ -489,7 +489,7 @@ public class MoveRuleTest {
             final LocalFile from = file(src);
             final LocalFile to = file(dst);
             from.setIsMounted(true);
-            from.moveTo(to);
+            from.moveTo(to, new MoveOptions(true, null, null, null, null));
             assertFalse(Files.exists(src));
             assertFalse(Files.isSymbolicLink(dst));
             assertArrayEquals(next, Files.readAllBytes(dst));
@@ -572,12 +572,12 @@ public class MoveRuleTest {
         Files.delete(dst);
         Files.createLink(dst, src);
         doThrow(new FileSystemException("refused")).when(source).doDelete();
-        MoveFailedException refused = assertThrows(MoveFailedException.class, () -> source.moveTo(target));
+        MoveFailedException refused = assertThrows(MoveFailedException.class, () -> source.moveTo(target, new MoveOptions(true, null, null, null, null)));
         assertEquals(MovePhase.DELETE_SOURCE, refused.getPhase());
         assertTrue(refused.isCommitConfirmed());
         assertTrue(Files.isSameFile(src, dst));
         doCallRealMethod().when(source).doDelete();
-        source.moveTo(target);
+        source.moveTo(target, new MoveOptions(true, null, null, null, null));
         moved();
         verify(source, never()).renameReplacing(any(), any(), any());
     }
@@ -586,7 +586,7 @@ public class MoveRuleTest {
     void ordinaryMoveReplacesTheLeafSymlinkAndPreservesTheSourceBytes() throws Exception {
         Files.delete(dst);
         Files.createSymbolicLink(dst, src);
-        source.moveTo(target);
+        source.moveTo(target, new MoveOptions(true, null, null, null, null));
         moved();
         assertFalse(Files.isSymbolicLink(dst));
         verify(source).renameReplacing(eq(target), any(), any());
@@ -614,14 +614,14 @@ public class MoveRuleTest {
                 doThrow(new FileSystemException("refused")).when(content).setLastModifiedTime(time);
             } else if (i == 4) {
                 doThrow(new FileSystemException(new SocketException())).when(content).setLastModifiedTime(time);
-                UnclearResultException error = assertThrows(UnclearResultException.class, () -> from.moveTo(to));
+                UnclearResultException error = assertThrows(UnclearResultException.class, () -> from.moveTo(to, new MoveOptions(true, null, null, null, null)));
                 assertEquals(MovePhase.COPY, error.getPhase());
                 assertNull(error.getTempPath());
                 assertTrue(Files.isDirectory(original));
                 verify(from, never()).doDelete();
                 continue;
             }
-            from.moveTo(to);
+            from.moveTo(to, new MoveOptions(true, null, null, null, null));
             assertTrue(Files.isDirectory(result));
             assertFalse(Files.exists(original));
             assertEquals(i == 0, Files.getLastModifiedTime(result).toMillis() == time);
@@ -661,7 +661,7 @@ public class MoveRuleTest {
                 doReturn(new AtomicResult(AtomicOutcome.UNSUPPORTED, null)).when(from).renameReplacing(eq(to), any(), any());
                 UnclearResultException error = assertThrows(UnclearResultException.class, () -> {
                     if (direct) {
-                        from.moveTo(to);
+                        from.moveTo(to, new MoveOptions(true, null, null, null, null));
                     } else {
                         CommitStep.commit(from, to, CommitStep.Mode.OVERWRITE, new CommitStep.Options(true, null, null, null));
                     }
