@@ -615,6 +615,30 @@ class FailStateStoreTest {
     }
 
     @Test
+    void releaseDropsTheStoreOfAnEndpointAndGivesUpItsPendingHandles() throws Exception {
+        String name = endpoint + "-release";
+        FailStateStore old = FailStateStore.forEndpoint(name, params, locks, health);
+        HeldLock held = acquire(null);
+        FileIdentity identity = old.beginFile(io, held, uri).identity;
+        Files.createFile(marker);
+        assertEquals(PENDING, old.recordFailure(io, held, identity, FailState.Outcome.FAILURE,
+                FailState.Action.DELETE, null, refused));
+        assertEquals(LockOutcome.Kind.BUSY_LOCAL, locks.acquire(io, uri, ShareLock.Mode.LISTENER, null).kind);
+        // A store that the name does not map to is left alone.
+        FailStateStore.release(name, store);
+        assertSame(old, FailStateStore.forEndpoint(name, params, locks, health));
+        FailStateStore.release(name, old);
+        FailStateStore next = FailStateStore.forEndpoint(name, params, locks, health);
+        assertNotSame(old, next);
+        assertEquals(0, old.runPending(io).pending);
+        // The handle of the dropped write is given up, so the path is free in this node again.
+        LockOutcome again = locks.acquire(io, uri, ShareLock.Mode.LISTENER, null);
+        assertEquals(LockOutcome.Kind.ACQUIRED, again.kind);
+        again.handle.releaseChecked(io);
+        FailStateStore.release(name, next);
+    }
+
+    @Test
     void pendingHoldsUnjudgedEmptyAndForeignCanonical() throws Exception {
         HeldLock held = acquire(null);
         FileIdentity identity = store.beginFile(io, held, uri).identity;

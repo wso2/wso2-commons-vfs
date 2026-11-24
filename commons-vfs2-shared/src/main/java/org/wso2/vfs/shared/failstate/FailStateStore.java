@@ -218,6 +218,8 @@ public final class FailStateStore {
     private final LongSupplier nanos;
     private final Set<String> knownStates = new HashSet<>();
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
+    // Set when the endpoint is gone. Guarded by the lock of pending.
+    private boolean closed;
     private final Map<String, CacheEntry> cache = bounded();
     private final Map<String, Note> emptySince = bounded();
     private final Map<String, Map<String, Note>> stray = bounded();
@@ -236,6 +238,23 @@ public final class FailStateStore {
     public static FailStateStore forEndpoint(String name, Parameters params, ShareLock locks, EndpointHealth health) {
         return STORES.computeIfAbsent(name, key -> new FailStateStore(key, params, locks, health,
                 () -> TestPoints.wallMillis("store"), () -> TestPoints.nanoTime("store")));
+    }
+
+    // The endpoint of this name is gone, so a redeploy builds a new store with its new values. The pending writes are
+    // dropped, as part 2 has it for a redeploy, and their handles are given up, so their paths are free in this node.
+    public static void release(String name, FailStateStore store) {
+        if (STORES.remove(name, store)) {
+            List<Pending> dropped;
+            synchronized (store.pending) {
+                store.closed = true;
+                dropped = new ArrayList<>(store.pending.values());
+                store.pending.clear();
+                store.health.stateWritesPending(0);
+            }
+            for (Pending p : dropped) {
+                p.handle.abandon();
+            }
+        }
     }
 
     FailStateStore(String endpoint, Parameters parameters, ShareLock locks, EndpointHealth health,
@@ -965,9 +984,14 @@ public final class FailStateStore {
         p.due = due(wall.getAsLong(), 0);
         p.handle.pendingStateWrite();
         synchronized (pending) {
-            pending.put(p.record.identity.uri, p);
-            health.stateWritesPending(pending.size());
+            if (!closed) {
+                pending.put(p.record.identity.uri, p);
+                health.stateWritesPending(pending.size());
+                return;
+            }
         }
+        // The endpoint is gone, so a late write gives up its handle at once.
+        p.handle.abandon();
     }
 
     private void finished(Pending p) {
