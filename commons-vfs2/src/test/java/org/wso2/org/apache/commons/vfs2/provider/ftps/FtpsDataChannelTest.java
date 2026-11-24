@@ -62,7 +62,7 @@ import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 import org.wso2.org.apache.commons.vfs2.util.WatchedSocket;
 
 /**
- * The FTPS data path of part 3 section 4.4: a TLS data socket on top of a plain watched socket that resumes the session
+ * The FTPS data path: a TLS data socket on top of a plain watched socket that resumes the session
  * of the control connection, the protection level that the server accepted last, a refused data connection, and the
  * order of the key and trust managers.
  */

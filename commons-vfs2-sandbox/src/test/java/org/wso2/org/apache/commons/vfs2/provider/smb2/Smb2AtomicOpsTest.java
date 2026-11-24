@@ -88,7 +88,7 @@ import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2Doubles.Client;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2Doubles.Factory;
 
 /**
- * The calls of AtomicOps on SMB2, part 3 section 6.5, on the doubles of the client. One test per status row.
+ * The calls of AtomicOps on SMB2, on the doubles of the client. One test per status row.
  */
 public class Smb2AtomicOpsTest {
 

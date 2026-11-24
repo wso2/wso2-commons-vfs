@@ -33,7 +33,7 @@ import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 import org.wso2.org.apache.commons.vfs2.util.WatchedSocketFactory;
 
 /**
- * The SMB2 branch of {@link EffectiveBounds}, part 3 sections 3.4 and 3.7, and the config of a client, which applies
+ * The SMB2 branch of {@link EffectiveBounds} and the config of a client, which applies
  * what that branch gives.
  */
 public class Smb2BoundsTest {

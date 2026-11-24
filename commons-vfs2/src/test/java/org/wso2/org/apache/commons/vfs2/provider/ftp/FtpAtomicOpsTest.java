@@ -65,7 +65,7 @@ import org.wso2.org.apache.commons.vfs2.provider.ftps.FtpsFileSystemConfigBuilde
 import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 
 /**
- * The calls of AtomicOps on FTP and FTPS, part 3 section 6.7, on a scripted server with a command trace. No look
+ * The calls of AtomicOps on FTP and FTPS, on a scripted server with a command trace. No look
  * opens a file or changes into the name of a file.
  */
 public class FtpAtomicOpsTest {

@@ -42,7 +42,7 @@ import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 
 /**
- * Part 3 section 4.6 point 10 for FTP. The provider gives the start of the window that {@code getFileSystem} carries
+ * The window of the probe on FTP. The provider gives the start of the window that {@code getFileSystem} carries
  * to the first connect of the wrapper. So the connect loop of proxy mode runs in the window of the probe when the
  * probe builds the file system again, and opens no window of its own.
  */

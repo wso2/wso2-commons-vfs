@@ -457,57 +457,64 @@ class FailStateStoreTest {
         try {
             FailState current = startFailure();
             for (int n = 0; n <= 14; n++) {
-                String schedule = n == 0 ? "[E4.26.1]" : "[E4.26.3]";
+                String schedule = n == 0 ? "[the first failure is recorded with a 30 s wait]"
+                        : "[each failed retry doubles the wait up to 30 minutes]";
                 assertEquals(n, current.attempts, schedule);
                 if (n == 0) {
-                    assertEquals(start, current.written, "[E4.26.1]");
+                    assertEquals(start, current.written, "[the first failure is recorded with a 30 s wait]");
                 }
                 assertEquals(Math.min(30000L << n, 1800000), current.due - current.written, schedule);
                 if (n == 14) {
-                    System.out.println("Observed E4.26.3");
+                    System.out.println("Observed: each failed retry doubles the wait up to 30 minutes");
                 }
                 if (n > 0) {
                     assertEquals(wall.get(), current.written);
                 }
-                assertEquals(n >= 12, current.flagged, n == 0 ? "[E4.26.1]" : "[E4.26.4]");
+                assertEquals(n >= 12, current.flagged, n == 0 ? "[the first failure is recorded with a 30 s wait]"
+                        : "[twelve failed retries flag the record]");
                 if (n == 0) {
-                    System.out.println("Observed E4.26.1");
+                    System.out.println("Observed: the first failure is recorded with a 30 s wait");
                 }
                 if (n == 14) {
-                    System.out.println("Observed E4.26.4");
+                    System.out.println("Observed: twelve failed retries flag the record");
                 }
-                assertEquals(n >= 12 ? 1L : 0L, health.snapshot().get("failStatesFlagged"), "[E4.26.5]");
+                assertEquals(n >= 12 ? 1L : 0L, health.snapshot().get("failStatesFlagged"),
+                        "[a flag counts in health and logs one error]");
                 assertEquals(n >= 12 ? 1L : 0L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                        && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(), "[E4.26.5]");
+                        && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                        "[a flag counts in health and logs one error]");
                 if (n == 12) {
-                    assertEquals(12690000, current.written - start, "[E4.26.7]");
-                    System.out.println("Observed E4.26.7");
+                    assertEquals(12690000, current.written - start, "[the flag comes 12690 s after the first failure]");
+                    System.out.println("Observed: the flag comes 12690 s after the first failure");
                 }
                 byte[] old = Files.readAllBytes(marker);
                 wall.set(current.due - 1);
                 HeldLock early = acquire(null);
-                assertEquals(SKIP, store.beginFile(io, early, uri).decision, "[E4.26.2]");
+                assertEquals(SKIP, store.beginFile(io, early, uri).decision, "[a file is retried only when due]");
                 early.releaseChecked(io);
-                assertArrayEquals(old, Files.readAllBytes(marker), "[E4.26.2]");
+                assertArrayEquals(old, Files.readAllBytes(marker), "[a file is retried only when due]");
                 wall.incrementAndGet();
                 HeldLock due = acquire(null);
                 FailStateStore.BeginResult entry = store.beginFile(io, due, uri);
-                assertEquals(RETRY, entry.decision, n == 12 || n == 13 ? "[E4.26.2 E4.26.6]" : "[E4.26.2]");
+                assertEquals(RETRY, entry.decision, n == 12 || n == 13 ? "[a flagged file is still retried when due]"
+                        : "[a file is retried only when due]");
                 if (n == 13) {
-                    System.out.println("Observed E4.26.6");
+                    System.out.println("Observed: a flagged file is still retried when due");
                 }
                 if (n == 14) {
-                    System.out.println("Observed E4.26.2");
+                    System.out.println("Observed: a file is retried only when due");
                     store.retrySucceeded(io, entry.state);
                     assertTrue(Files.exists(dir.resolve("b.csv.lock")));
                     due.releaseChecked(io);
                 } else {
                     if (n == 11) {
                         assertEquals(PENDING, store.retryFailed(null, due, entry.state, FailState.Action.DELETE, null, refused));
-                        assertEquals(1L, health.snapshot().get("failStatesFlagged"), "[E4.26.5]");
+                        assertEquals(1L, health.snapshot().get("failStatesFlagged"),
+                                "[a flag counts in health and logs one error]");
                         assertEquals(11, record().attempts);
                         assertEquals(1L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                                && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(), "[E4.26.5]");
+                                && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                                "[a flag counts in health and logs one error]");
                         wall.addAndGet(30000);
                         assertEquals(1, store.runPending(io).written);
                         wall.addAndGet(-30000);
@@ -518,8 +525,9 @@ class FailStateStoreTest {
                 }
             }
             assertEquals(1L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                    && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(), "[E4.26.5]");
-            System.out.println("Observed E4.26.5");
+                    && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                    "[a flag counts in health and logs one error]");
+            System.out.println("Observed: a flag counts in health and logs one error");
             assertEquals(0L, health.snapshot().get("failStatesFlagged"));
         } finally {
             logger.removeHandler(capture);

@@ -67,8 +67,8 @@ import org.wso2.org.apache.commons.vfs2.util.FileObjectUtils;
 import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 /**
- * The FTP client rules of part 3 sections 5.4 and 5.5, the child map of section 11.4, the faults that each command
- * site sets by the reply of the server (section 5.7), and the abort of section 5.1.
+ * The rules of the FTP client and of the copy of its options, the child map, the faults that each command
+ * site sets by the reply of the server, and the abort.
  */
 public class FtpClientHygieneTest {
 

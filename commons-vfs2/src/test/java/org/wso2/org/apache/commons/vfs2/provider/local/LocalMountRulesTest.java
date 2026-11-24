@@ -39,7 +39,7 @@ import org.wso2.org.apache.commons.vfs2.provider.AbstractFileSystem;
 import org.wso2.org.apache.commons.vfs2.provider.EffectiveBounds;
 
 /**
- * What part 3 section 3.6 rules for a local path and a mount. The JVM holds no socket for a local path, so the file
+ * The rules for a local path and a mount. The JVM holds no socket for a local path, so the file
  * system has no client to count, its abort does nothing, and it reports no bound.
  */
 public class LocalMountRulesTest {

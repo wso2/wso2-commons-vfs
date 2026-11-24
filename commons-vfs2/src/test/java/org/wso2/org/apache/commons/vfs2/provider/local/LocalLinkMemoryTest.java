@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.wso2.org.apache.commons.vfs2.provider.local.LocalFileSystem.LinkMemory;
 
 /**
- * The memory rule of a mount that can not link, part 3 section 6.6, on given times of the monotonic clock.
+ * The memory rule of a mount that can not link, on given times of the monotonic clock.
  */
 public class LocalLinkMemoryTest {
 

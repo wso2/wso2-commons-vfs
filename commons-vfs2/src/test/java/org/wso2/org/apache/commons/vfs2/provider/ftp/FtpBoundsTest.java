@@ -59,8 +59,7 @@ import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 import org.wso2.org.apache.commons.vfs2.util.WatchedSocket;
 
 /**
- * The FTP bounds of part 3 section 3.3, the bounds in effect of section 3.7 and the connect loop through an HTTP proxy
- * of section 11.3.
+ * The FTP bounds, the bounds in effect and the connect loop through an HTTP proxy.
  */
 public class FtpBoundsTest {
 

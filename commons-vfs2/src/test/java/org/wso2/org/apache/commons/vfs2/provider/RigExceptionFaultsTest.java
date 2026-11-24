@@ -42,7 +42,7 @@ import com.jcraft.jsch.SftpException;
 
 /**
  * Every exception that the rigs recorded, with its cause chain as recorded, fed into {@link Faults#of(Throwable)}.
- * Test 7 of part 2 section 3.9. The sources are the case 10 table and the table of refusals of {@code rig/lock},
+ * The sources are the dead connection during the probe and the table of refusals of {@code rig/lock},
  * the results and stacks of {@code rig/smb2}, the findings of {@code rig/ftp}, and the beds {@code tbed/rig-ftps}
  * and {@code tbed/rig-cifs}. The FTP replies and the two SMB2 rows that the provider sets are read at their sites.
  */
@@ -55,7 +55,7 @@ public class RigExceptionFaultsTest {
                 "wrapped " + recorded);
     }
 
-    // rig/lock case 10: the five ways of killing the connection during the probe link.
+    // rig/lock: the five ways of killing the connection during the probe link.
     @Test
     public void sftpDeadConnectionInEachWayOfCaseTenIsTransport() {
         final IOException closed = new IOException("inputstream is closed");
@@ -72,7 +72,7 @@ public class RigExceptionFaultsTest {
                         new IOException()));
     }
 
-    // rig/lock cases 6, 7, 8, 9 and 11, the replies of a refusal with no cause.
+    // rig/lock: the replies of a refusal with no cause.
     @Test
     public void sftpRefusalsAreApplicationAndAGoneNameIsMissing() {
         assertFault(Fault.APPLICATION, new SftpException(ChannelSftp.SSH_FX_FAILURE, "Failure"));
@@ -85,22 +85,22 @@ public class RigExceptionFaultsTest {
         assertFault(Fault.MISSING, new SftpException(ChannelSftp.SSH_FX_NO_SUCH_FILE, "No such file"));
     }
 
-    // rig/smb2, the B5 table, the A4 cell and the write and close cells, and the collisions of rig/lock.
+    // rig/smb2: the statuses, the socket timeout, the write and the close, and the collisions of rig/lock.
     @Test
     public void smbRecordedStatusesAndTransportErrors() {
         assertFault(Fault.MISSING, reply(NtStatus.STATUS_OBJECT_NAME_NOT_FOUND, "Create failed for \\\\h\\data\\in"));
         assertFault(Fault.APPLICATION, reply(NtStatus.STATUS_ACCESS_DENIED, "Create failed for \\\\h\\data\\noaccess"));
         assertFault(Fault.APPLICATION, reply(NtStatus.STATUS_OBJECT_NAME_COLLISION, "Create failed for \\\\h\\data"));
-        // A4: "Cannot resolve path", caused by a DFSException and a transport TimeoutException.
+        // The socket timeout: "Cannot resolve path", caused by a DFSException and a transport TimeoutException.
         final DFSException referral = new DFSException(
                 TransportException.Wrapper.wrap(new TimeoutException("Timeout expired")));
         final SMBApiException unresolved = new SMBApiException(referral.getStatusCode(),
                 SMB2MessageCommandCode.SMB2_CREATE, "Cannot resolve path \\\\127.0.0.1\\data\\in", referral);
         assertEquals(NtStatus.STATUS_OTHER, unresolved.getStatus());
         assertFault(Fault.TRANSPORT, unresolved);
-        // The write cell with no watchdog: the TimeoutException of Share.receive, as Futures.get wraps it.
+        // A write with no watchdog: the TimeoutException of Share.receive, as Futures.get wraps it.
         assertFault(Fault.TRANSPORT, SMBRuntimeException.Wrapper.wrap(new TimeoutException("Timeout expired")));
-        // The write cell with the watchdog: the raw socket was closed under the writer.
+        // A write with the watchdog: the raw socket was closed under the writer.
         assertFault(Fault.TRANSPORT, new SMBRuntimeException(new TransportException(new SocketException("Socket closed"))));
         assertFault(Fault.TRANSPORT, new SocketException("Socket closed"));
         assertFault(Fault.TRANSPORT, reply(NtStatus.STATUS_USER_SESSION_DELETED, "Read failed"));
@@ -120,7 +120,7 @@ public class RigExceptionFaultsTest {
         assertFault(Fault.TRANSPORT, new SocketException("Broken pipe"));
     }
 
-    // tbed/rig-cifs, items 3 and 21: what a call on a mount gave after the levers.
+    // tbed/rig-cifs: what a call on a mount gave after the levers.
     @Test
     public void localAndMountErrorsThatNoRowNamesAreTransport() {
         assertFault(Fault.TRANSPORT, new IOException("Host is down"));

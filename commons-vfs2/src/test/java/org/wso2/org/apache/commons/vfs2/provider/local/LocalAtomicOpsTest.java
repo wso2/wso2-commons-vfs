@@ -62,7 +62,7 @@ import org.wso2.org.apache.commons.vfs2.provider.StatNow;
 import org.wso2.org.apache.commons.vfs2.provider.UnclearResultException;
 
 /**
- * The calls of AtomicOps on a local path, part 3 section 6.6, on real files. A folder pair across two file systems
+ * The calls of AtomicOps on a local path, on real files. A folder pair across two file systems
  * gives the plain FileSystemException of a link that can not be made, with a working attribute read.
  */
 public class LocalAtomicOpsTest {

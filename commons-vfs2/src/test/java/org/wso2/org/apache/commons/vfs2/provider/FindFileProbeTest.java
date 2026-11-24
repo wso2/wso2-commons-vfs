@@ -46,7 +46,7 @@ import org.wso2.org.apache.commons.vfs2.FileType;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 
 /**
- * The probe of {@code findFile}, part 3 section 5.7 and section 4.6 points 9 and 10. The provider of the test makes
+ * The probe of {@code findFile} and its fast window. The provider of the test makes
  * file systems whose files answer {@code exists()} with an error after a time that the test gives.
  */
 public class FindFileProbeTest {

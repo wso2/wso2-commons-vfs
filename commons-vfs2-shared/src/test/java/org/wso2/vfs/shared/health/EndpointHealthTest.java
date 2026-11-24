@@ -66,19 +66,19 @@ class EndpointHealthTest {
     @Test
     void pausedBeforeTheFirstPoll() {
         EndpointHealth endpoint = health(10000);
-        at(endpoint, 0, EndpointHealth.State.PAUSED, "[J3.14.1]");
-        at(endpoint, 1000000, EndpointHealth.State.PAUSED, "[J3.14.1]");
+        at(endpoint, 0, EndpointHealth.State.PAUSED, "[a new endpoint is PAUSED until its first poll]");
+        at(endpoint, 1000000, EndpointHealth.State.PAUSED, "[a new endpoint is PAUSED until its first poll]");
     }
 
     @Test
     void inFlightPollUsesTheStallFloor() {
         EndpointHealth endpoint = health(10000);
         endpoint.resumed();
-        at(endpoint, 1000000, EndpointHealth.State.OK, "[J3.14.2]");
+        at(endpoint, 1000000, EndpointHealth.State.OK, "[a poll with no progress is DOWN after 180 s]");
         endpoint.pollStarted();
-        at(endpoint, 1179000, EndpointHealth.State.OK, "[J3.14.2]");
-        at(endpoint, 1179999, EndpointHealth.State.OK, "[J3.14.2]");
-        at(endpoint, 1180000, EndpointHealth.State.DOWN, "[J3.14.2]");
+        at(endpoint, 1179000, EndpointHealth.State.OK, "[a poll with no progress is DOWN after 180 s]");
+        at(endpoint, 1179999, EndpointHealth.State.OK, "[a poll with no progress is DOWN after 180 s]");
+        at(endpoint, 1180000, EndpointHealth.State.DOWN, "[a poll with no progress is DOWN after 180 s]");
     }
 
     @Test
@@ -88,9 +88,9 @@ class EndpointHealthTest {
         long finish = 45000;
         clock.set(finish);
         endpoint.pollFinished(true, null);
-        at(endpoint, finish + 299000, EndpointHealth.State.OK, "[J3.14.3]");
-        at(endpoint, finish + 299999, EndpointHealth.State.OK, "[J3.14.3]");
-        at(endpoint, finish + 300000, EndpointHealth.State.DOWN, "[J3.14.3]");
+        at(endpoint, finish + 299000, EndpointHealth.State.OK, "[DOWN three intervals after the last poll ended]");
+        at(endpoint, finish + 299999, EndpointHealth.State.OK, "[DOWN three intervals after the last poll ended]");
+        at(endpoint, finish + 300000, EndpointHealth.State.DOWN, "[DOWN three intervals after the last poll ended]");
     }
 
     @Test
@@ -136,11 +136,11 @@ class EndpointHealthTest {
         try (DigestingInputStream input =
                 new DigestingInputStream(new ByteArrayInputStream(new byte[10]), identity, endpoint::progress)) {
             for (int tick = 1; tick <= 10; tick++) {
-                at(endpoint, tick * 100000L, EndpointHealth.State.OK, "[J3.14.4]");
-                assertEquals(0, input.read(), "[J3.14.4]");
+                at(endpoint, tick * 100000L, EndpointHealth.State.OK, "[bytes read by the digest count as progress]");
+                assertEquals(0, input.read(), "[bytes read by the digest count as progress]");
             }
-            assertEquals(-1, input.read(), "[J3.14.4]");
-            assertNotNull(identity.digest(), "[J3.14.4]");
+            assertEquals(-1, input.read(), "[bytes read by the digest count as progress]");
+            assertNotNull(identity.digest(), "[bytes read by the digest count as progress]");
         }
     }
 
@@ -151,24 +151,24 @@ class EndpointHealthTest {
         clock.set(45000);
         endpoint.pollFinished(true, null);
         long next = 45000 + 10000000;
-        at(endpoint, next, EndpointHealth.State.OK, "[J3.14.5]");
+        at(endpoint, next, EndpointHealth.State.OK, "[a cron endpoint is DOWN only while a poll runs]");
         endpoint.pollStarted();
-        at(endpoint, next + 179999, EndpointHealth.State.OK, "[J3.14.5]");
-        at(endpoint, next + 180000, EndpointHealth.State.DOWN, "[J3.14.5]");
+        at(endpoint, next + 179999, EndpointHealth.State.OK, "[a cron endpoint is DOWN only while a poll runs]");
+        at(endpoint, next + 180000, EndpointHealth.State.DOWN, "[a cron endpoint is DOWN only while a poll runs]");
     }
 
     @Test
     void pauseAndResumeRearmTheNextPoll() {
         EndpointHealth endpoint = health(10000);
         endpoint.pollStarted();
-        at(endpoint, 180000, EndpointHealth.State.DOWN, "[J3.14.6]");
+        at(endpoint, 180000, EndpointHealth.State.DOWN, "[pause and resume reset the stall check]");
         endpoint.paused();
-        assertEquals(EndpointHealth.State.PAUSED, endpoint.state(), "[J3.14.6]");
+        assertEquals(EndpointHealth.State.PAUSED, endpoint.state(), "[pause and resume reset the stall check]");
         endpoint.resumed();
-        at(endpoint, 400000, EndpointHealth.State.OK, "[J3.14.6]");
+        at(endpoint, 400000, EndpointHealth.State.OK, "[pause and resume reset the stall check]");
         endpoint.pollStarted();
-        at(endpoint, 579999, EndpointHealth.State.OK, "[J3.14.6]");
-        at(endpoint, 580000, EndpointHealth.State.DOWN, "[J3.14.6]");
+        at(endpoint, 579999, EndpointHealth.State.OK, "[pause and resume reset the stall check]");
+        at(endpoint, 580000, EndpointHealth.State.DOWN, "[pause and resume reset the stall check]");
     }
 
     @Test

@@ -203,7 +203,7 @@ public class Smb2ClientWrapperTest {
         final SmbConfig config = Smb2ClientWrapper.buildConfig(new FileSystemOptions(), new SocketGroup(), () -> { });
         final AtomicInteger timeout = new AtomicInteger(-1);
         // The socket notes the timeout that the factory gives its connect, and refuses at once, as a route that is
-        // not there does. The wait itself is measured by A4.2 on a peer that drops the connect.
+        // not there does. The wait itself is measured on a test bed, with a peer that drops the connect.
         final Socket socket = new Socket() {
             @Override
             public void connect(final SocketAddress endpoint, final int millis) throws IOException {

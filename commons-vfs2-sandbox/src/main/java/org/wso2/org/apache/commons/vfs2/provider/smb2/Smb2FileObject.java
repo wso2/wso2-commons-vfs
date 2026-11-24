@@ -296,7 +296,7 @@ public class Smb2FileObject extends AbstractFileObject<Smb2FileSystem> implement
         }
     }
 
-    // A read that is blocked on a socket returns within one second of an abort (part 3, section 5.1, tests).
+    // A read that is blocked on a socket returns within one second of an abort.
     private static final long READ_END_NANOS = TimeUnit.SECONDS.toNanos(1);
 
     // A slice that does not fit in its buffer.

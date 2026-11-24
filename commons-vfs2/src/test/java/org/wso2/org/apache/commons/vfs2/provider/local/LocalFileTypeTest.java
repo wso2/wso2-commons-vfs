@@ -45,8 +45,8 @@ import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.provider.Faults;
 
 /**
- * The type, the delete, the folder create and the open of a local file, by part 3 section 3.6 with the amendment of
- * D73 and section 5.7. A failed stat or open keeps its cause, and only a name that is not there is missing.
+ * The type, the delete, the folder create and the open of a local file, and the fault that each one sets.
+ * A failed stat or open keeps its cause, and only a name that is not there is missing.
  */
 public class LocalFileTypeTest {
 

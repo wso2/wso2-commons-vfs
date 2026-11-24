@@ -83,7 +83,7 @@ import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
 /**
- * The calls of AtomicOps on SFTP, part 3 section 6.4, with a channel double. One test per row of the link routine, of
+ * The calls of AtomicOps on SFTP, with a channel double. One test per row of the link routine, of
  * the replace test, of the take away, of the looks and of the memory of the file system.
  */
 public class SftpAtomicOpsTest {
