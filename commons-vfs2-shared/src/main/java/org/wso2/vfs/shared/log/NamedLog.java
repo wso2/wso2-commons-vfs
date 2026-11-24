@@ -61,6 +61,23 @@ public final class NamedLog {
         }
     }
 
+    /** A definite absence is reported once until the same poll root is seen again. */
+    public void missingPollRoot(final String uri) {
+        final String key = UriMask.mask(uri);
+        final String message = "The poll root is absent. " + key;
+        if (limiter.once(key)) {
+            if (log.isWarnEnabled()) {
+                log.warn(lines(message));
+            }
+        } else {
+            debug(message);
+        }
+    }
+
+    public void pollRootPresent(final String uri) {
+        limiter.clear(UriMask.mask(uri));
+    }
+
     public void warnUnknown(final Class<?> type, final String chain) {
         if (log.isWarnEnabled() && WARNED_CLASSES.add(type.getName())) {
             log.warn(lines(UriMask.mask("Unknown file system error. " + chain)));
