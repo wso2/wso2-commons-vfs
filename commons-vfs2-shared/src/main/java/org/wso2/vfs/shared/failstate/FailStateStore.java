@@ -946,7 +946,9 @@ public final class FailStateStore {
 
     private synchronized boolean reportThreshold(FailState record) {
         if (flag(EndpointHealth.Flag.FAIL_STATE, record.identity.uri, record.flagged) && record.flagged) {
-            log.error("Post action retries reached the flag threshold for " + record.identity.uri);
+            log.error("Post action retries reached the flag threshold for " + record.identity.uri + ". The action "
+                    + record.failed + " failed at step " + (record.action == null ? null : record.action.step)
+                    + (record.error == null ? "." : ": " + record.error));
             return true;
         }
         return false;

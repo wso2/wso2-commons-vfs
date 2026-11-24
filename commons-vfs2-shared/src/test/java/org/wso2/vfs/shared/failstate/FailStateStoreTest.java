@@ -481,7 +481,8 @@ class FailStateStoreTest {
                 assertEquals(n >= 12 ? 1L : 0L, health.snapshot().get("failStatesFlagged"),
                         "[a flag counts in health and logs one error]");
                 assertEquals(n >= 12 ? 1L : 0L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                        && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                        && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)
+                                && m.getMessage().contains(" failed at step ")).count(),
                         "[a flag counts in health and logs one error]");
                 if (n == 12) {
                     assertEquals(12690000, current.written - start, "[the flag comes 12690 s after the first failure]");
@@ -513,7 +514,8 @@ class FailStateStoreTest {
                                 "[a flag counts in health and logs one error]");
                         assertEquals(11, record().attempts);
                         assertEquals(1L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                                && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                                && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)
+                                && m.getMessage().contains(" failed at step ")).count(),
                                 "[a flag counts in health and logs one error]");
                         wall.addAndGet(30000);
                         assertEquals(1, store.runPending(io).written);
@@ -525,7 +527,8 @@ class FailStateStoreTest {
                 }
             }
             assertEquals(1L, messages.stream().filter(m -> m.getLevel().intValue() >= 1000
-                    && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)).count(),
+                    && m.getMessage().contains("b.csv") && m.getMessage().contains(endpoint)
+                                && m.getMessage().contains(" failed at step ")).count(),
                     "[a flag counts in health and logs one error]");
             System.out.println("Observed: a flag counts in health and logs one error");
             assertEquals(0L, health.snapshot().get("failStatesFlagged"));
