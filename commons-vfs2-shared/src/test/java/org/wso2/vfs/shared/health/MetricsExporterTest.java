@@ -120,6 +120,16 @@ class MetricsExporterTest {
         }
     }
 
+    // A product that can make a counter series at 0 before its first event.
+    public static class InitReporter extends Reporter {
+        final List<String> inits = new ArrayList<>();
+
+        public synchronized boolean initCounter(final String name, final String[] labels) {
+            inits.add(name + Arrays.toString(labels));
+            return true;
+        }
+    }
+
     HealthRegistry copy(final Plain reporter) {
         return new HealthRegistry(() -> reporter, getClass().getClassLoader(), lines);
     }
@@ -161,6 +171,25 @@ class MetricsExporterTest {
                 registry.remove(HealthRegistry.Kind.CONNECTION, "file", "output", null);
             }
         }
+    }
+
+    // Each counter of an endpoint or a connection exists at 0 from its registration. A metric that the product
+    // refused gets no series, and no counter event is sent.
+    @Test
+    void registrationMakesEachCounterSeriesAtZero() {
+        final InitReporter reporter = new InitReporter();
+        reporter.shapes.put(PREFIX + "lock_contention_total", Arrays.asList("Gauge", "[kind, name]"));
+        final HealthRegistry registry = copy(reporter);
+        registry.add(HealthRegistry.Kind.INBOUND, "file", "first", 10);
+        registry.connection("file", "c1").close();
+        final List<String> expected = new ArrayList<>();
+        for (final String kind : new String[]{"[INBOUND, first]", "[CONNECTION, c1]"}) {
+            for (final String counter : new String[]{"files_total", "failures_total", "transport_faults_total"}) {
+                expected.add(PREFIX + counter + kind);
+            }
+        }
+        assertEquals(expected, reporter.inits);
+        assertTrue(reporter.counters.isEmpty());
     }
 
     @Test

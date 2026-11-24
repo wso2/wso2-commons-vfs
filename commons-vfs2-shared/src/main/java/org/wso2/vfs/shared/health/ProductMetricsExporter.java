@@ -27,13 +27,17 @@ final class ProductMetricsExporter implements MetricsExporter {
     private final Object reporter;
     private final Method setGauge;
     private final Method incrementCount;
+    // Null on a product that can not make a counter series before its first event.
+    private final Method initCounter;
     private final Set<Metric> supported = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean enabled = new AtomicBoolean(true);
 
-    private ProductMetricsExporter(final Object reporter, final Method setGauge, final Method incrementCount) {
+    private ProductMetricsExporter(final Object reporter, final Method setGauge, final Method incrementCount,
+            final Method initCounter) {
         this.reporter = reporter;
         this.setGauge = setGauge;
         this.incrementCount = incrementCount;
+        this.initCounter = initCounter;
     }
 
     static ProductMetricsExporter register(final Object reporter, final NamedLog log) {
@@ -42,8 +46,14 @@ final class ProductMetricsExporter implements MetricsExporter {
             final Method create = type.getMethod("createComponentMetric", String.class, String.class, String.class,
                     String[].class);
             final Method gauge = type.getMethod("setGauge", String.class, String[].class, double.class);
+            Method init = null;
+            try {
+                init = type.getMethod("initCounter", String.class, String[].class);
+            } catch (final NoSuchMethodException ex) {
+                // An older product starts each counter series with its first event.
+            }
             final ProductMetricsExporter exporter = new ProductMetricsExporter(reporter, gauge,
-                    type.getMethod("incrementCount", String.class, String[].class));
+                    type.getMethod("incrementCount", String.class, String[].class), init);
             for (final Metric metric : Metric.values()) {
                 final String[] labels = metric == Metric.STATE ? new String[]{"kind", "name", "state"}
                         : new String[]{"kind", "name"};
@@ -92,6 +102,29 @@ final class ProductMetricsExporter implements MetricsExporter {
             } catch (final RuntimeException ex) {
                 stop(health, ex);
             }
+        }
+    }
+
+    /**
+     * Makes each counter series of the endpoint or connection with the value 0, so that each one exists before its
+     * first event. A series that starts at 1 hides its first event from rate and increase. A series that exists
+     * keeps its value.
+     *
+     * @param health the endpoint or connection that registered.
+     */
+    void initCounters(final EndpointHealth health) {
+        if (initCounter == null || !enabled.get()) {
+            return;
+        }
+        try {
+            for (final Metric metric : Metric.values()) {
+                if ("Counter".equals(metric.type) && supported.contains(metric)) {
+                    MetricsExporter.invoke(initCounter, reporter, metric.name,
+                            new String[]{health.kind.name(), health.name});
+                }
+            }
+        } catch (final RuntimeException ex) {
+            stop(health, ex);
         }
     }
 

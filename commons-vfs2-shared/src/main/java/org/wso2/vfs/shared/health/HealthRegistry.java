@@ -253,6 +253,9 @@ public final class HealthRegistry {
         } else {
             health.exporters(service, product);
         }
+        if (product != null) {
+            product.initCounters(health);
+        }
     }
 
     EndpointHealth add(final Kind kind, final String connector, final String name, final long interval) {
