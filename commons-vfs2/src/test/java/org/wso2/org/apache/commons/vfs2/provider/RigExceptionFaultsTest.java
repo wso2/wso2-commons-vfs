@@ -42,9 +42,9 @@ import com.jcraft.jsch.SftpException;
 
 /**
  * Every exception that the rigs recorded, with its cause chain as recorded, fed into {@link Faults#of(Throwable)}.
- * The sources are the dead connection during the probe and the table of refusals of {@code rig/lock},
- * the results and stacks of {@code rig/smb2}, the findings of {@code rig/ftp}, and the beds {@code tbed/rig-ftps}
- * and {@code tbed/rig-cifs}. The FTP replies and the two SMB2 rows that the provider sets are read at their sites.
+ * The sources are replies and stacks recorded from real servers: a connection cut during the probe, the refusals of
+ * a lock link, the statuses and stacks of SMB2, the findings on FTP, and an FTPS server and a CIFS mount of a test
+ * bed. The FTP replies and the two SMB2 rows that the provider sets are read at their sites.
  */
 public class RigExceptionFaultsTest {
 
@@ -55,7 +55,7 @@ public class RigExceptionFaultsTest {
                 "wrapped " + recorded);
     }
 
-    // rig/lock: the five ways of killing the connection during the probe link.
+    // Recorded on a real server: the five ways of killing the connection during the probe link.
     @Test
     public void sftpDeadConnectionInEachWayOfCaseTenIsTransport() {
         final IOException closed = new IOException("inputstream is closed");
@@ -72,7 +72,7 @@ public class RigExceptionFaultsTest {
                         new IOException()));
     }
 
-    // rig/lock: the replies of a refusal with no cause.
+    // Recorded on a real server: the replies of a refusal with no cause.
     @Test
     public void sftpRefusalsAreApplicationAndAGoneNameIsMissing() {
         assertFault(Fault.APPLICATION, new SftpException(ChannelSftp.SSH_FX_FAILURE, "Failure"));
@@ -85,7 +85,8 @@ public class RigExceptionFaultsTest {
         assertFault(Fault.MISSING, new SftpException(ChannelSftp.SSH_FX_NO_SUCH_FILE, "No such file"));
     }
 
-    // rig/smb2: the statuses, the socket timeout, the write and the close, and the collisions of rig/lock.
+    // Recorded on a real SMB2 server: the statuses, the socket timeout, the write and the close, and the collisions of
+    // a lock link.
     @Test
     public void smbRecordedStatusesAndTransportErrors() {
         assertFault(Fault.MISSING, reply(NtStatus.STATUS_OBJECT_NAME_NOT_FOUND, "Create failed for \\\\h\\data\\in"));
@@ -108,7 +109,7 @@ public class RigExceptionFaultsTest {
         assertFault(Fault.TRANSPORT, reply(NtStatus.STATUS_NETWORK_NAME_DELETED, "Read failed"));
     }
 
-    // rig/ftp, the frame codes and the timeouts that the factory and the transfers hit.
+    // Recorded on a real FTP server: the frame codes and the timeouts that the factory and the transfers hit.
     @Test
     public void ftpRecordedExceptionsAreTransport() {
         assertFault(Fault.TRANSPORT, new SocketTimeoutException("Read timed out"));
@@ -120,7 +121,7 @@ public class RigExceptionFaultsTest {
         assertFault(Fault.TRANSPORT, new SocketException("Broken pipe"));
     }
 
-    // tbed/rig-cifs: what a call on a mount gave after the levers.
+    // Recorded on a CIFS mount of a test bed: what a call on a mount gave after the levers.
     @Test
     public void localAndMountErrorsThatNoRowNamesAreTransport() {
         assertFault(Fault.TRANSPORT, new IOException("Host is down"));
@@ -137,7 +138,8 @@ public class RigExceptionFaultsTest {
                 new SocketException("Connection reset"), MovePhase.RENAME, null, false, "/in/a.xml"));
     }
 
-    // tbed/rig-ftps: the reflection of fork v9 failed under a FileNotFolderException. No table names the class.
+    // Recorded on an FTPS server of a test bed: the reflection of an older build of the fork failed under a
+    // FileNotFolderException. No recorded table names the class.
     @Test
     public void inaccessibleObjectUnderAFolderErrorIsApplication() {
         final Throwable recorded = inaccessibleObject("Unable to make field private final sun.security.util.Cache"
