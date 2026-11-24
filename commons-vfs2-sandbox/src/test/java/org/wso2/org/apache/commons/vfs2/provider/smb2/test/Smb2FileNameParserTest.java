@@ -17,9 +17,12 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider.smb2.test;
 
+import org.wso2.org.apache.commons.vfs2.FileName;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileName;
 import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileNameParser;
+import org.wso2.org.apache.commons.vfs2.provider.smb2.Smb2FileProvider;
 import org.junit.Test;
 
 import java.net.URI;
@@ -84,5 +87,63 @@ public class Smb2FileNameParserTest {
         String resultDecodedPath = "/" + fileName.getShareName() + fileName.getPathDecoded() + "/";
 
         assertThat("Path decoded correctly", resultDecodedPath, is(expectedDecodedPath));
+    }
+
+    private static Smb2FileName parse(final String uri) throws FileSystemException {
+        return (Smb2FileName) Smb2FileNameParser.getInstance().parseUri(null, null, uri);
+    }
+
+    // A name with a character above U+00FF. The escape of the path kept only the low byte, so U+540D became %0d and
+    // the share got a carriage return. A surrogate pair is two such characters.
+    @Test
+    public void nameAboveLatin1KeepsEveryCharacter() throws FileSystemException {
+        for (final String name : new String[] {"ü名.txt", "😀.txt"}) {
+            final Smb2FileName parsed = parse("smb2://host/share/in/" + name);
+            assertEquals(name, parsed.getBaseName());
+            assertEquals("/in/" + name, parsed.getPathDecoded());
+            assertEquals("share", parsed.getShareName());
+        }
+    }
+
+    // A listed child is resolved by the manager against its folder, which is the path of a folder listing.
+    @Test
+    public void listedChildAboveLatin1ResolvesToItsOwnName() throws FileSystemException {
+        final DefaultFileSystemManager manager = new DefaultFileSystemManager();
+        manager.addProvider("smb2", new Smb2FileProvider());
+        manager.init();
+        try {
+            final FileName folder = manager.resolveURI("smb2://host/share/in");
+            for (final String name : new String[] {"u8.txt", "ü名.txt", "e8.txt"}) {
+                final Smb2FileName child = (Smb2FileName) manager.resolveName(folder, name);
+                assertEquals(name, child.getBaseName());
+                assertEquals("/in/" + name, child.getPathDecoded());
+                assertEquals("share", child.getShareName());
+            }
+        } finally {
+            manager.close();
+        }
+    }
+
+    // A Latin 1 name worked before, through the escape of its low byte. Its literal form and its escaped form, which
+    // an earlier version put into URIs, still give the same file of the share.
+    @Test
+    public void latin1NameResolvesToTheSameFileAsBefore() throws FileSystemException {
+        final String[][] names = {{"ü.txt", "%fc.txt"}, {"é.txt", "%e9.txt"}};
+        for (final String[] name : names) {
+            final Smb2FileName literal = parse("smb2://host/share/in/" + name[0]);
+            final Smb2FileName escaped = parse("smb2://host/share/in/" + name[1]);
+            assertEquals("/in/" + name[0], literal.getPathDecoded());
+            assertEquals(literal.getPathDecoded(), escaped.getPathDecoded());
+            assertEquals(literal.getShareName(), escaped.getShareName());
+        }
+    }
+
+    // An ASCII character outside the allowed set is still escaped in the URI and decoded for the share.
+    @Test
+    public void asciiOutsideTheAllowedSetIsStillEscaped() throws FileSystemException {
+        final Smb2FileName parsed = parse("smb2://host/share/in/a b.txt");
+        assertEquals("a%20b.txt", parsed.getBaseName());
+        assertEquals("/in/a b.txt", parsed.getPathDecoded());
+        assertEquals("smb2://host/share/in/a%20b.txt", parsed.getURI());
     }
 }

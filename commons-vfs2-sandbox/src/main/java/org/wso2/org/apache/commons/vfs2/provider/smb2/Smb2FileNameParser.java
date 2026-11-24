@@ -65,9 +65,16 @@ public class Smb2FileNameParser extends HostFileNameParser {
         return INSTANCE;
     }
 
+    /**
+     * Escapes ASCII characters outside the allowed set. A character above U+007F stays as it is, because the path
+     * escape keeps only the low byte of a character. U+540D would come back as a carriage return.
+     *
+     * @param ch the character.
+     * @return true when the character is escaped.
+     */
     @Override
     public boolean encodeCharacter(final char ch) {
-        return super.encodeCharacter(ch) || !validPasswordChars.contains(ch);
+        return super.encodeCharacter(ch) || ch < 0x80 && !validPasswordChars.contains(ch);
     }
 
     /**
