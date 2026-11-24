@@ -40,6 +40,11 @@ public class FileSystemException extends IOException {
     /** Password pattern */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
 
+    // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
+    // The FTP option passive is not a secret and stays readable. UriMask of the shared module uses the same names.
+    private static final Pattern QUERY_SECRET_PATTERN = Pattern.compile(
+            "([?&][^?&#=\\s]*(?:pass(?!ive)|secret|key)[^?&#=\\s]*=)[^&#\\s]*", Pattern.CASE_INSENSITIVE);
+
     /**
      * Throws a FileSystemException when the given object is null.
      *
@@ -179,6 +184,7 @@ public class FileSystemException extends IOException {
                 final Matcher urlMatcher = URL_PATTERN.matcher(value);
                 if (urlMatcher.find()) {
                     value = PASSWORD_PATTERN.matcher(value).replaceFirst(":***@");
+                    value = QUERY_SECRET_PATTERN.matcher(value).replaceAll("$1***");
                 }
                 this.info[i] = value;
             }

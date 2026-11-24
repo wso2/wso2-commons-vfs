@@ -24,8 +24,9 @@ public final class UriMask {
     private static final Pattern PASSWORD = Pattern.compile(
             "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^\\s/:?#]*:)[^\\s]*"
                     + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+    // The same names as the query mask of FileSystemException. The FTP option passive is not a secret.
     private static final Pattern OPTION = Pattern.compile(
-            "([?&][^?&#=\\s]*(?:pass|secret|key)[^?&#=\\s]*=)[^&#\\s]*", Pattern.CASE_INSENSITIVE);
+            "([?&][^?&#=\\s]*(?:pass(?!ive)|secret|key)[^?&#=\\s]*=)[^&#\\s]*", Pattern.CASE_INSENSITIVE);
 
     private UriMask() {
     }

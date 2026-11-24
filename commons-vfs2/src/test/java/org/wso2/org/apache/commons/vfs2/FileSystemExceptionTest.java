@@ -58,4 +58,15 @@ public class FileSystemExceptionTest {
         assertEquals("zip:http://foo:***@junit.org/test.bin", fse.getInfo()[0]);
     }
 
+
+    /**
+     * Tests that a secret in the query of a URL, such as the proxy password of FTP, is masked too.
+     */
+    @Test
+    public void testMasksSecretQueryValues() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/delete.error",
+                "ftp://foo:bar@junit.org/test.bin?proxyPassword=secret&passive=true");
+        assertEquals("ftp://foo:***@junit.org/test.bin?proxyPassword=***&passive=true", fse.getInfo()[0]);
+    }
+
 }

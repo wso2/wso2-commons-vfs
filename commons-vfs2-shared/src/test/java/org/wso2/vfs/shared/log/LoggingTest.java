@@ -57,6 +57,8 @@ public class LoggingTest {
     public void queryOptions() {
         assertEquals("sftp://h/in?transport.vfs.SFTPIdentityPassPhrase=***&proxyPassword=***&Secret=***&apiKey=***&a=1",
                 UriMask.mask("sftp://h/in?transport.vfs.SFTPIdentityPassPhrase=x1&proxyPassword=x2&Secret=x3&apiKey=x4&a=1"));
+        assertEquals("ftp://h/in?vfs.passive=true&proxyPassword=***&passphrase=***",
+                UriMask.mask("ftp://h/in?vfs.passive=true&proxyPassword=x1&passphrase=x2"));
     }
 
     @Test
