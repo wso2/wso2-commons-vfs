@@ -82,6 +82,20 @@ class EndpointHealthTest {
     }
 
     @Test
+    void aChangeOfStateIsLoggedAlsoWhenTheRepeatLimiterIsFull() {
+        EndpointHealth endpoint = health(10000);
+        endpoint.resumed();
+        at(endpoint, 1000000, EndpointHealth.State.OK);
+        for (int i = 0; i < 200; i++) {
+            log.warn("Another text " + i);
+        }
+        endpoint.pollStarted();
+        at(endpoint, 1180000, EndpointHealth.State.DOWN);
+        assertEquals(1, lines.lines.stream().filter(line -> line.startsWith("ERROR [inbound:input] Health changed to DOWN"))
+                .count(), lines.lines.toString());
+    }
+
+    @Test
     void idleIntervalRunsFromPollCompletion() {
         EndpointHealth endpoint = health(100000);
         endpoint.pollStarted();

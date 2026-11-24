@@ -94,6 +94,17 @@ public final class NamedLog {
         }
     }
 
+    // A change of the health state is never held back by the repeat limiter. An operator needs that line most when
+    // much else is logged.
+    public void stateChange(final boolean down, final String text) {
+        final String safe = lines(UriMask.mask(text));
+        if (down) {
+            log.error(safe);
+        } else {
+            log.warn(safe);
+        }
+    }
+
     private String lines(final String safe) {
         return prefix + safe.replaceAll("\\R", Matcher.quoteReplacement("\n" + prefix));
     }

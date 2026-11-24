@@ -488,9 +488,9 @@ public final class EndpointHealth {
             exportState(previous, current);
             final String message = "Health changed to " + current + ". " + snapshot(current, mode, sessions);
             if (current == State.DOWN) {
-                writeLog(() -> log.error(message));
+                writeLog(() -> log.stateChange(true, message));
             } else if (current == State.DEGRADED) {
-                writeLog(() -> log.warn(message));
+                writeLog(() -> log.stateChange(false, message));
             } else {
                 writeLog(() -> log.debug(message));
             }
