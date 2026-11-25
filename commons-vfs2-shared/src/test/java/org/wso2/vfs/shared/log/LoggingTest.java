@@ -22,11 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -210,14 +212,39 @@ public class LoggingTest {
     }
 
     @Test
-    public void retainedTextsAreBounded() {
+    public void retainedTextsAreBounded() throws Exception {
         final RepeatLimiter limiter = new RepeatLimiter();
         for (int number = 0; number < 200; number++) {
             assertEquals("text" + number, limiter.admit("text" + number));
         }
         assertNull(limiter.admit("text0"));
-        assertNull(limiter.admit("new"));
+        // At the cap a new text is written, and the oldest text goes, also while its window is live.
+        assertEquals("new", limiter.admit("new"));
+        assertEquals(200, windows(limiter).size());
+        assertEquals("text0", limiter.admit("text0"));
+        assertEquals(200, windows(limiter).size());
         assertNull(limiter.admit("text0"));
+    }
+
+    @Test
+    public void everyNewTextIsWrittenWhenTheTextsFillTheCap() throws Exception {
+        final RepeatLimiter limiter = new RepeatLimiter();
+        int written = 0;
+        for (int number = 0; number <= 200; number++) {
+            if (("text" + number).equals(limiter.admit("text" + number))) {
+                written++;
+            }
+        }
+        assertEquals(201, written);
+        assertEquals(200, windows(limiter).size());
+        // The 201st text pushed the first one out, so the first one is written again in the same window.
+        assertEquals("text0", limiter.admit("text0"));
+    }
+
+    private static Map<?, ?> windows(final RepeatLimiter limiter) throws ReflectiveOperationException {
+        final Field field = RepeatLimiter.class.getDeclaredField("windows");
+        field.setAccessible(true);
+        return (Map<?, ?>) field.get(limiter);
     }
 
     @Test
@@ -229,10 +256,11 @@ public class LoggingTest {
         try {
             final RepeatLimiter limiter = new RepeatLimiter();
             assertEquals("down", limiter.admit("down"));
-            for (int number = 1; number < 200; number++) {
+            // 198 other texts, so "overflow" is the 200th text and pushes nothing out.
+            for (int number = 1; number < 199; number++) {
                 limiter.admit("other" + number);
             }
-            assertNull(limiter.admit("overflow"));
+            assertEquals("overflow", limiter.admit("overflow"));
             final Path copy;
             try (Stream<Path> children = Files.list(root)) {
                 copy = children.filter(Files::isDirectory).findFirst().get();
@@ -242,7 +270,7 @@ public class LoggingTest {
             assertNull(limiter.admit("down"));
             Files.write(copy.resolve("clock.repeat.mono"), "300010".getBytes(StandardCharsets.UTF_8));
             assertEquals("down (skipped 2)", limiter.admit("down"));
-            assertEquals("overflow", limiter.admit("overflow"));
+            assertEquals("overflow (skipped 0)", limiter.admit("overflow"));
             assertNull(limiter.admit("overflow"));
             assertNull(limiter.admit("down"));
         } finally {

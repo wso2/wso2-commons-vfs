@@ -44,9 +44,7 @@ public final class RepeatLimiter {
             windows.remove(text);
         } else if (windows.size() == MAX_TEXTS) {
             final Iterator<Window> oldest = windows.values().iterator();
-            if (now - oldest.next().start < INTERVAL) {
-                return null;
-            }
+            oldest.next();
             oldest.remove();
         }
         windows.put(text, new Window(now));

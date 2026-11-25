@@ -89,7 +89,10 @@ public class ErrorClassifierTest {
         }
         assertEquals(200, sink.lines.size());
         sink.lines.clear();
+        // At the cap a new text is still written.
         log.warn("ordinary overflow");
+        assertEquals(1, sink.lines.size());
+        sink.lines.clear();
         final String uri = "ftps://user:Synthetic/Folder@host/out?pass=SyntheticOption";
         final Throwable unknown = (Throwable) Class.forName("java.lang.reflect.InaccessibleObjectException")
                 .getConstructor(String.class).newInstance("cannot access " + uri);
