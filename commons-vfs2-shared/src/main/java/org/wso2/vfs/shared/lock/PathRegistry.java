@@ -53,7 +53,7 @@ final class PathRegistry {
         final int first = scheme < 0 ? 0 : input.indexOf('/', scheme + 3);
         final String uri = first < 0 || first >= limit ? input : input.substring(0, first)
                 + pathUri(input.substring(first, limit)) + input.substring(limit);
-        final URI name = URI.create(uri);
+        final URI name = URI.create(withoutUserInfo(uri));
         final String path = name.getRawPath();
         if (path == null || path.length() <= 1 || !path.endsWith("/")) {
             return uri;
@@ -70,8 +70,28 @@ final class PathRegistry {
         return uri.substring(0, query - (path.length() - end)) + uri.substring(query);
     }
 
+    // VFS takes the user info up to the first @ before a slash or a question mark, as typed, so it may hold a raw #
+    // or a character that a URI does not allow. The key holds no user info, so it is left out before the parse.
+    private static String withoutUserInfo(final String uri) {
+        final int scheme = uri.indexOf("://");
+        if (scheme < 0) {
+            return uri;
+        }
+        final int start = scheme + 3;
+        for (int pos = start; pos < uri.length(); pos++) {
+            final char ch = uri.charAt(pos);
+            if (ch == '@') {
+                return uri.substring(0, start) + uri.substring(pos + 1);
+            }
+            if (ch == '/' || ch == '?') {
+                break;
+            }
+        }
+        return uri;
+    }
+
     static String key(final String uri) {
-        final URI name = URI.create(dataUri(uri));
+        final URI name = URI.create(withoutUserInfo(dataUri(uri)));
         if (name.getScheme() == null) {
             return Paths.get(uri).toAbsolutePath().normalize().toString();
         }

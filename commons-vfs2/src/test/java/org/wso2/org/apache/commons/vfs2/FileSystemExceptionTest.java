@@ -106,6 +106,16 @@ public class FileSystemExceptionTest {
 
 
     /**
+     * VFS takes a # in the user name as typed. The password after it is masked in every address of the text.
+     */
+    @Test
+    public void testMasksPasswordAfterAUserNameWithAHash() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/rename.error",
+                "Failed sftp://un#it:SyntheticOne@host/a and ftp://x#y:SyntheticTwo@server/b");
+        assertEquals("Failed sftp://un#it:***@host/a and ftp://x#y:***@server/b", fse.getInfo()[0]);
+    }
+
+    /**
      * Tests that a secret in the query of a URL, such as the proxy password of FTP, is masked too.
      */
     @Test

@@ -188,6 +188,16 @@ public class LoggingTest {
         assertEquals("ERROR [connection:out] " + safe, sink.lines.get(2));
     }
 
+    // VFS takes a # in the user name as typed. The password after it is masked all the same.
+    @Test
+    public void aUserNameWithAHashKeepsItsPasswordMasked() {
+        final Lines sink = new Lines();
+        NamedLog.inbound(sink, "in", new RepeatLimiter()).warn("Failed ftp://un#it:SyntheticOne@host/data/a.txt and "
+                + "sftp://u#1:Synthetic#Two@host:22/data and smb2://domain;un#it:Synthetic Three@server/share/b");
+        assertEquals("WARN [inbound:in] Failed ftp://un#it:***@host/data/a.txt and sftp://u#1:***@host:22/data and "
+                + "smb2://domain;un#it:***@server/share/b", sink.lines.get(0));
+    }
+
     @Test
     public void missingPathCanWarnAgainAfterRecovery() {
         final RepeatLimiter limiter = new RepeatLimiter();

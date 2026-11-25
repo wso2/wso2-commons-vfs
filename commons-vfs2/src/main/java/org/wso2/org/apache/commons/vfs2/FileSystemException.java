@@ -41,12 +41,12 @@ public class FileSystemException extends IOException {
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
 
     // The password of the user info runs to the last @ before the host, in two passes with one form each. The first
-    // takes a password with no slash, the second one with no white space. The user name may hold white space. No
-    // quantifier nests. UriMask of the shared module uses the same passes.
+    // takes a password with no slash, the second one with no white space. The user name may hold white space or a #,
+    // as VFS takes it. No quantifier nests. UriMask of the shared module uses the same passes.
     private static final Pattern ADDRESS_PASSWORD_PATTERN = Pattern.compile(
-            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?#]*:)[^/]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?]*:)[^/]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
     private static final Pattern ADDRESS_PASSWORD_WITH_SLASH_PATTERN = Pattern.compile(
-            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?#]*:)[^\\s]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?]*:)[^\\s]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
 
     // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
     // The FTP option passive is not a secret and stays readable. UriMask of the shared module uses the same names.
