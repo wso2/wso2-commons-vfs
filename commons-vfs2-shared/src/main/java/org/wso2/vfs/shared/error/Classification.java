@@ -39,6 +39,17 @@ public final class Classification {
         this.commitConfirmed = commitConfirmed;
     }
 
+    /**
+     * A refusal that came as a reply of the server, with the text that says why.
+     *
+     * @param statusText the text, with no password in it.
+     * @param fast whether the reply came in under 5 s.
+     * @return the classification of kind {@link ErrorKind#APPLICATION}.
+     */
+    public static Classification application(final String statusText, final boolean fast) {
+        return new Classification(ErrorKind.APPLICATION, fast, statusText, null, null, null, false);
+    }
+
     public ErrorKind getKind() {
         return kind;
     }

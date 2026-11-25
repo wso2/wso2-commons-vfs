@@ -46,6 +46,7 @@ import org.wso2.vfs.shared.error.ErrorKind;
 import org.wso2.vfs.shared.health.EndpointHealth;
 import org.wso2.vfs.shared.health.HealthRegistry;
 import org.wso2.vfs.shared.log.NamedLog;
+import org.wso2.vfs.shared.log.UriMask;
 
 /** Share lock parameters and foreign lock observations for one endpoint or connection. */
 public final class ShareLock {
@@ -332,6 +333,27 @@ public final class ShareLock {
     }
 
     LockOutcome publish(final LockIo io, final HeldLock handle, final Mode mode) {
+        return reported(handle, publishOnce(io, handle, mode));
+    }
+
+    // A lock that can not be taken for a reason that is neither busy nor a transport error is shown to the operator:
+    // one WARN for its folder, until a lock there is taken again, and the last error of the health record. The caller
+    // decides as before.
+    private LockOutcome reported(final HeldLock handle, final LockOutcome outcome) {
+        final int slash = handle.uri.lastIndexOf('/');
+        final String folder = slash < 0 ? handle.uri : handle.uri.substring(0, slash);
+        final Classification failure = outcome.classification;
+        if (outcome.kind == ACQUIRED) {
+            log.lockTaken(folder);
+        } else if (failure != null && !failure.getKind().isTransport() && failure.getKind() != ErrorKind.BUSY
+                && failure.getKind() != ErrorKind.LOCK_BUSY) {
+            health.lockError(failure);
+            log.lockError(folder, "The lock of " + handle.uri + " could not be taken. " + failure.getStatusText());
+        }
+        return outcome;
+    }
+
+    private LockOutcome publishOnce(final LockIo io, final HeldLock handle, final Mode mode) {
         try {
             final Answer exclusive = call(CallType.READ, () -> io.exclusive(handle.lockUri));
             if (capabilityLogged.compareAndSet(false, true) && exclusive == Answer.NO) {
@@ -373,7 +395,11 @@ public final class ShareLock {
                 }
                 pause(50);
             } else if (created != AtomicOutcome.DONE) {
-                return LockOutcome.of(ERROR);
+                // A missing name or a refusal is a reply of the server, and it says why the lock is not taken.
+                final long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+                final String detail = reply.getDetail() == null ? "" : " " + reply.getDetail();
+                return new LockOutcome(ERROR, null, Classification.application(UriMask.mask("The exclusive create of "
+                        + handle.lockUri + " ended with " + created + "." + detail), elapsed < 5000), reply);
             }
             final LockOutcome verified = readBack(io, handle);
             if (verified.kind != OURS) {

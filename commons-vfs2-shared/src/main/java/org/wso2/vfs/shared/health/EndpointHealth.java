@@ -326,6 +326,11 @@ public final class EndpointHealth {
         lastError.set(Collections.unmodifiableMap(error));
     }
 
+    /** A lock that could not be taken for a reason that is neither busy nor transport. No file counts as failed. */
+    public void lockError(final Classification failure) {
+        recordError(failure);
+    }
+
     public void success() {
         lastSuccess.set(wallMillis.getAsLong());
         poll.set(new Poll(false, false, false, 0, State.OK));
