@@ -153,7 +153,7 @@ public class Smb2ClientWrapper extends SMBClient {
                     .withSigningRequired(true);
         } else {
             config = SmbConfig.builder()
-                    .withDfsEnabled(true)
+                    .withDfsEnabled(builder.getDfsEnabled(options))
                     .withMultiProtocolNegotiate(true);
             if (builder.getEncryptionEnabled(options)) {
                 config.withEncryptData(true);

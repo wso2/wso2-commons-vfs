@@ -20,6 +20,7 @@ package org.wso2.org.apache.commons.vfs2.provider.smb2;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -69,8 +70,11 @@ import com.hierynomus.smbj.SmbConfig;
 import com.hierynomus.smbj.common.SMBRuntimeException;
 import com.hierynomus.smbj.share.Directory;
 import org.junit.jupiter.api.Test;
+import org.wso2.org.apache.commons.vfs2.FileName;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
@@ -180,6 +184,79 @@ public class Smb2ClientWrapperTest {
         assertEquals(25000, config.getWriteTimeout());
         assertEquals(30000, config.getTransactTimeout());
         assertEquals(0, config.getSoTimeout());
+    }
+
+    @Test
+    public void dfsIsOnWhenUnsetAndOffWhenTheOptionsTurnItOff() {
+        final FileSystemOptions options = new FileSystemOptions();
+        assertTrue(BUILDER.getDfsEnabled(options));
+        BUILDER.setDfsEnabled(options, false);
+        assertFalse(BUILDER.getDfsEnabled(options));
+        BUILDER.setDfsEnabled(options, true);
+        assertTrue(BUILDER.getDfsEnabled(options));
+    }
+
+    @Test
+    public void configTakesDfsOfItsOptions() {
+        final FileSystemOptions off = new FileSystemOptions();
+        BUILDER.setDfsEnabled(off, false);
+        assertFalse(Smb2ClientWrapper.buildConfig(off, new SocketGroup(), () -> { }).isDfsEnabled());
+        final FileSystemOptions on = new FileSystemOptions();
+        BUILDER.setDfsEnabled(on, true);
+        assertTrue(Smb2ClientWrapper.buildConfig(on, new SocketGroup(), () -> { }).isDfsEnabled());
+    }
+
+    // The provider keeps one file system per root and options, and each file system makes its own clients. Two
+    // endpoints that differ only in DFS get two file systems, so they never share a client or a connection.
+    @Test
+    public void twoEndpointsWithOtherDfsValuesNeverShareAFileSystemOrAClient() throws Exception {
+        final DefaultFileSystemManager manager = new DefaultFileSystemManager();
+        manager.addProvider("smb2", new DoublesProvider());
+        manager.init();
+        try {
+            final FileSystemOptions off = new FileSystemOptions();
+            BUILDER.setDfsEnabled(off, false);
+            final FileSystemOptions on = new FileSystemOptions();
+            BUILDER.setDfsEnabled(on, true);
+            final FileSystemOptions offAgain = new FileSystemOptions();
+            BUILDER.setDfsEnabled(offAgain, false);
+            final FileSystem offSystem = manager.resolveFile(Smb2Doubles.ROOT, off).getFileSystem();
+            final FileSystem onSystem = manager.resolveFile(Smb2Doubles.ROOT, on).getFileSystem();
+            final FileSystem unsetSystem = manager.resolveFile(Smb2Doubles.ROOT, new FileSystemOptions())
+                    .getFileSystem();
+            assertNotSame(offSystem, onSystem);
+            assertNotSame(offSystem, unsetSystem);
+            assertSame(offSystem, manager.resolveFile(Smb2Doubles.ROOT, offAgain).getFileSystem());
+            assertFalse(configOfClient(offSystem).isDfsEnabled());
+            assertTrue(configOfClient(onSystem).isDfsEnabled());
+            assertTrue(configOfClient(unsetSystem).isDfsEnabled());
+        } finally {
+            manager.close();
+        }
+    }
+
+    // The config that the client of the file system builds from the options it holds.
+    private static SmbConfig configOfClient(final FileSystem fileSystem) throws FileSystemException {
+        final Smb2ClientWrapper client = (Smb2ClientWrapper) ((Smb2FileSystem) fileSystem).getClient();
+        return Smb2ClientWrapper.buildConfig(client.fileSystemOptions, new SocketGroup(), () -> { });
+    }
+
+    // The real cache of the provider. Each new file system gets a client double that holds the options of that file
+    // system, as the real factory passes them on.
+    private static final class DoublesProvider extends Smb2FileProvider {
+
+        @Override
+        protected FileSystem doCreateFileSystem(final FileName name, final FileSystemOptions options)
+                throws FileSystemException {
+            try {
+                return new Smb2FileSystem(name, options,
+                        new Smb2Doubles.Factory(new Smb2Doubles.Client(options, null).wrapper));
+            } catch (final FileSystemException e) {
+                throw e;
+            } catch (final Exception e) {
+                throw new FileSystemException(e);
+            }
+        }
     }
 
     @Test

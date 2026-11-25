@@ -33,6 +33,7 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder impleme
 
     private static final Smb2FileSystemConfigBuilder BUILDER = new Smb2FileSystemConfigBuilder();
     private static final String ENCRYPTION_ENABLED = "EncryptionEnabled";
+    private static final String DFS_ENABLED = "dfsEnabled";
     public static final String DISK_SHARE_ACCESS_MASK = "diskShareAccessMask";
     private static final String READ_TIMEOUT = "readTimeout";
     private static final String WRITE_TIMEOUT = "writeTimeout";
@@ -54,6 +55,17 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder impleme
     public boolean getEncryptionEnabled(FileSystemOptions opts) {
         Object param = getParam(opts, ENCRYPTION_ENABLED);
         return (param instanceof Boolean) ? (Boolean) param : false;
+    }
+
+    /**
+     * Get the DfsEnabled parameter for smb2 servers.
+     *
+     * @param opts The FileSystem options.
+     * @return {@code false} if DFS is turned off, {@code true} otherwise.
+     */
+    public boolean getDfsEnabled(FileSystemOptions opts) {
+        Object param = getParam(opts, DFS_ENABLED);
+        return (param instanceof Boolean) ? (Boolean) param : true;
     }
 
     /**
@@ -79,6 +91,16 @@ public class Smb2FileSystemConfigBuilder extends FileSystemConfigBuilder impleme
      */
     public void setEncryptionEnabled(FileSystemOptions opts, boolean encryptionEnabled) {
         setParam(opts, ENCRYPTION_ENABLED, encryptionEnabled);
+    }
+
+    /**
+     * Set the DfsEnabled parameter for SMB2 servers.
+     *
+     * @param opts       The FileSystem options.
+     * @param dfsEnabled Whether the client resolves DFS paths.
+     */
+    public void setDfsEnabled(FileSystemOptions opts, boolean dfsEnabled) {
+        setParam(opts, DFS_ENABLED, dfsEnabled);
     }
 
     /**
