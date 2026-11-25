@@ -91,6 +91,34 @@ class ShareLockErrorReportTest {
         }
     }
 
+    /**
+     * A server where the look finds a lock of another party that its holder releases before the read. The read then
+     * fails with the plain read error that SFTP and SMB2 give for a name that is not there.
+     */
+    private static final class ReleasedBeforeRead extends ShareLockTest.Server {
+        private final String lock;
+
+        private boolean released;
+
+        ReleasedBeforeRead(final String lock) {
+            this.lock = lock;
+        }
+
+        @Override
+        boolean exists(final String uri) throws IOException {
+            return lock.equals(uri) && !released || super.exists(uri);
+        }
+
+        @Override
+        LockValue read(final String uri) throws IOException {
+            if (lock.equals(uri) && !released) {
+                released = true;
+                throw ShareLockTest.failure(Fault.APPLICATION);
+            }
+            return super.read(uri);
+        }
+    }
+
     @Test
     void refusedExclusiveCreateNamesTheStepAndTheReplyOnceForTheFolder() {
         final Replies server = new Replies();
@@ -119,16 +147,28 @@ class ShareLockErrorReportTest {
     }
 
     @Test
-    void folderWarnsAgainAfterALockThereWasTaken() {
+    void folderWarnsOnceInTheWindowAlsoWhenOtherFilesPass() {
         final Replies server = new Replies();
         server.creates.add(new AtomicResult(AtomicOutcome.REFUSED, "first"));
         assertEquals(ERROR, acquire(server, FOLDER + "/a.csv").kind);
-        final LockOutcome taken = acquire(server, FOLDER + "/a.csv");
+        final LockOutcome taken = acquire(server, FOLDER + "/b.csv");
         assertEquals(ACQUIRED, taken.kind);
         taken.handle.abandon();
         server.creates.add(new AtomicResult(AtomicOutcome.REFUSED, "second"));
-        assertEquals(ERROR, acquire(server, FOLDER + "/c.csv").kind);
-        assertEquals(2, warnings(), String.valueOf(sink.lines));
+        assertEquals(ERROR, acquire(server, FOLDER + "/a.csv").kind);
+        assertEquals(1, warnings(), String.valueOf(sink.lines));
+        assertTrue(String.valueOf(lastError().get("text")).contains("second"), String.valueOf(lastError()));
+    }
+
+    @Test
+    void lockReleasedBetweenTheLookAndTheReadIsTheRaceAndIsNotReported() {
+        final String data = FOLDER + "/a.csv";
+        final ReleasedBeforeRead server = new ReleasedBeforeRead(data + ".lock");
+        final LockOutcome outcome = acquire(server, data);
+        assertEquals(ACQUIRED, outcome.kind);
+        outcome.handle.abandon();
+        assertEquals(0, warnings(), String.valueOf(sink.lines));
+        assertTrue(lastError().isEmpty(), String.valueOf(lastError()));
     }
 
     @Test

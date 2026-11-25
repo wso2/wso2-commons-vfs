@@ -26,7 +26,7 @@ import org.apache.commons.logging.Log;
 public final class NamedLog {
     private static final Set<String> WARNED_CLASSES = ConcurrentHashMap.newKeySet();
 
-    // The repeat limiter keeps a lock folder apart from a poll root by this prefix.
+    // The key of a lock folder in the repeat limiter, apart from the texts of other WARN lines by this prefix.
     private static final String LOCK_KEY = "lock ";
 
     private final Log log;
@@ -83,19 +83,16 @@ public final class NamedLog {
         limiter.clear(UriMask.mask(uri));
     }
 
-    /** A lock that can not be taken is reported once for its folder, until a lock in that folder is taken again. */
+    /** A lock that can not be taken is reported at most once for its folder in the window of the repeat limiter. */
     public void lockError(final String folder, final String text) {
-        if (limiter.once(LOCK_KEY + UriMask.mask(folder))) {
-            if (log.isWarnEnabled()) {
-                log.warn(lines(UriMask.mask(text)));
-            }
-        } else {
+        final String key = LOCK_KEY + UriMask.mask(folder);
+        final String admitted = limiter.admit(key);
+        if (admitted == null) {
             debug(text);
+        } else if (log.isWarnEnabled()) {
+            // The limiter adds the count of the skipped reports of this folder to the key.
+            log.warn(lines(UriMask.mask(text) + admitted.substring(key.length())));
         }
-    }
-
-    public void lockTaken(final String folder) {
-        limiter.clear(LOCK_KEY + UriMask.mask(folder));
     }
 
     public void warnUnknown(final Class<?> type, final String chain) {

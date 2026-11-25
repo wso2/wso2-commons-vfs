@@ -275,7 +275,10 @@ public final class ShareLock {
         try {
             found = read(io, lock);
         } catch (final Failure error) {
-            if (error.cause.getKind() == ErrorKind.MISSING) {
+            // SFTP and SMB2 give a plain read error for a name that is not there. A holder that released its lock
+            // between the look and the read is the plain race, so a fresh look decides.
+            if (error.cause.getKind() == ErrorKind.MISSING
+                    || !error.cause.getKind().isTransport() && !exists(io, lock)) {
                 forget(key);
                 return LockOutcome.of(FREE);
             }
@@ -337,18 +340,16 @@ public final class ShareLock {
     }
 
     // A lock that can not be taken for a reason that is neither busy nor a transport error is shown to the operator:
-    // one WARN for its folder, until a lock there is taken again, and the last error of the health record. The caller
-    // decides as before.
+    // at most one WARN for its folder in the window of the repeat limiter, and the last error of the health record.
+    // The caller decides as before.
     private LockOutcome reported(final HeldLock handle, final LockOutcome outcome) {
-        final int slash = handle.uri.lastIndexOf('/');
-        final String folder = slash < 0 ? handle.uri : handle.uri.substring(0, slash);
         final Classification failure = outcome.classification;
-        if (outcome.kind == ACQUIRED) {
-            log.lockTaken(folder);
-        } else if (failure != null && !failure.getKind().isTransport() && failure.getKind() != ErrorKind.BUSY
+        if (failure != null && !failure.getKind().isTransport() && failure.getKind() != ErrorKind.BUSY
                 && failure.getKind() != ErrorKind.LOCK_BUSY) {
+            final int slash = handle.uri.lastIndexOf('/');
             health.lockError(failure);
-            log.lockError(folder, "The lock of " + handle.uri + " could not be taken. " + failure.getStatusText());
+            log.lockError(slash < 0 ? handle.uri : handle.uri.substring(0, slash),
+                    "The lock of " + handle.uri + " could not be taken. " + failure.getStatusText());
         }
         return outcome;
     }
