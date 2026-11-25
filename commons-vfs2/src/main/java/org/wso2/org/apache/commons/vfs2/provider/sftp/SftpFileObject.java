@@ -1257,7 +1257,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
                 throw call.notKnown("link", e);
             }
             if (isNoSuchFile(e)) {
-                return call.result(AtomicOutcome.GONE, detail(e));
+                return noSuchFile(call, source, probe, key, targetName, e);
             }
             refusal = e;
         }
@@ -1311,6 +1311,53 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         fileSystem.markLinks(key);
         call.remove(probe);
         return call.result(AtomicOutcome.EXISTS, detail(refusal));
+    }
+
+    // The link answered no such file. That decides nothing, unless the folder never linked, the source is there, and
+    // the probe link answers no such file too. Then the server does not link in this folder, as when it refuses the
+    // probe, and the folder is marked so.
+    private AtomicResult noSuchFile(final AtomicCall call, final String source, final String probe, final String key,
+            final FileName targetName, final Exception linkError) throws FileSystemException {
+        final SftpFileSystem fileSystem = getAbstractFileSystem();
+        if (fileSystem.getLinkState(key) == LinkState.LINKS) {
+            return call.result(AtomicOutcome.GONE, detail(linkError));
+        }
+        if (call.interrupted()) {
+            throw call.interruptedBefore("look at the source of a link");
+        }
+        try {
+            request(call.channel, wait -> call.channel.lstat(quote(source)));
+        } catch (final Exception e) {
+            if (!isReply(e)) {
+                throw call.notKnown("look at the source of a link", e);
+            }
+            return call.result(AtomicOutcome.GONE, detail(linkError));
+        }
+        if (call.interrupted()) {
+            throw call.interruptedBefore("probe link");
+        }
+        try {
+            send(call.channel, () -> call.channel.hardlink(quote(absolute(call.channel, source)), quote(probe)));
+        } catch (final Exception e) {
+            if (!isReply(e)) {
+                throw call.notKnown("probe link", e);
+            }
+            if (!isNoSuchFile(e)) {
+                return call.result(AtomicOutcome.GONE, detail(linkError));
+            }
+            fileSystem.markNoLink(key);
+            if (fileSystem.firstWarning("link " + key)) {
+                LOG.warn("The SFTP server answered no such file for a link and for a probe link from \"" + source
+                        + "\", which is there. The server does not link in the folder \"" + folderKey(targetName)
+                        + "\", so the lock uses the weak rule there. Its exclusive step is not used while this file"
+                        + " system lives. The server replied " + detail(e) + ".");
+            }
+            return call.result(AtomicOutcome.UNSUPPORTED, detail(e));
+        }
+        // The probe linked, so the folder can link and the first answer stays an error.
+        fileSystem.markLinks(key);
+        call.remove(probe);
+        return call.result(AtomicOutcome.GONE, detail(linkError));
     }
 
     @Override

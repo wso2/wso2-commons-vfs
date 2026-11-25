@@ -376,14 +376,92 @@ public class SftpAtomicOpsTest {
         assertEquals(Answer.NOT_KNOWN, lock.atomicCapabilities().getExclusiveCreate());
     }
 
-    @Test
-    public void linkThatSaysNoSuchFileIsGoneWithNoLook() throws Exception {
+    // A link that says no such file. It decides something only when the folder never linked, the source is there,
+    // and the probe link says no such file too.
+
+    private ChannelSftp noSuchFileLink() throws Exception {
         final ChannelSftp channel = channel(true, true);
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
+        return channel;
+    }
+
+    @Test
+    public void noSuchFileLinkWithTheSourceGoneIsGoneAndMarksNothing() throws Exception {
+        final ChannelSftp channel = noSuchFileLink();
+        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(in + "/s.lock");
         final Channels fileSystem = new Channels(channel);
-        assertEquals(AtomicOutcome.GONE,
-                file(fileSystem, in, "a.lock").createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertEquals(AtomicOutcome.GONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        verify(channel, never()).hardlink("/" + in + "/s.lock", in + "/p.lock");
+        assertEquals(Answer.NOT_KNOWN, lock.atomicCapabilities().getExclusiveCreate());
+    }
+
+    @Test
+    public void noSuchFileLinkAndProbeWithTheSourceThereMarkTheFolderWithNoLink() throws Exception {
+        final ChannelSftp channel = noSuchFileLink();
+        doReturn(attrs(false, 1, 1)).when(channel).lstat(in + "/s.lock");
+        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
+        final ChannelSftp next = channel(true, true);
+        final Channels fileSystem = new Channels(channel, next);
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertEquals(AtomicOutcome.UNSUPPORTED, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        verify(channel).rm(in + "/s.lock");
+        assertEquals(Answer.NO, lock.atomicCapabilities().getExclusiveCreate());
+        // The next exclusive create of the folder writes no scratch file and sends no link.
+        assertEquals(AtomicOutcome.UNSUPPORTED, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        verify(next, never()).put(any(InputStream.class), anyString());
+        verify(next, never()).hardlink(anyString(), anyString());
+    }
+
+    @Test
+    public void noSuchFileLinkWithAProbeThatLinksStaysGoneAndTheFolderLinks() throws Exception {
+        final ChannelSftp channel = noSuchFileLink();
+        doReturn(attrs(false, 1, 1)).when(channel).lstat(in + "/s.lock");
+        final Channels fileSystem = new Channels(channel);
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertEquals(AtomicOutcome.GONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        verify(channel).rm(in + "/p.lock");
+        assertEquals(Answer.YES, lock.atomicCapabilities().getExclusiveCreate());
+    }
+
+    @Test
+    public void noSuchFileLinkWithARefusedProbeStaysGoneAndMarksNothing() throws Exception {
+        final ChannelSftp channel = noSuchFileLink();
+        doReturn(attrs(false, 1, 1)).when(channel).lstat(in + "/s.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
+        final Channels fileSystem = new Channels(channel);
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertEquals(AtomicOutcome.GONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        assertEquals(Answer.NOT_KNOWN, lock.atomicCapabilities().getExclusiveCreate());
+    }
+
+    @Test
+    public void noSuchFileLinkOnAFolderThatLinkedBeforeIsGoneWithNoLook() throws Exception {
+        final ChannelSftp linked = channel(true, true);
+        final ChannelSftp channel = noSuchFileLink();
+        final Channels fileSystem = new Channels(linked, channel);
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertEquals(AtomicOutcome.DONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
+        assertEquals(AtomicOutcome.GONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
         verify(channel, never()).lstat(anyString());
+        assertEquals(Answer.YES, lock.atomicCapabilities().getExclusiveCreate());
+    }
+
+    @Test
+    public void transportErrorAtTheProbeAfterANoSuchFileLinkMarksNothing() throws Exception {
+        final ChannelSftp channel = noSuchFileLink();
+        doReturn(attrs(false, 1, 1)).when(channel).lstat(in + "/s.lock");
+        doThrow(broken()).when(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
+        final Channels fileSystem = new Channels(channel);
+        fileSystem.announced(true, true);
+        final SftpFileObject lock = file(fileSystem, in, "a.lock");
+        assertThrows(FileSystemException.class, () -> lock.createExclusive(new byte[] {1}, "s.lock", "p.lock"));
+        assertEquals(Answer.NOT_KNOWN, lock.atomicCapabilities().getExclusiveCreate());
     }
 
     @Test

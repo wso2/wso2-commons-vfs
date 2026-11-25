@@ -133,6 +133,12 @@ final class SftpTestServer implements Closeable {
 
     private final Set<String> failingLooks = ConcurrentHashMap.newKeySet();
 
+    // A server with a start folder answers each hard link with no such file when this is set, also when the old path
+    // is there. It counts the hard link requests it got.
+    private volatile boolean linkAsNoSuchFile;
+
+    private final AtomicInteger linkRequests = new AtomicInteger();
+
     SftpTestServer() throws IOException {
         this(0);
     }
@@ -268,6 +274,11 @@ final class SftpTestServer implements Closeable {
                         }
                         final String from = buffer.getString();
                         final String to = buffer.getString();
+                        linkRequests.incrementAndGet();
+                        if (linkAsNoSuchFile) {
+                            sendStatus(id, SSH_FX_NO_SUCH_FILE, from);
+                            return true;
+                        }
                         try {
                             Files.createLink(onDisk(to), onDisk(from));
                             sendStatus(id, SSH_FX_OK, "");
@@ -630,6 +641,15 @@ final class SftpTestServer implements Closeable {
     // A server with a start folder answers a stat or an lstat of a name that is not there with a failure, id 4.
     void answerFailureForMissingNames() {
         missingAsFailure = true;
+    }
+
+    // A server with a start folder answers each hard link with no such file, also when the old path is there.
+    void answerNoSuchFileForLinks(final boolean noSuchFile) {
+        linkAsNoSuchFile = noSuchFile;
+    }
+
+    int linkRequests() {
+        return linkRequests.get();
     }
 
     // A server with a start folder answers a stat or an lstat of this path of the server with a failure, id 4.
