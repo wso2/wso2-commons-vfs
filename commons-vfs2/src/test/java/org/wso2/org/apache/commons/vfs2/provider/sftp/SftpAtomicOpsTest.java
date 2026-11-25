@@ -157,8 +157,9 @@ public class SftpAtomicOpsTest {
         return session;
     }
 
-    private static ChannelSftp channel(final boolean hardlink, final boolean posixRename) {
+    private static ChannelSftp channel(final boolean hardlink, final boolean posixRename) throws SftpException {
         final ChannelSftp channel = mock(ChannelSftp.class);
+        when(channel.pwd()).thenReturn("/");
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn(hardlink ? "1" : null);
         when(channel.getExtension(SftpFileSystem.POSIX_RENAME)).thenReturn(posixRename ? "1" : null);
         return channel;
@@ -296,7 +297,7 @@ public class SftpAtomicOpsTest {
         assertTrue(result.getLeftovers().isEmpty());
         final InOrder order = inOrder(channel);
         order.verify(channel).put(any(InputStream.class), eq(in + "/s.lock"));
-        order.verify(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        order.verify(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         order.verify(channel).rm(in + "/s.lock");
         verify(channel, never()).lstat(anyString());
         fileSystem.announced(true, true);
@@ -306,12 +307,12 @@ public class SftpAtomicOpsTest {
     @Test
     public void refusedLinkWithTheNameThereIsExistsWithNoProbe() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doReturn(attrs(false, 1, 1)).when(channel).lstat(in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         final AtomicResult result = file(fileSystem, in, "a.lock").createExclusive(new byte[] {1}, "s.lock", "p.lock");
         assertEquals(AtomicOutcome.EXISTS, result.getOutcome());
-        verify(channel, never()).hardlink(in + "/s.lock", in + "/p.lock");
+        verify(channel, never()).hardlink("/" + in + "/s.lock", in + "/p.lock");
         verify(channel).rm(in + "/s.lock");
     }
 
@@ -319,26 +320,26 @@ public class SftpAtomicOpsTest {
     public void releasedBetweenTheLinkAndTheLookInAFolderThatLinkedIsExistsWithNoProbe() throws Exception {
         final ChannelSftp first = channel(true, true);
         final ChannelSftp second = channel(true, true);
-        doThrow(reply(11)).when(second).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(11)).when(second).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(second).lstat(in + "/a.lock");
         final Channels fileSystem = new Channels(first, second);
         final SftpFileObject lock = file(fileSystem, in, "a.lock");
         assertEquals(AtomicOutcome.DONE, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
         assertEquals(AtomicOutcome.EXISTS, lock.createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
-        verify(second, never()).hardlink(in + "/s.lock", in + "/p.lock");
+        verify(second, never()).hardlink("/" + in + "/s.lock", in + "/p.lock");
     }
 
     @Test
     public void probeThatWorksIsExistsAndMarksTheFolderLinks() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         fileSystem.announced(true, true);
         final SftpFileObject lock = file(fileSystem, in, "a.lock");
         final AtomicResult result = lock.createExclusive(new byte[] {1}, "s.lock", "p.lock");
         assertEquals(AtomicOutcome.EXISTS, result.getOutcome());
-        verify(channel).hardlink(in + "/s.lock", in + "/p.lock");
+        verify(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
         verify(channel).rm(in + "/p.lock");
         verify(channel).rm(in + "/s.lock");
         assertEquals(Answer.YES, lock.atomicCapabilities().getExclusiveCreate());
@@ -365,9 +366,9 @@ public class SftpAtomicOpsTest {
     @Test
     public void probeThatSaysNoSuchFileIsGoneAndDecidesNothing() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(in + "/a.lock");
-        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink(in + "/s.lock", in + "/p.lock");
+        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
         final Channels fileSystem = new Channels(channel);
         fileSystem.announced(true, true);
         final SftpFileObject lock = file(fileSystem, in, "a.lock");
@@ -378,7 +379,7 @@ public class SftpAtomicOpsTest {
     @Test
     public void linkThatSaysNoSuchFileIsGoneWithNoLook() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         assertEquals(AtomicOutcome.GONE,
                 file(fileSystem, in, "a.lock").createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
@@ -388,19 +389,19 @@ public class SftpAtomicOpsTest {
     @Test
     public void lookThatIsRefusedIsRefused() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(3)).when(channel).lstat(in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         assertEquals(AtomicOutcome.REFUSED,
                 file(fileSystem, in, "a.lock").createExclusive(new byte[] {1}, "s.lock", "p.lock").getOutcome());
-        verify(channel, never()).hardlink(in + "/s.lock", in + "/p.lock");
+        verify(channel, never()).hardlink("/" + in + "/s.lock", in + "/p.lock");
     }
 
     @Test
     public void linkWithACauseDiscardsTheChannelAndMakesNoFurtherCall() throws Exception {
         final ChannelSftp channel = channel(true, true);
         final SftpException cause = broken();
-        doThrow(cause).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(cause).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         // The link may have worked. The call throws UnclearResultException in the phase COMMIT with the scratch path,
         // and the scratch name is not removed.
@@ -415,7 +416,7 @@ public class SftpAtomicOpsTest {
     @Test
     public void lookWithACauseDiscardsTheChannelAndDecidesNothing() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         final SftpException cause = broken();
         doThrow(cause).when(channel).lstat(in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
@@ -424,17 +425,17 @@ public class SftpAtomicOpsTest {
         unclear(MovePhase.COMMIT, "/" + in + "/s.lock", cause,
                 () -> lock.createExclusive(new byte[] {1}, "s.lock", "p.lock"));
         assertEquals(Arrays.asList(channel), fileSystem.discarded);
-        verify(channel, never()).hardlink(in + "/s.lock", in + "/p.lock");
+        verify(channel, never()).hardlink("/" + in + "/s.lock", in + "/p.lock");
         assertEquals(Answer.NOT_KNOWN, lock.atomicCapabilities().getExclusiveCreate());
     }
 
     @Test
     public void probeWithACauseDoesNotDemoteTheFolder() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(in + "/a.lock");
         final SftpException cause = broken();
-        doThrow(cause).when(channel).hardlink(in + "/s.lock", in + "/p.lock");
+        doThrow(cause).when(channel).hardlink("/" + in + "/s.lock", in + "/p.lock");
         final Channels fileSystem = new Channels(channel);
         fileSystem.announced(true, true);
         final SftpFileObject lock = file(fileSystem, in, "a.lock");
@@ -451,7 +452,7 @@ public class SftpAtomicOpsTest {
         doAnswer(call -> {
             Thread.currentThread().interrupt();
             throw refusal;
-        }).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        }).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         final Channels fileSystem = new Channels(channel);
         unclear(MovePhase.COMMIT, "/" + in + "/s.lock", refusal,
                 () -> file(fileSystem, in, "a.lock").createExclusive(new byte[] {1}, "s.lock", "p.lock"));
@@ -543,7 +544,7 @@ public class SftpAtomicOpsTest {
     @Test
     public void probeWhoseRemovalLosesTheConnectionKeepsTheOutcomeWithTwoLeftovers() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/s.lock", in + "/a.lock");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/s.lock", in + "/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(in + "/a.lock");
         doThrow(broken()).when(channel).rm(in + "/p.lock");
         final Channels fileSystem = new Channels(channel);
@@ -690,7 +691,7 @@ public class SftpAtomicOpsTest {
         final SftpFileObject target = file(fileSystem, out, "a.csv");
         final AtomicResult result = source.linkExclusive(target, "p.part");
         assertEquals(AtomicOutcome.DONE, result.getOutcome());
-        verify(channel).hardlink(in + "/a.csv", out + "/a.csv");
+        verify(channel).hardlink("/" + in + "/a.csv", out + "/a.csv");
         verify(channel, never()).rm(anyString());
         assertEquals(Answer.YES, source.atomicCapabilities(target).getExclusivePublish());
         assertEquals(Answer.NOT_KNOWN, target.atomicCapabilities(source).getExclusivePublish());
@@ -703,13 +704,13 @@ public class SftpAtomicOpsTest {
     @Test
     public void linkProbeRunsInTheTargetFolder() throws Exception {
         final ChannelSftp channel = channel(true, true);
-        doThrow(reply(4)).when(channel).hardlink(in + "/a.csv", out + "/a.csv");
+        doThrow(reply(4)).when(channel).hardlink("/" + in + "/a.csv", out + "/a.csv");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat(out + "/a.csv");
         final Channels fileSystem = new Channels(channel);
         final AtomicResult result = file(fileSystem, in, "a.csv").linkExclusive(file(fileSystem, out, "a.csv"),
                 "p.part");
         assertEquals(AtomicOutcome.EXISTS, result.getOutcome());
-        verify(channel).hardlink(in + "/a.csv", out + "/p.part");
+        verify(channel).hardlink("/" + in + "/a.csv", out + "/p.part");
     }
 
     @Test

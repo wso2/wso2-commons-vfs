@@ -1139,6 +1139,17 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         return slash < 0 ? baseName : path.substring(0, slash + 1) + baseName;
     }
 
+    // JSch sends the old path of a hard link as it is given, and the server resolves a relative path in the folder
+    // where the session started. Every other call of JSch makes its path absolute in the folder of the channel, so the
+    // link takes its old path from that folder too.
+    private static String absolute(final ChannelSftp channel, final String path) throws SftpException {
+        if (path.startsWith("/")) {
+            return path;
+        }
+        final String folder = channel.pwd();
+        return folder.endsWith("/") ? folder + path : folder + "/" + path;
+    }
+
     // The folder of a name. A root has no parent, so it is its own folder.
     private static String folderKey(final FileName name) {
         final FileName parent = name.getParent();
@@ -1238,7 +1249,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         final String point = pointKey(targetName);
         final Exception refusal;
         try {
-            send(call.channel, () -> call.channel.hardlink(quote(source), quote(target)));
+            send(call.channel, () -> call.channel.hardlink(quote(absolute(call.channel, source)), quote(target)));
             fileSystem.markLinks(key);
             return call.result(AtomicOutcome.DONE, null);
         } catch (final Exception e) {
@@ -1280,7 +1291,7 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
             throw call.interruptedBefore("probe link");
         }
         try {
-            send(call.channel, () -> call.channel.hardlink(quote(source), quote(probe)));
+            send(call.channel, () -> call.channel.hardlink(quote(absolute(call.channel, source)), quote(probe)));
         } catch (final Exception e) {
             if (!isReply(e)) {
                 throw call.notKnown("probe link", e);

@@ -205,7 +205,8 @@ public class SftpLinkPointsTest {
     public void holderReleasesBetweenTheRefusedLinkAndTheLookAndTheProbeDecides() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         final AtomicBoolean released = new AtomicBoolean();
         final SftpATTRS lock = mock(SftpATTRS.class);
         doAnswer(call -> {
@@ -232,7 +233,7 @@ public class SftpLinkPointsTest {
         Files.delete(hold);
         caller.join(10000);
         assertEquals(AtomicOutcome.EXISTS, ((AtomicResult) result.get()).getOutcome());
-        verify(channel).hardlink("in/s.lock", "in/p.lock");
+        verify(channel).hardlink("/in/s.lock", "in/p.lock");
         verify(channel).rm("in/p.lock");
     }
 
@@ -240,7 +241,8 @@ public class SftpLinkPointsTest {
     public void lookPointComesAfterTheLookAndBeforeTheProbe() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat("in/a.lock");
         final SftpFileObject file = new SftpFileObject(name("/in/a.lock", FileType.FILE), new OneChannel(channel));
         final String key = "sftp://localhost/in/a.lock";
@@ -255,17 +257,18 @@ public class SftpLinkPointsTest {
         });
         waitFor("link.after-look", key);
         verify(channel).lstat("in/a.lock");
-        verify(channel, never()).hardlink("in/s.lock", "in/p.lock");
+        verify(channel, never()).hardlink("/in/s.lock", "in/p.lock");
         Files.delete(hold);
         caller.join(10000);
         assertEquals(AtomicOutcome.EXISTS, ((AtomicResult) result.get()).getOutcome());
-        verify(channel).hardlink("in/s.lock", "in/p.lock");
+        verify(channel).hardlink("/in/s.lock", "in/p.lock");
     }
 
     @Test
     public void publishPointComesAfterTheLinkAndBeforeTheRemovalOfTheTempName() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
+        when(channel.pwd()).thenReturn("/");
         final OneChannel fileSystem = new OneChannel(channel);
         final SftpFileObject temp = new SftpFileObject(name("/in/.part/a.tmp", FileType.FILE), fileSystem);
         final SftpFileObject target = new SftpFileObject(name("/in/t.bin", FileType.FILE), fileSystem);
@@ -280,7 +283,7 @@ public class SftpLinkPointsTest {
             }
         });
         waitFor("publish.after-link", key);
-        verify(channel).hardlink("in/.part/a.tmp", "in/t.bin");
+        verify(channel).hardlink("/in/.part/a.tmp", "in/t.bin");
         verify(channel, never()).rm(anyString());
         Files.delete(hold);
         caller.join(10000);
@@ -295,7 +298,8 @@ public class SftpLinkPointsTest {
     public void interruptAfterTheRefusedLinkSendsNoLook() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         final SftpFileObject file = new SftpFileObject(name("/in/a.lock", FileType.FILE), new OneChannel(channel));
         final long[] after = new long[1];
         final Object result = interruptAt("link.after-refusal", "sftp://localhost/in/a.lock", channel,
@@ -311,7 +315,8 @@ public class SftpLinkPointsTest {
     public void interruptAfterTheLookSendsNoProbe() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_NO_SUCH_FILE)).when(channel).lstat("in/a.lock");
         final SftpFileObject file = new SftpFileObject(name("/in/a.lock", FileType.FILE), new OneChannel(channel));
         final long[] after = new long[1];
@@ -319,7 +324,7 @@ public class SftpLinkPointsTest {
                 () -> file.createExclusive(new byte[] {1}, "s.lock", "p.lock"), after);
         assertInterruptedBefore(result, MovePhase.COMMIT, "/in/s.lock");
         assertEquals(0, after[0]);
-        verify(channel, never()).hardlink("in/s.lock", "in/p.lock");
+        verify(channel, never()).hardlink("/in/s.lock", "in/p.lock");
         verify(channel, never()).rm(anyString());
     }
 
@@ -327,7 +332,8 @@ public class SftpLinkPointsTest {
     public void interruptAfterALookThatDecidedKeepsTheOutcomeAndLeavesTheScratch() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         when(channel.lstat("in/a.lock")).thenReturn(mock(SftpATTRS.class));
         final SftpFileObject file = new SftpFileObject(name("/in/a.lock", FileType.FILE), new OneChannel(channel));
         final long[] after = new long[1];
@@ -345,7 +351,8 @@ public class SftpLinkPointsTest {
     public void interruptAfterARefusedLookKeepsTheRefusal() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
-        doThrow(reply(4)).when(channel).hardlink("in/s.lock", "in/a.lock");
+        when(channel.pwd()).thenReturn("/");
+        doThrow(reply(4)).when(channel).hardlink("/in/s.lock", "in/a.lock");
         doThrow(reply(ChannelSftp.SSH_FX_PERMISSION_DENIED)).when(channel).lstat("in/a.lock");
         final SftpFileObject file = new SftpFileObject(name("/in/a.lock", FileType.FILE), new OneChannel(channel));
         final long[] after = new long[1];
@@ -363,6 +370,7 @@ public class SftpLinkPointsTest {
     public void interruptAfterThePublishedLinkKeepsDoneAndSendsNoRemoval() throws Exception {
         final ChannelSftp channel = mock(ChannelSftp.class);
         when(channel.getExtension(SftpFileSystem.HARDLINK)).thenReturn("1");
+        when(channel.pwd()).thenReturn("/");
         final OneChannel fileSystem = new OneChannel(channel);
         final SftpFileObject temp = new SftpFileObject(name("/in/.part/a.tmp", FileType.FILE), fileSystem);
         final SftpFileObject target = new SftpFileObject(name("/in/t.bin", FileType.FILE), fileSystem);
@@ -374,7 +382,7 @@ public class SftpLinkPointsTest {
         assertEquals(Collections.singletonList("in/.part/a.tmp"), done.getLeftovers());
         assertTrue(done.isConnectionLost());
         assertEquals(0, after[0]);
-        verify(channel).hardlink("in/.part/a.tmp", "in/t.bin");
+        verify(channel).hardlink("/in/.part/a.tmp", "in/t.bin");
         verify(channel, never()).rm(anyString());
     }
 }

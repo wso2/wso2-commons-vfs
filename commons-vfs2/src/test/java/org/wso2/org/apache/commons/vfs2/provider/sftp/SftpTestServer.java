@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -53,6 +54,8 @@ import org.apache.sshd.server.Command;
 import org.apache.sshd.server.CommandFactory;
 import org.apache.sshd.server.Environment;
 import org.apache.sshd.server.ExitCallback;
+import org.apache.sshd.server.FileSystemView;
+import org.apache.sshd.server.SshFile;
 import org.apache.sshd.common.util.Buffer;
 import org.apache.sshd.server.channel.ChannelSession;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
@@ -120,6 +123,9 @@ final class SftpTestServer implements Closeable {
     // The folder of the host key. The server owns it and the data root, and removes both at its close.
     private final Path keyDir;
 
+    // The folder where each session starts, or null for a server whose sessions start at the root.
+    private final String startFolder;
+
     SftpTestServer() throws IOException {
         this(0);
     }
@@ -139,6 +145,11 @@ final class SftpTestServer implements Closeable {
     }
 
     private SftpTestServer(final int windowSize, final Path parent) throws IOException {
+        this(windowSize, parent, null);
+    }
+
+    private SftpTestServer(final int windowSize, final Path parent, final String startFolder) throws IOException {
+        this.startFolder = startFolder;
         root = Files.createTempDirectory(parent, "sftp-test-root");
         Path key = null;
         try {
@@ -164,6 +175,24 @@ final class SftpTestServer implements Closeable {
         }
     }
 
+    /**
+     * Starts a server whose sessions start in a folder under the root, as OpenSSH with no chroot. A relative path is
+     * resolved in that folder and an absolute path from the root. The server announces the hard link extension of
+     * OpenSSH and makes the link on disk.
+     *
+     * @param folder the start folder, an absolute path of the server.
+     */
+    static SftpTestServer startingIn(final String folder) throws IOException {
+        final SftpTestServer server = new SftpTestServer(0, Paths.get(System.getProperty("java.io.tmpdir")), folder);
+        try {
+            Files.createDirectories(server.root.resolve(folder.substring(1)));
+        } catch (final IOException e) {
+            server.close();
+            throw e;
+        }
+        return server;
+    }
+
     private void start(final int windowSize) throws IOException {
         server.setPort(0);
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(keyDir.resolve("key.ser").toString()));
@@ -181,13 +210,52 @@ final class SftpTestServer implements Closeable {
                     protected void process(final Buffer buffer) throws IOException {
                         // The buffer starts with the length of the packet, then its type.
                         hold(buffer.array()[buffer.rpos() + 4] & 0xff);
-                        super.process(buffer);
+                        if (startFolder == null || !hardLink(buffer)) {
+                            super.process(buffer);
+                        }
+                    }
+
+                    @Override
+                    protected void send(final Buffer buffer) throws IOException {
+                        // A server with a start folder announces the hard link extension in its version reply.
+                        if (startFolder != null && buffer.array()[buffer.rpos()] == SSH_FXP_VERSION) {
+                            buffer.putString(SftpFileSystem.HARDLINK);
+                            buffer.putString("1");
+                        }
+                        super.send(buffer);
+                    }
+
+                    // The hard link request of OpenSSH. Every other packet goes on to the subsystem as it came.
+                    private boolean hardLink(final Buffer buffer) throws IOException {
+                        final int start = buffer.rpos();
+                        buffer.getInt();
+                        if ((buffer.getByte() & 0xff) != SSH_FXP_EXTENDED) {
+                            buffer.rpos(start);
+                            return false;
+                        }
+                        final int id = buffer.getInt();
+                        if (!SftpFileSystem.HARDLINK.equals(buffer.getString())) {
+                            buffer.rpos(start);
+                            return false;
+                        }
+                        final String from = buffer.getString();
+                        final String to = buffer.getString();
+                        try {
+                            Files.createLink(onDisk(to), onDisk(from));
+                            sendStatus(id, SSH_FX_OK, "");
+                        } catch (final NoSuchFileException e) {
+                            sendStatus(id, SSH_FX_NO_SUCH_FILE, from);
+                        } catch (final IOException e) {
+                            sendStatus(id, SSH_FX_FAILURE, String.valueOf(e.getMessage()));
+                        }
+                        return true;
                     }
                 };
             }
         }));
-        server.setFileSystemFactory(session -> new AbstractSftpProviderTestCase.TestFileSystemView(root.toString(),
-                session.getUsername()));
+        server.setFileSystemFactory(session -> startFolder == null
+                ? new AbstractSftpProviderTestCase.TestFileSystemView(root.toString(), session.getUsername())
+                : new StartFolderView(root, startFolder, session.getUsername()));
         server.setCommandFactory(commandFactory);
         server.setChannelFactories(Collections.<NamedFactory<Channel>>singletonList(new NamedFactory<Channel>() {
             @Override
@@ -529,5 +597,48 @@ final class SftpTestServer implements Closeable {
         }, "sftp-test-nc");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    // The file on disk for a path of a session that starts in the start folder.
+    private Path onDisk(final String path) {
+        return root.resolve(StartFolderView.resolve(startFolder, path).substring(1));
+    }
+
+    /**
+     * A view whose sessions start in a folder that is not the root. A relative path is resolved in that folder and an
+     * absolute path from the root. The session sees the paths of the view, so its start folder is not "/".
+     */
+    private static final class StartFolderView implements FileSystemView {
+        private final Path root;
+
+        private final String start;
+
+        private final String user;
+
+        StartFolderView(final Path root, final String start, final String user) {
+            this.root = root;
+            this.start = start;
+            this.user = user;
+        }
+
+        @Override
+        public SshFile getFile(final String file) {
+            return file(resolve(start, file));
+        }
+
+        @Override
+        public SshFile getFile(final SshFile baseDir, final String file) {
+            return file(resolve(baseDir.getAbsolutePath(), file));
+        }
+
+        private SshFile file(final String path) {
+            return new AbstractSftpProviderTestCase.TestNativeSshFile(path, root.resolve(path.substring(1)).toFile(),
+                    user);
+        }
+
+        static String resolve(final String folder, final String path) {
+            final String joined = path.startsWith("/") ? path : folder + "/" + path;
+            return Paths.get("/").resolve(joined).normalize().toString();
+        }
     }
 }
