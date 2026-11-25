@@ -972,21 +972,48 @@ public class SftpAtomicOpsTest {
         doThrow(reply(ChannelSftp.SSH_FX_PERMISSION_DENIED)).when(denied).lstat(in + "/a.csv");
         final ChannelSftp failure = channel(true, true);
         doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(failure).lstat(in + "/a.csv");
+        final ChannelSftp failureAgain = channel(true, true);
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(failureAgain).lstat(in + "/a.csv");
         final ChannelSftp cut = channel(true, true);
         doThrow(broken()).when(cut).lstat(in + "/a.csv");
-        final Channels fileSystem = new Channels(there, missing, denied, failure, cut);
+        final Channels fileSystem = new Channels(there, missing, denied, failure, failureAgain, cut);
         final SftpFileObject file = file(fileSystem, in, "a.csv");
         assertTrue(file.existsNow());
         assertFalse(file.existsNow());
         assertEquals(Fault.APPLICATION, assertThrows(FileSystemException.class, file::existsNow).getFault());
-        // An id 4 is thrown. The look does not use the stat retry.
+        // An id 4 gets one more look on a fresh channel. A second id 4 on a channel that is not up stays an error.
         assertEquals(Fault.APPLICATION, assertThrows(FileSystemException.class, file::existsNow).getFault());
+        verify(failure).disconnect();
         final FileSystemException lost = assertThrows(FileSystemException.class, file::existsNow);
         assertEquals(Fault.TRANSPORT, lost.getFault());
         assertFalse(lost instanceof UnclearResultException);
-        assertEquals(Arrays.asList(there, missing, denied, failure), fileSystem.putBack);
+        assertEquals(Arrays.asList(there, missing, denied, failure, failureAgain), fileSystem.putBack);
         assertEquals(Arrays.asList(cut), fileSystem.discarded);
         verify(there, never()).stat(anyString());
+    }
+
+    @Test
+    public void secondFailureOnAFreshChannelThatIsUpMeansNotThere() throws Exception {
+        final ChannelSftp first = channel(true, true);
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(first).lstat(in + "/a.csv");
+        final ChannelSftp second = channel(true, true);
+        when(second.isConnected()).thenReturn(true);
+        doThrow(reply(ChannelSftp.SSH_FX_FAILURE)).when(second).lstat(in + "/a.csv");
+        final Channels fileSystem = new Channels(first, second);
+        assertFalse(file(fileSystem, in, "a.csv").existsNow());
+        verify(first).disconnect();
+        verify(second, never()).disconnect();
+    }
+
+    @Test
+    public void failureWithACauseGetsNoSecondLook() throws Exception {
+        final ChannelSftp cut = channel(true, true);
+        doThrow(broken()).when(cut).lstat(in + "/a.csv");
+        final ChannelSftp unused = channel(true, true);
+        final Channels fileSystem = new Channels(cut, unused);
+        assertEquals(Fault.TRANSPORT,
+                assertThrows(FileSystemException.class, file(fileSystem, in, "a.csv")::existsNow).getFault());
+        verify(unused, never()).lstat(anyString());
     }
 
     @Test

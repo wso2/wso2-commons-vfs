@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -126,6 +127,12 @@ final class SftpTestServer implements Closeable {
     // The folder where each session starts, or null for a server whose sessions start at the root.
     private final String startFolder;
 
+    // A server with a start folder answers a stat or an lstat with a failure, id 4, for a name that is not there
+    // when this is set, and always for the paths in the set.
+    private volatile boolean missingAsFailure;
+
+    private final Set<String> failingLooks = ConcurrentHashMap.newKeySet();
+
     SftpTestServer() throws IOException {
         this(0);
     }
@@ -210,7 +217,7 @@ final class SftpTestServer implements Closeable {
                     protected void process(final Buffer buffer) throws IOException {
                         // The buffer starts with the length of the packet, then its type.
                         hold(buffer.array()[buffer.rpos() + 4] & 0xff);
-                        if (startFolder == null || !hardLink(buffer)) {
+                        if (startFolder == null || !failedLook(buffer) && !hardLink(buffer)) {
                             super.process(buffer);
                         }
                     }
@@ -223,6 +230,27 @@ final class SftpTestServer implements Closeable {
                             buffer.putString("1");
                         }
                         super.send(buffer);
+                    }
+
+                    // A stat or an lstat that the server answers with a failure, as FileZilla Server does for a
+                    // name that is not there.
+                    private boolean failedLook(final Buffer buffer) throws IOException {
+                        final int start = buffer.rpos();
+                        buffer.getInt();
+                        final int type = buffer.getByte() & 0xff;
+                        if (type != SSH_FXP_STAT && type != SSH_FXP_LSTAT) {
+                            buffer.rpos(start);
+                            return false;
+                        }
+                        final int id = buffer.getInt();
+                        final String path = buffer.getString();
+                        if (failingLooks.contains(StartFolderView.resolve(startFolder, path))
+                                || missingAsFailure && !Files.exists(onDisk(path))) {
+                            sendStatus(id, SSH_FX_FAILURE, "Failure");
+                            return true;
+                        }
+                        buffer.rpos(start);
+                        return false;
                     }
 
                     // The hard link request of OpenSSH. Every other packet goes on to the subsystem as it came.
@@ -597,6 +625,16 @@ final class SftpTestServer implements Closeable {
         }, "sftp-test-nc");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    // A server with a start folder answers a stat or an lstat of a name that is not there with a failure, id 4.
+    void answerFailureForMissingNames() {
+        missingAsFailure = true;
+    }
+
+    // A server with a start folder answers a stat or an lstat of this path of the server with a failure, id 4.
+    void answerFailureForLook(final String path) {
+        failingLooks.add(path);
     }
 
     // The file on disk for a path of a session that starts in the start folder.

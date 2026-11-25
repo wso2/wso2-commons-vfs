@@ -1550,30 +1550,41 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
         }
     }
 
-    // One lstat of this name, with no stat retry. Null when the server said that the name is not there.
+    // One lstat of this name. Null when the server said that the name is not there. Some servers, FileZilla Server
+    // among them, answer a name that is not there with a failure. So a failure is looked at once more on a fresh
+    // channel, and a second failure on a channel that is still up counts as not there, as for the stat of this file.
     private SftpATTRS lookNow() throws FileSystemException {
-        final ChannelSftp channel;
-        try {
-            channel = getAbstractFileSystem().getChannel();
-        } catch (final FileSystemException e) {
-            throw e;
-        } catch (final IOException e) {
-            throw new FileSystemException(e);
-        }
-        Throwable failure = null;
-        try {
-            return request(channel, wait -> channel.lstat(quote(relPath)));
-        } catch (final Exception e) {
-            failure = e;
-            if (isReply(e) && isNoSuchFile(e)) {
-                return null;
+        final long start = System.nanoTime();
+        for (int look = 1; ; look++) {
+            final ChannelSftp channel;
+            try {
+                channel = getAbstractFileSystem().getChannel();
+            } catch (final FileSystemException e) {
+                throw e;
+            } catch (final IOException e) {
+                throw new FileSystemException(e);
             }
-            final FileSystemException error = new FileSystemException("vfs.provider/look.error", e,
-                    getName().getFriendlyURI());
-            error.setFault(isReply(e) ? Faults.of(e) : Fault.TRANSPORT);
-            throw error;
-        } finally {
-            release(channel, failure);
+            Throwable failure = null;
+            try {
+                return request(channel, wait -> channel.lstat(quote(relPath)));
+            } catch (final Exception e) {
+                failure = e;
+                final boolean refused = isReply(e) && ((SftpException) e).id == ChannelSftp.SSH_FX_FAILURE;
+                if (isReply(e) && isNoSuchFile(e) || refused && look > 1 && channel.isConnected()) {
+                    return null;
+                }
+                if (refused && look == 1 && Faults.isFast(start)) {
+                    // The channel that answered is not handed back.
+                    channel.disconnect();
+                    continue;
+                }
+                final FileSystemException error = new FileSystemException("vfs.provider/look.error", e,
+                        getName().getFriendlyURI());
+                error.setFault(isReply(e) ? Faults.of(e) : Fault.TRANSPORT);
+                throw error;
+            } finally {
+                release(channel, failure);
+            }
         }
     }
 
