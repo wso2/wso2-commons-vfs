@@ -24,6 +24,8 @@ import static org.wso2.vfs.shared.failstate.FailStateStore.Write.*;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,8 +47,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.wso2.org.apache.commons.vfs2.FileContent;
 import org.wso2.org.apache.commons.vfs2.FileObject;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.impl.DecoratedFileObject;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicOutcome;
 import org.wso2.org.apache.commons.vfs2.provider.AtomicResult;
@@ -215,6 +219,73 @@ class FailStateStoreTest {
     }
 
     @Test
+    void aStagingNameThatAPlainReadCanNotFindIsWrittenAgain() throws Exception {
+        assertEquals(1, stuckStagingWrite(null).written);
+        assertTrue(Files.isRegularFile(marker), "The record is written once the folder takes a create again.");
+    }
+
+    @Test
+    void aTransportFailureOfTheReadIsNotAMissingStagingName() throws Exception {
+        FailStateStore.PendingResult result = stuckStagingWrite(Fault.TRANSPORT);
+        assertEquals(0, result.written);
+        assertEquals(1, result.pending);
+        assertFalse(Files.exists(marker), "No record is taken while the staging name can not be read.");
+    }
+
+    // The first write of a record is refused and leaves no staging file. The next try reads the staging name over a
+    // provider that answers the read of a missing name with a plain error, as SFTP and SMB2 do, or with the given
+    // fault.
+    private FailStateStore.PendingResult stuckStagingWrite(Fault answer) throws Exception {
+        params.retryMillis = 0;
+        use("stuck" + answer + ".csv");
+        Files.write(data, new byte[] {5, 6});
+        HeldLock held = acquire(null);
+        FailStateStore.BeginResult begin = store.beginFile(io, held, uri);
+        assertEquals(PROCESS, begin.decision);
+        LockIo refusing = new LockIo(manager, null) {
+            @Override
+            public FileObject resolve(String name) throws FileSystemException {
+                if (name.endsWith(".next")) {
+                    throw fault(Fault.APPLICATION);
+                }
+                return super.resolve(name);
+            }
+        };
+        assertEquals(PENDING, store.recordFailureResult(refusing, held, begin.identity, FailState.Outcome.SUCCESS,
+                FailState.Action.DELETE, null, refused).disposition);
+        assertTrue(stages().isEmpty());
+        LockIo remote = new LockIo(manager, null) {
+            @Override
+            public FileObject resolve(String name) throws FileSystemException {
+                FileObject file = super.resolve(name);
+                if (!name.endsWith(".next")) {
+                    return file;
+                }
+                return new DecoratedFileObject(file) {
+                    @Override
+                    public FileContent getContent() throws FileSystemException {
+                        FileContent content = super.getContent();
+                        return (FileContent) Proxy.newProxyInstance(getClass().getClassLoader(),
+                                new Class<?>[] {FileContent.class}, (proxy, method, values) -> {
+                                    if (method.getName().equals("getInputStream") && !exists()) {
+                                        throw answer == null ? new FileSystemException("Test read of a missing name.")
+                                                : fault(answer);
+                                    }
+                                    try {
+                                        return method.invoke(content, values);
+                                    } catch (InvocationTargetException failure) {
+                                        throw failure.getCause();
+                                    }
+                                });
+                    }
+                };
+            }
+        };
+        wall.addAndGet(1800001);
+        return store.runPending(remote);
+    }
+
+    @Test
     void sameRelativeTargetRetainsTheFailedMoveDestinationAcrossMarkerReads() throws Exception {
         params.retryMillis = 0;
         params.moveAfterFailedMove = id -> "daily.csv";
@@ -352,7 +423,8 @@ class FailStateStoreTest {
                 FailStateStore.BeginResult found = store.beginFile(failing, held, uri);
                 assertEquals(lostClose ? TRANSPORT_ERROR : SKIP, found.decision);
                 assertEquals(lostClose ? "TRANSPORT" : primary.name(), found.failure.getKind().name());
-                assertEquals(!lostClose && primary == Fault.MISSING ? 1 : 0, failing.callsAfterClose);
+                // A read of the record that failed with no transport error gets one look, whatever the fault.
+                assertEquals(lostClose ? 0 : 1, failing.callsAfterClose);
                 held.releaseChecked(io);
             }
         }

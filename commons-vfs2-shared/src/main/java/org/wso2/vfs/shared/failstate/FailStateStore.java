@@ -55,7 +55,6 @@ import org.wso2.org.apache.commons.vfs2.provider.StatNow;
 import org.wso2.org.apache.commons.vfs2.util.TestPoints;
 import org.wso2.vfs.shared.error.Classification;
 import org.wso2.vfs.shared.error.ErrorClassifier;
-import org.wso2.vfs.shared.error.ErrorKind;
 import org.wso2.vfs.shared.health.EndpointHealth;
 import org.wso2.vfs.shared.lock.FolderListing;
 import org.wso2.vfs.shared.lock.HeldLock;
@@ -389,7 +388,9 @@ public final class FailStateStore {
                 }
             });
         } catch (Failure failure) {
-            if (failure.classification.getKind() == ErrorKind.MISSING && !exists(io, uri)) {
+            // SFTP and SMB2 answer the read of a name that is not there with an error that does not say "missing", so
+            // a read that failed with no transport error gets a look, as the lock owner check does.
+            if (!failure.classification.getKind().isTransport() && !exists(io, uri)) {
                 return null;
             }
             throw failure;
