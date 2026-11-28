@@ -33,7 +33,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -409,5 +412,73 @@ public class SftpStatRetryTest {
         assertEquals(1, fileSystem.released.size());
         assertTrue(!fileSystem.wentBack(0));
         assertEquals(1, fileSystem.queue.size());
+    }
+
+    // The read asks the type before it takes its channel, so the stat of the type takes the idle channel and its retry
+    // rules hold through the read. A fast failure with a cause is retried on a new channel, and the read goes on.
+    @Test
+    public void readWhoseTypeStatFailsFastWithACauseIsRetriedOnANewChannelAndReads() throws Exception {
+        final ChannelSftp first = channel(false);
+        when(first.stat(anyString())).thenThrow(broken());
+        final ChannelSftp second = channel(true);
+        final SftpATTRS attrs = file();
+        when(second.stat(anyString())).thenReturn(attrs);
+        final ChannelSftp reader = channel(true);
+        when(reader.get(anyString())).thenReturn(new ByteArrayInputStream("abc".getBytes(StandardCharsets.UTF_8)));
+        final Channels fileSystem = new Channels(first, second, reader);
+        try (InputStream in = new SftpFileObject(FILE, fileSystem).doGetInputStream(4096)) {
+            final byte[] buffer = new byte[16];
+            assertEquals("abc", new String(buffer, 0, in.read(buffer), StandardCharsets.UTF_8));
+            assertEquals(-1, in.read());
+        }
+        assertSame(first, fileSystem.released.get(0)[0]);
+        assertTrue(!fileSystem.wentBack(0));
+        assertSame(second, fileSystem.released.get(1)[0]);
+        assertNull(fileSystem.released.get(1)[1]);
+        assertSame(reader, fileSystem.released.get(2)[0]);
+        assertNull(fileSystem.released.get(2)[1]);
+        assertEquals(0, fileSystem.queue.size());
+    }
+
+    // A slow failure of the type stat gets no retry: the read is an error, no missing file, and takes no channel.
+    @Test
+    public void readWhoseTypeStatFailsSlowIsAnErrorAndTakesNoChannelForTheRead() throws Exception {
+        final ChannelSftp first = channel(false);
+        final SftpException cut = broken();
+        when(first.stat(anyString())).thenAnswer(invocation -> {
+            Thread.sleep(5100);
+            throw cut;
+        });
+        final ChannelSftp reader = channel(true);
+        final Channels fileSystem = new Channels(first, reader);
+        final FileSystemException error = assertThrows(FileSystemException.class,
+            () -> new SftpFileObject(FILE, fileSystem).doGetInputStream(4096));
+        assertFalse(error instanceof FileNotFoundException, error.toString());
+        assertSame(cut, error.getCause());
+        assertEquals(1, fileSystem.released.size());
+        assertTrue(!fileSystem.wentBack(0));
+        assertEquals(1, fileSystem.queue.size());
+        verify(reader, never()).get(anyString());
+    }
+
+    // A type stat that fails again with a cause on its retry: the read is an error, no missing file, and takes no
+    // channel.
+    @Test
+    public void readWhoseTypeStatFailsAgainWithACauseIsAnErrorAndTakesNoChannelForTheRead() throws Exception {
+        final ChannelSftp first = channel(true);
+        when(first.stat(anyString())).thenThrow(reply(ChannelSftp.SSH_FX_FAILURE));
+        final ChannelSftp second = channel(true);
+        final SftpException cut = broken();
+        when(second.stat(anyString())).thenThrow(cut);
+        final ChannelSftp reader = channel(true);
+        final Channels fileSystem = new Channels(first, second, reader);
+        final FileSystemException error = assertThrows(FileSystemException.class,
+            () -> new SftpFileObject(FILE, fileSystem).doGetInputStream(4096));
+        assertFalse(error instanceof FileNotFoundException, error.toString());
+        assertSame(cut, error.getCause());
+        assertEquals(2, fileSystem.released.size());
+        assertTrue(!fileSystem.wentBack(1));
+        assertEquals(1, fileSystem.queue.size());
+        verify(reader, never()).get(anyString());
     }
 }
