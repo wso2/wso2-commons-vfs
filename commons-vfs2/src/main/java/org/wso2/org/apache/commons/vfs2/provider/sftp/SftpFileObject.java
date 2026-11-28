@@ -408,6 +408,12 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
     protected InputStream doGetInputStream(final int bufferSize) throws Exception {
         // VFS-113: avoid NPE.
         synchronized (getAbstractFileSystem()) {
+            // VFS-210: sftp allows to gather an input stream even from a directory and will fail on first read, so
+            // the type is checked. It is checked before the channel of the read is taken: a file object with no
+            // attributes asks the server for them, and with the channel of the read held that opens a second channel.
+            if (!getType().hasContent()) {
+                throw new FileSystemException("vfs.provider/read-not-file.error", getName());
+            }
             final ChannelSftp channel = getAbstractFileSystem().getChannel();
             // return channel.get(getName().getPath());
             // hmmm - using the in memory method is soooo much faster ...
@@ -421,19 +427,6 @@ public class SftpFileObject extends AbstractFileObject<SftpFileSystem> implement
              */
 
             final InputStream inputStream;
-            // VFS-210: sftp allows to gather an input stream even from a directory and will
-            // fail on first read. So we need to check the type anyway. No call on this channel ran yet, so it goes back.
-            final boolean hasContent;
-            try {
-                hasContent = getType().hasContent();
-            } catch (final Throwable e) {
-                release(channel, null);
-                throw e;
-            }
-            if (!hasContent) {
-                release(channel, null);
-                throw new FileSystemException("vfs.provider/read-not-file.error", getName());
-            }
             try {
                 inputStream = request(channel, wait -> channel.get(quote(relPath)));
             } catch (final SftpException e) {

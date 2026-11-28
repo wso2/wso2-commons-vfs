@@ -89,6 +89,9 @@ final class SftpTestServer implements Closeable {
 
     private final AtomicInteger execRequests = new AtomicInteger();
 
+    // The session channels the server opened. An SFTP channel is one of them.
+    private final AtomicInteger channelOpens = new AtomicInteger();
+
     private final List<String> commands = new CopyOnWriteArrayList<>();
 
     private final List<Closeable> open = new CopyOnWriteArrayList<>();
@@ -304,6 +307,7 @@ final class SftpTestServer implements Closeable {
                     public OpenFuture open(final int recipient, final int rwsize, final int rmpsize,
                             final Buffer buffer) {
                         sleep(openDelayMillis);
+                        channelOpens.incrementAndGet();
                         return super.open(recipient, rwsize, rmpsize, buffer);
                     }
                 };
@@ -318,6 +322,10 @@ final class SftpTestServer implements Closeable {
             server.getProperties().put(FactoryManager.WINDOW_SIZE, Integer.toString(windowSize));
         }
         server.start();
+    }
+
+    int getChannelOpens() {
+        return channelOpens.get();
     }
 
     // The session of now of a file system, and the group of its sockets, read by reflection.

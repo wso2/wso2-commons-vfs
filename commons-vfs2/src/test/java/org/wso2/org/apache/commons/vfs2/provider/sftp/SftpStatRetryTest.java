@@ -240,7 +240,8 @@ public class SftpStatRetryTest {
         final ChannelSftp stat = channel(true);
         final SftpATTRS attrs = file();
         when(stat.stat(anyString())).thenReturn(attrs);
-        final Channels fileSystem = new Channels(reader, stat);
+        // The read asks the type first, so the stat takes the first channel and the read the second.
+        final Channels fileSystem = new Channels(stat, reader);
         final FileSystemException error = assertThrows(FileSystemException.class,
             () -> new SftpFileObject(FILE, fileSystem).doGetInputStream(4096));
         assertFalse(error instanceof FileNotFoundException, error.toString());
@@ -256,7 +257,8 @@ public class SftpStatRetryTest {
         final ChannelSftp stat = channel(true);
         final SftpATTRS attrs = file();
         when(stat.stat(anyString())).thenReturn(attrs);
-        final Channels fileSystem = new Channels(reader, stat);
+        // The read asks the type first, so the stat takes the first channel and the read the second.
+        final Channels fileSystem = new Channels(stat, reader);
         assertThrows(FileNotFoundException.class, () -> new SftpFileObject(FILE, fileSystem).doGetInputStream(4096));
         assertTrue(fileSystem.wentBack(1));
     }

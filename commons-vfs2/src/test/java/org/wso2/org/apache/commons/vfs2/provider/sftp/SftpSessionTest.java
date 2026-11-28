@@ -33,9 +33,11 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +58,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.wso2.org.apache.commons.vfs2.FileObject;
+import org.wso2.org.apache.commons.vfs2.cache.NullFilesCache;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.FileType;
@@ -519,6 +522,66 @@ public class SftpSessionTest {
             assertFalse(fileSystem.isAliveLocally());
             assertEquals(0, fileSystem.getHandedOutCount());
         }
+    }
+
+    // A read of a file object with no attributes asks for them before it takes the channel of the read, so the stat
+    // and the read use the idle channel and no new channel opens. Before, the stat opened a second channel while the
+    // read held the first, and the first was disconnected at the close of the read: one new channel per read.
+    @Test
+    public void readsOfFilesWithNoAttributesKeepTheIdleChannel() throws Exception {
+        // One options object, so that every resolve finds the same file system.
+        final FileSystemOptions options = SftpTestServer.options();
+        try (StandardFileSystemManager manager = uncachedManager()) {
+            final FileObject first = manager.resolveFile(uri("in/small.txt"), options);
+            assertTrue(first.exists());
+            final SftpFileSystem fileSystem = fileSystemOf(first);
+            final Object idle = field(fileSystem, "idleChannel");
+            assertNotNull(idle);
+            final int opens = server.getChannelOpens();
+            for (int i = 0; i < 5; i++) {
+                // A refresh drops the attributes, as the inbound does with a listed file before it reads it.
+                first.refresh();
+                try (InputStream in = first.getContent().getInputStream()) {
+                    assertEquals("small", read(in));
+                }
+            }
+            assertEquals(opens, server.getChannelOpens(), "A read of a file with no attributes opened a channel.");
+            assertSame(idle, field(fileSystem, "idleChannel"));
+        }
+    }
+
+    // A pin: the public delete asks whether the file exists before doDelete takes its channel, so a file object with
+    // no attributes opens no new channel. doDelete asks isFile() after it took its channel, so if this ever fails,
+    // the type must move before the take there too.
+    @Test
+    public void deleteOfAFileWithNoAttributesKeepsTheIdleChannel() throws Exception {
+        final Path gone = server.write("in/gone.txt", "gone");
+        final FileSystemOptions options = SftpTestServer.options();
+        try (StandardFileSystemManager manager = uncachedManager()) {
+            final FileObject first = manager.resolveFile(uri("in/small.txt"), options);
+            assertTrue(first.exists());
+            final int opens = server.getChannelOpens();
+            assertTrue(manager.resolveFile(uri("in/gone.txt"), options).delete());
+            assertFalse(Files.exists(gone));
+            assertEquals(opens, server.getChannelOpens(), "A delete of a file with no attributes opened a channel.");
+        }
+    }
+
+    // Each resolve gives a new file object with no attributes, as with the inbound and the connector.
+    private static StandardFileSystemManager uncachedManager() throws Exception {
+        final StandardFileSystemManager manager = new StandardFileSystemManager();
+        manager.setFilesCache(new NullFilesCache());
+        manager.init();
+        return manager;
+    }
+
+    private static String read(final InputStream in) throws IOException {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final byte[] buffer = new byte[1024];
+        for (int count = in.read(buffer); count >= 0; count = in.read(buffer)) {
+            out.write(buffer, 0, count);
+        }
+        return new String(out.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Test
