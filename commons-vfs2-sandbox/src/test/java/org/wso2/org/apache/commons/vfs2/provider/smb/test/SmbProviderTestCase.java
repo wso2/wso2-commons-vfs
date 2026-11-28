@@ -28,6 +28,13 @@ import org.wso2.org.apache.commons.vfs2.ProviderTestSuite;
 import org.wso2.org.apache.commons.vfs2.VFS;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileProvider;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileSystem;
+import org.wso2.org.apache.commons.vfs2.provider.smb.SmbFileObject;
+import org.wso2.org.apache.commons.vfs2.provider.AbstractFileName;
+import org.wso2.org.apache.commons.vfs2.FileType;
+import org.wso2.org.apache.commons.vfs2.FileSystemException;
+import org.wso2.org.apache.commons.vfs2.FileSystem;
+import org.wso2.org.apache.commons.vfs2.FileName;
 import org.junit.jupiter.api.Assertions;
 
 /**
@@ -69,11 +76,39 @@ public class SmbProviderTestCase extends AbstractProviderTestConfig implements P
     public void testResolveIPv6Url() throws Exception {
         final String ipv6Url = "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share";
 
-        final FileObject fileObject = VFS.getManager().resolveFile(ipv6Url, new FileSystemOptions());
+        // The probe of findFile asks exists() and throws a refusal as it is. The address does not exist, so the files
+        // of this provider answer that they are not there, with no network.
+        final DefaultFileSystemManager manager = new DefaultFileSystemManager();
+        manager.addProvider("smb", new NoNetworkSmbFileProvider());
+        manager.init();
+        final FileObject fileObject = manager.resolveFile(ipv6Url, new FileSystemOptions());
 
         Assertions.assertEquals(
                 "smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getFileSystem().getRootURI());
 
         Assertions.assertEquals("smb://user:pass@[fe80::1c42:dae:8370:aea6%en1]/share/", fileObject.getName().getURI());
+        manager.close();
+    }
+
+    private static final class NoNetworkSmbFileProvider extends SmbFileProvider {
+
+        @Override
+        protected FileSystem doCreateFileSystem(final FileName name, final FileSystemOptions options) {
+            return new SmbFileSystem(name, options) {
+                @Override
+                protected FileObject createFile(final AbstractFileName fileName) throws FileSystemException {
+                    return new SmbFileObject(fileName, this) {
+                        @Override
+                        protected void doAttach() {
+                        }
+
+                        @Override
+                        protected FileType doGetType() {
+                            return FileType.IMAGINARY;
+                        }
+                    };
+                }
+            };
+        }
     }
 }

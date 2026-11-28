@@ -105,20 +105,14 @@ public class DefaultFileContentTest {
                 outputStream.flush();
             }
             try (InputStream stream = file.getContent().getInputStream()) {
-                int readCount = 0;
-                if (stream.markSupported()) {
-                    for (int i = 0; i < 10; i++) {
-                        stream.mark(0);
-                        final byte[] data = new byte[100];
-                        readCount = stream.read(data, 0, 7);
-                        stream.read();
-                        assertEquals(7, readCount);
-                        assertEquals(expected, new String(data).trim());
-                        readCount = stream.read(data, 8, 10);
-                        assertEquals(-1, readCount);
-                        stream.reset();
-                    }
-                }
+                assertTrue(stream.markSupported());
+                stream.mark(expected.length());
+                final byte[] data = new byte[expected.length()];
+                assertEquals(data.length, stream.read(data));
+                assertEquals(expected, new String(data, StandardCharsets.UTF_8));
+                assertEquals(-1, stream.read());
+                assertThrows(IOException.class, stream::reset);
+                assertEquals(-1, stream.read(data));
             }
         }
     }
@@ -134,15 +128,13 @@ public class DefaultFileContentTest {
                 outputStream.flush();
             }
             try (InputStream stream = file.getContent().getInputStream()) {
-                if (stream.markSupported()) {
-                    for (int i = 0; i < 10; i++) {
-                        stream.mark(0);
-                        final byte[] data = new byte[100];
-                        stream.read(data, 0, 7);
-                        stream.read();
-                        assertEquals(expected, new String(data).trim());
-                        stream.reset();
-                    }
+                assertTrue(stream.markSupported());
+                final byte[] data = new byte[expected.length()];
+                for (int round = 0; round < 10; round++) {
+                    stream.mark(data.length);
+                    assertEquals(data.length, stream.read(data));
+                    assertEquals(expected, new String(data, StandardCharsets.UTF_8));
+                    stream.reset();
                 }
             }
         }

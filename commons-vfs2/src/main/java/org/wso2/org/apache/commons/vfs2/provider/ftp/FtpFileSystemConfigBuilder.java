@@ -62,6 +62,7 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
     private static final String USER_DIR_IS_ROOT = PREFIX + ".USER_DIR_IS_ROOT";
     private static final String TRANSFER_ABORTED_OK_REPLY_CODES = PREFIX + ".TRANSFER_ABORTED_OK_REPLY_CODES";
     private static final String MDTM_LAST_MODIFED_TIME = PREFIX + ".MDTM_LAST_MODIFED_TIME";
+    private static final String WRITE_STALL_TIMEOUT = PREFIX + ".WRITE_STALL_TIMEOUT";
 
     /**
      * Gets the singleton instance.
@@ -714,5 +715,26 @@ public class FtpFileSystemConfigBuilder extends FileSystemConfigBuilder {
      */
     public void setUserDirIsRoot(final FileSystemOptions options, final boolean userDirIsRoot) {
         setParam(options, USER_DIR_IS_ROOT, toBooleanObject(userDirIsRoot));
+    }
+
+    /**
+     * Sets the write stall timeout of the watchdog. A socket write that moves no bytes for this time is ended by a
+     * close of the socket. FTPS takes the same option.
+     *
+     * @param options The FileSystem options.
+     * @param timeout The timeout. Zero turns the watchdog off for the file system.
+     */
+    public void setWriteStallTimeout(final FileSystemOptions options, final Duration timeout) {
+        setParam(options, WRITE_STALL_TIMEOUT, timeout);
+    }
+
+    /**
+     * Gets the write stall timeout of the watchdog.
+     *
+     * @param options The FileSystem options.
+     * @return The timeout, or null when the options hold none.
+     */
+    public Duration getWriteStallTimeout(final FileSystemOptions options) {
+        return getDuration(options, WRITE_STALL_TIMEOUT);
     }
 }

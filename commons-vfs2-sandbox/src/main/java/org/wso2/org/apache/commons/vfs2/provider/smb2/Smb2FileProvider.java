@@ -24,6 +24,7 @@ import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.UserAuthenticationData;
+import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.wso2.org.apache.commons.vfs2.provider.AbstractOriginatingFileProvider;
 import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 import org.wso2.org.apache.commons.vfs2.provider.QueryParamConfigurer;
@@ -59,7 +60,8 @@ public class Smb2FileProvider extends AbstractOriginatingFileProvider implements
     protected FileSystem doCreateFileSystem(FileName name, FileSystemOptions fileSystemOptions) throws FileSystemException {
 
         final GenericFileName rootName = (GenericFileName) name;
-        final Smb2WrapperClientFactory wrapperClientFactory = new Smb2WrapperClientFactory(rootName, fileSystemOptions);
+        final Smb2WrapperClientFactory wrapperClientFactory = new Smb2WrapperClientFactory(rootName, fileSystemOptions,
+                ((DefaultFileSystemManager) getContext().getFileSystemManager())::newSocketGroup);
         return new Smb2FileSystem(rootName, fileSystemOptions, wrapperClientFactory);
     }
 

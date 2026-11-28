@@ -28,6 +28,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import org.wso2.org.apache.commons.vfs2.provider.sftp.SftpFileSystem;
+import org.wso2.org.apache.commons.vfs2.util.SocketGroup;
 
 /**
  * Tests {@link SftpFileSystem}.
@@ -41,7 +42,7 @@ public class SftpFileSystemGroupsTests {
     @Before
     public void setup() throws JSchException {
         session = new JSch().getSession("");
-        fileSystem = new SftpFileSystem(null, session, options);
+        fileSystem = new SftpFileSystem(null, session, new SocketGroup(), options);
     }
 
     @Test

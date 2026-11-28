@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.wso2.org.apache.commons.vfs2.provider.Fault;
 import org.wso2.org.apache.commons.vfs2.util.Messages;
 
 /**
@@ -38,6 +39,19 @@ public class FileSystemException extends IOException {
 
     /** Password pattern */
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(":(?:[^/]+)@");
+
+    // The password of the user info runs to the last @ before the host, in two passes with one form each. The first
+    // takes a password with no slash, the second one with no white space. The user name may hold white space or a #,
+    // as VFS takes it. No quantifier nests. UriMask of the shared module uses the same passes.
+    private static final Pattern ADDRESS_PASSWORD_PATTERN = Pattern.compile(
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?]*:)[^/]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+    private static final Pattern ADDRESS_PASSWORD_WITH_SLASH_PATTERN = Pattern.compile(
+            "([a-zA-Z][a-zA-Z0-9+.\\-]*://[^/:?]*:)[^\\s]*" + "(@(?:\\[[^\\]\\s]+\\]|[^\\s/@?:#,;'\"<>()\\[\\]]+))");
+
+    // A query value whose name holds pass, secret or key, for example the proxyPassword that FTP reads from the query.
+    // The FTP option passive is not a secret and stays readable. UriMask of the shared module uses the same names.
+    private static final Pattern QUERY_SECRET_PATTERN = Pattern.compile(
+            "([?&][^?&#=\\s]*(?:pass(?!ive)|secret|key)[^?&#=\\s]*=)[^&#\\s]*", Pattern.CASE_INSENSITIVE);
 
     /**
      * Throws a FileSystemException when the given object is null.
@@ -89,6 +103,11 @@ public class FileSystemException extends IOException {
      * Array of complementary info (context).
      */
     private final String[] info;
+
+    /**
+     * What this error means for the connection. Null when the site that threw did not decide.
+     */
+    private Fault fault;
 
     /**
      * Constructs exception with the specified detail message.
@@ -172,7 +191,11 @@ public class FileSystemException extends IOException {
                 // mask passwords (VFS-169)
                 final Matcher urlMatcher = URL_PATTERN.matcher(value);
                 if (urlMatcher.find()) {
+                    value = ADDRESS_PASSWORD_PATTERN.matcher(value).replaceAll("$1***$2");
+                    value = ADDRESS_PASSWORD_WITH_SLASH_PATTERN.matcher(value).replaceAll("$1***$2");
+                    // The old pass also masks a user name with white space, which the first pass does not.
                     value = PASSWORD_PATTERN.matcher(value).replaceFirst(":***@");
+                    value = QUERY_SECRET_PATTERN.matcher(value).replaceAll("$1***");
                 }
                 this.info[i] = value;
             }
@@ -195,6 +218,24 @@ public class FileSystemException extends IOException {
      */
     public String getCode() {
         return super.getMessage();
+    }
+
+    /**
+     * Gets what this error means for the connection, as the site that threw decided it.
+     *
+     * @return the fault, or null when the site that threw did not decide.
+     */
+    public Fault getFault() {
+        return fault;
+    }
+
+    /**
+     * Sets what this error means for the connection. A provider sets it where the library exception is still in hand.
+     *
+     * @param fault the fault.
+     */
+    public void setFault(final Fault fault) {
+        this.fault = fault;
     }
 
     /**

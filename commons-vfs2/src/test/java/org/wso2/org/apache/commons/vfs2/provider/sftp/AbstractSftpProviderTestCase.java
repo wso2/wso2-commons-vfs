@@ -45,6 +45,7 @@ import org.wso2.org.apache.commons.vfs2.ProviderTestSuite;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
 import org.apache.ftpserver.ftplet.FtpException;
 import org.apache.sshd.SshServer;
+import org.apache.sshd.common.Channel;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.Session;
 import org.apache.sshd.common.SshException;
@@ -59,6 +60,7 @@ import org.apache.sshd.server.FileSystemView;
 import org.apache.sshd.server.ForwardingFilter;
 import org.apache.sshd.server.SshFile;
 import org.apache.sshd.server.auth.UserAuthNone;
+import org.apache.sshd.server.channel.ChannelSession;
 import org.apache.sshd.server.command.ScpCommandFactory;
 import org.apache.sshd.server.filesystem.NativeSshFile;
 import org.apache.sshd.server.keyprovider.PEMGeneratorHostKeyProvider;
@@ -310,9 +312,6 @@ abstract class AbstractSftpProviderTestCase extends AbstractProviderTestConfig {
                 public void start(final Environment env) throws IOException {
                     int code = 0;
                     if (command.equals("id -G") || command.equals("id -u")) {
-                        if (isExecChannelClosed) {
-                            throw new IOException("TestingExecChannelClosed");
-                        }
                         new PrintStream(out).println(0);
                     } else if (NETCAT_COMMAND.matcher(command).matches()) {
                         final Matcher matcher = NETCAT_COMMAND.matcher(command);
@@ -478,6 +477,42 @@ abstract class AbstractSftpProviderTestCase extends AbstractProviderTestConfig {
      * @throws FtpException
      * @throws IOException
      */
+    /**
+     * The channel factories of the server, with a session channel that refuses an exec request of {@code id -u} or
+     * {@code id -G}. The server answers the request with a channel failure, and the session stays up. That is a
+     * refusal of exec, so the file system falls back to the owner permissions. A server that ends the session at the
+     * request is a failure of the session, and {@code SftpExecProbeTest} covers it.
+     */
+    private static List<NamedFactory<Channel>> refusingExecOfIds(final List<NamedFactory<Channel>> factories) {
+        final List<NamedFactory<Channel>> out = new ArrayList<>();
+        for (final NamedFactory<Channel> factory : factories) {
+            if (!"session".equals(factory.getName())) {
+                out.add(factory);
+            }
+        }
+        out.add(new NamedFactory<Channel>() {
+            @Override
+            public Channel create() {
+                return new ChannelSession() {
+                    @Override
+                    protected boolean handleExec(final Buffer buffer) throws IOException {
+                        final int start = buffer.rpos();
+                        buffer.getBoolean();
+                        final String command = buffer.getString();
+                        buffer.rpos(start);
+                        return !(command.equals("id -u") || command.equals("id -G")) && super.handleExec(buffer);
+                    }
+                };
+            }
+
+            @Override
+            public String getName() {
+                return "session";
+            }
+        });
+        return out;
+    }
+
     private static void setUpClass(final boolean isExecChannelClosed, final SessionFactory sessionFactory) throws IOException {
         if (server != null) {
             return;
@@ -538,6 +573,9 @@ abstract class AbstractSftpProviderTestCase extends AbstractProviderTestConfig {
         });
         // Allows the execution of commands
         server.setCommandFactory(new ScpCommandFactory(new TestCommandFactory(isExecChannelClosed)));
+        if (isExecChannelClosed) {
+            server.setChannelFactories(refusingExecOfIds(server.getChannelFactories()));
+        }
         // HACK Start
         // How do we really do simple user to directory matching?
         server.setFileSystemFactory(new TestFileSystemFactory());
@@ -586,6 +624,7 @@ abstract class AbstractSftpProviderTestCase extends AbstractProviderTestConfig {
         builder.setIdentityRepositoryFactory(fileSystemOptions, new TestIdentityRepositoryFactory());
         builder.setConnectTimeout(fileSystemOptions, Duration.ofSeconds(60));
         builder.setSessionTimeout(fileSystemOptions, Duration.ofSeconds(60));
+        TestServerOptions.apply(fileSystemOptions);
 
         final FileObject fileObject = manager.resolveFile(uri, fileSystemOptions);
         fileSystem = (SftpFileSystem) fileObject.getFileSystem();

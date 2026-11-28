@@ -16,6 +16,9 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -43,6 +46,12 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
      */
     private final Map<FileSystemKey, FileSystem> fileSystemMap = new TreeMap<>(); // @GuardedBy("self")
 
+    /**
+     * The cached file systems as they were after the last change of the map. The list never changes. A new list
+     * takes its place, so a reader needs no monitor.
+     */
+    private volatile List<AbstractFileSystem> cachedFileSystems = Collections.emptyList();
+
     private FileNameParser fileNameParser;
 
     /**
@@ -67,8 +76,10 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
         addComponent(fs);
         final FileSystemKey treeKey = new FileSystemKey(key, fs.getFileSystemOptions());
         ((AbstractFileSystem) fs).setCacheKey(treeKey);
+        ((AbstractFileSystem) fs).setOwner(this);
         synchronized (fileSystemMap) {
             fileSystemMap.put(treeKey, fs);
+            publishCachedFileSystems();
         }
     }
 
@@ -79,12 +90,14 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
     public void close() {
         synchronized (fileSystemMap) {
             fileSystemMap.clear();
+            publishCachedFileSystems();
         }
         super.close();
     }
 
     /**
-     * Closes the FileSystem.
+     * Closes the FileSystem. It leaves the cache only when it is the file system that the cache holds under its key.
+     * A second close of the same file system is safe.
      *
      * @param fileSystem The FileSystem to close.
      */
@@ -94,7 +107,12 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
         final FileSystemKey key = fs.getCacheKey();
         if (key != null) {
             synchronized (fileSystemMap) {
-                fileSystemMap.remove(key);
+                // Only this file system is taken out. After an earlier close another one can be there under the same
+                // key, and that one is still in use.
+                if (fileSystemMap.get(key) == fs) {
+                    fileSystemMap.remove(key);
+                    publishCachedFileSystems();
+                }
             }
         }
 
@@ -129,6 +147,25 @@ public abstract class AbstractFileProvider extends AbstractVfsContainer implemen
         synchronized (fileSystemMap) {
             return fileSystemMap.get(new FileSystemKey(key, fileSystemOptions));
         }
+    }
+
+    /**
+     * Gets the cached file systems, as they were after the last add, removal or clear. It takes no monitor and makes
+     * no call on a file system, so any thread may call it.
+     *
+     * @return a list that can not be changed.
+     */
+    public List<AbstractFileSystem> getCachedFileSystems() {
+        return cachedFileSystems;
+    }
+
+    // Called with the monitor of the map held.
+    private void publishCachedFileSystems() {
+        final List<AbstractFileSystem> copy = new ArrayList<>(fileSystemMap.size());
+        for (final FileSystem fileSystem : fileSystemMap.values()) {
+            copy.add((AbstractFileSystem) fileSystem);
+        }
+        cachedFileSystems = Collections.unmodifiableList(copy);
     }
 
     /**

@@ -22,6 +22,7 @@ import org.wso2.org.apache.commons.vfs2.FileSystem;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 import org.wso2.org.apache.commons.vfs2.FileSystemOptions;
 import org.wso2.org.apache.commons.vfs2.impl.DefaultFileSystemManager;
+import org.wso2.org.apache.commons.vfs2.util.TestPoints;
 
 import java.util.Map;
 
@@ -39,6 +40,13 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
      * e.g:  ftp://admin":password@"localhost/in2\?transport.vfs.ConnectTimeout=1000
      */
     protected Integer defaultTimeout = null;
+
+    /**
+     * The start of the fast window of the call that creates a file system, on the clock of {@link System#nanoTime()}.
+     * It is set and read inside the synchronized {@code getFileSystem}. A rebuild of the probe of {@code findFile}
+     * gets the window of the probe. Every other call opens its window when it enters {@code getFileSystem}.
+     */
+    protected long windowStart;
 
     private final static String CONNECT_TIMEOUT = "transport.vfs.ConnectTimeout";
 
@@ -113,6 +121,12 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
     /**
      * Locates a file from its parsed URI.Can be used to set  default timeout for ftp and ftps
      * connections.
+     * <p>
+     * The file is probed with {@code exists()} on the cached file system. The probe opens a fast window at its entry.
+     * An error that is no transport error is thrown as it is. After a transport error the file system is aborted and
+     * closed. It is built again once, with the window of the probe, only when the error came inside the window. After
+     * a slow transport error nothing is built again and the error is thrown.
+     * </p>
      *
      * @param name The file name.
      * @param fileSystemOptions FileSystem options.
@@ -124,19 +138,43 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
         // Check in the cache for the file system
         final FileName rootName = getContext().getFileSystemManager().resolveName(name, FileName.ROOT_PATH);
 
-        FileSystem fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
-        FileObject testFile = fs.resolveFile(name);
+        final FileSystem fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
+        final FileObject testFile = fs.resolveFile(name);
+        final long probeStart = System.nanoTime();
         try {
             testFile.exists();
-        } catch (FileSystemException e) {
-            ((DefaultFileSystemManager) getContext().getFileSystemManager()).closeCachedFileSystem(name.getURI(), fileSystemOptions);
-            fs = getFileSystem(rootName, fileSystemOptions, defaultTimeout);
-            testFile = fs.resolveFile(name);
+            return testFile;
+        } catch (final FileSystemException e) {
+            if (!Faults.isTransport(e)) {
+                throw e;
+            }
+            ((DefaultFileSystemManager) getContext().getFileSystemManager()).abortAndCloseFileSystem(fs);
+            if (!Faults.isFast(probeStart)) {
+                throw e;
+            }
+            TestPoints.hold("findfile.probe", pointKey(rootName));
+            final FileSystem replacement;
+            synchronized (this) {
+                if (!Faults.isFast(probeStart)) {
+                    throw e;
+                }
+                replacement = getFileSystem(rootName, fileSystemOptions, defaultTimeout, probeStart);
+            }
+            return replacement.resolveFile(name);
         }
+    }
 
-        // Locate the file
-        // return fs.resolveFile(name.getPath());
-        return testFile;
+    // The root URI with no user part and no query, as the test points write a key.
+    private static String pointKey(final FileName rootName) {
+        if (!(rootName instanceof GenericFileName)) {
+            return rootName.getURI();
+        }
+        final GenericFileName generic = (GenericFileName) rootName;
+        final StringBuilder key = new StringBuilder(generic.getScheme()).append("://").append(generic.getHostName());
+        if (generic.getPort() != generic.getDefaultPort()) {
+            key.append(':').append(generic.getPort());
+        }
+        return key.append(generic.getPath()).toString();
     }
 
     /**
@@ -166,7 +204,25 @@ public abstract class AbstractOriginatingFileProvider extends AbstractFileProvid
     protected synchronized FileSystem getFileSystem(final FileName rootFileName, final FileSystemOptions
             fileSystemOptions, Integer defaultTimeout)
             throws FileSystemException {
+        return getFileSystem(rootFileName, fileSystemOptions, defaultTimeout, System.nanoTime());
+    }
+
+    /**
+     * Returns the FileSystem associated with the specified root. A file system that is created here gets the given
+     * start of the fast window for its first connect.
+     *
+     * @param rootFileName The root path.
+     * @param fileSystemOptions The FileSystem options.
+     * @param defaultTimeout The connect timeout of the URI, or null.
+     * @param windowStart The start of the fast window, on the clock of {@link System#nanoTime()}.
+     * @return The FileSystem.
+     * @throws FileSystemException if an error occurs.
+     */
+    protected synchronized FileSystem getFileSystem(final FileName rootFileName, final FileSystemOptions
+            fileSystemOptions, final Integer defaultTimeout, final long windowStart)
+            throws FileSystemException {
         this.defaultTimeout = defaultTimeout;
+        this.windowStart = windowStart;
         FileSystem fs = findFileSystem(rootFileName, fileSystemOptions);
         if (fs == null) {
             // Need to create the file system, and cache it

@@ -147,6 +147,8 @@ public class MonitorInputStream extends BufferedInputStream {
         final int ch = super.read();
         if (ch != EOF_CHAR) {
             count.incrementAndGet();
+        } else {
+            close();
         }
 
         return ch;
@@ -170,6 +172,8 @@ public class MonitorInputStream extends BufferedInputStream {
         final int numRead = super.read(buffer, offset, length);
         if (numRead != EOF_CHAR) {
             count.addAndGet(numRead);
+        } else {
+            close();
         }
         return numRead;
     }

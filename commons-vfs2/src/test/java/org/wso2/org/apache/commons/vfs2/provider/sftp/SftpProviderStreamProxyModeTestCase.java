@@ -58,6 +58,7 @@ public class SftpProviderStreamProxyModeTestCase extends AbstractSftpProviderTes
         builder.setStrictHostKeyChecking(fileSystemOptions, "no");
         builder.setUserInfo(fileSystemOptions, new TrustEveryoneUserInfo());
         builder.setIdentityRepositoryFactory(fileSystemOptions, new TestIdentityRepositoryFactory());
+        TestServerOptions.apply(fileSystemOptions);
 
         final FileSystemOptions proxyOptions = (FileSystemOptions) fileSystemOptions.clone();
 

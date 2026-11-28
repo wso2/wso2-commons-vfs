@@ -16,6 +16,7 @@
  */
 package org.wso2.org.apache.commons.vfs2.provider.ftp;
 
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -49,7 +50,9 @@ public class FtpMdtmOnRefreshLastModifiedTests extends LastModifiedTests {
 
     private FtpClient spyClient(final FtpFileObject fileObject) throws FileSystemException {
         final FtpFileSystem fileSystem = (FtpFileSystem) fileObject.getFileSystem();
-        final FtpClient ftpClientSpy = spy(fileSystem.getClient());
+        // A call gives its client back, so the idle client can be the spy of an earlier round.
+        final FtpClient client = fileSystem.getClient();
+        final FtpClient ftpClientSpy = mockingDetails(client).isSpy() ? client : spy(client);
         fileSystem.putClient(ftpClientSpy);
         return ftpClientSpy;
     }

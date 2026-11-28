@@ -53,7 +53,7 @@ public class FtpsFileProvider extends FtpFileProvider {
             throws FileSystemException {
         // Create the file system
         final GenericFileName rootName = (GenericFileName) name;
-        final FtpsClientWrapper ftpClient = new FtpsClientWrapper(rootName, fileSystemOptions);
+        final FtpsClientWrapper ftpClient = new FtpsClientWrapper(rootName, fileSystemOptions, getSocketGroups());
         return new FtpsFileSystem(rootName, ftpClient, fileSystemOptions);
     }
 

@@ -44,6 +44,7 @@ public class FtpsFileSystem extends FtpFileSystem {
 
     @Override
     protected FtpsClientWrapper createWrapper() throws FileSystemException {
-        return new FtpsClientWrapper((GenericFileName) getRoot().getName(), getFileSystemOptions());
+        return new FtpsClientWrapper((GenericFileName) getRoot().getName(), getFileSystemOptions(),
+                getSocketGroups());
     }
 }

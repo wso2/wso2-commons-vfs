@@ -374,11 +374,13 @@ public class NamingTests extends AbstractProviderTestCase {
 
         // §5 Encode \
         file = getManager().resolveFile("dir%5cchild");
-        // 18-6-2005 imario@apache.org: all file separators normalized to "/"
-        // decided to do this to get the same behavior as in §4 on Windows
-        // platforms
-        // assertEquals(path + "/dir\\child", file.getName().getPathDecoded());
-        assertEquals(path + "/dir/child", file.getName().getPathDecoded());
+        // SFTP servers can report a literal backslash in a single name.
+        final boolean sftp = "sftp".equals(getReadFolder().getName().getScheme());
+        assertEquals(path + (sftp ? "/dir\\child" : "/dir/child"), file.getName().getPathDecoded());
+        if (sftp) {
+            file = getManager().resolveFile("dir\\child");
+            assertEquals(path + "/dir/child", file.getName().getPathDecoded());
+        }
 
         // §6 Use "%" literal
         assertThrows(FileSystemException.class, () -> getManager().resolveFile("%"));

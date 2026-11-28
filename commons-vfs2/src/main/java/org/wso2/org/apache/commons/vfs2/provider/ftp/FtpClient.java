@@ -31,12 +31,244 @@ import org.wso2.org.apache.commons.vfs2.FileSystemException;
 public interface FtpClient {
 
     /**
+     * One reply of the server.
+     */
+    final class Reply {
+
+        private final int code;
+
+        private final String text;
+
+        /**
+         * Constructs a reply.
+         *
+         * @param code the reply code.
+         * @param text the reply text, or for a reply 213 to SIZE or MDTM the value after the code.
+         */
+        public Reply(final int code, final String text) {
+            this.code = code;
+            this.text = text;
+        }
+
+        /**
+         * Gets the reply code.
+         *
+         * @return the reply code.
+         */
+        public int getCode() {
+            return code;
+        }
+
+        /**
+         * Gets the reply text, or for a reply 213 to SIZE or MDTM the value after the code.
+         *
+         * @return the text.
+         */
+        public String getText() {
+            return text;
+        }
+
+        @Override
+        public String toString() {
+            return code + " " + text;
+        }
+    }
+
+    /**
+     * The replies of a rename in two steps.
+     */
+    final class RenameReplies {
+
+        private final Reply from;
+
+        private final Reply to;
+
+        /**
+         * Constructs the replies.
+         *
+         * @param from the reply to RNFR.
+         * @param to the reply to RNTO, or null when RNTO was not sent.
+         */
+        public RenameReplies(final Reply from, final Reply to) {
+            this.from = from;
+            this.to = to;
+        }
+
+        /**
+         * Gets the reply to RNFR.
+         *
+         * @return the reply.
+         */
+        public Reply getFrom() {
+            return from;
+        }
+
+        /**
+         * Gets the reply to RNTO.
+         *
+         * @return the reply, or null when RNTO was not sent because RNFR was refused.
+         */
+        public Reply getTo() {
+            return to;
+        }
+    }
+
+    /**
+     * A listing whose final reply was read.
+     */
+    final class Listing {
+
+        private final FTPFile[] entries;
+
+        private final Reply failure;
+
+        private final boolean entered;
+
+        private final boolean backRefused;
+
+        /**
+         * Constructs a listing.
+         *
+         * @param entries the entries of a listing that ended with a good reply, or null.
+         * @param failure the reply of a listing that failed in both forms, or null.
+         * @param entered true when the second form changed into the folder.
+         * @param backRefused true when the change back to the first folder was refused.
+         */
+        public Listing(final FTPFile[] entries, final Reply failure, final boolean entered,
+                final boolean backRefused) {
+            this.entries = entries;
+            this.failure = failure;
+            this.entered = entered;
+            this.backRefused = backRefused;
+        }
+
+        /**
+         * Gets the entries of a listing that ended with a good reply.
+         *
+         * @return the entries, or null when the listing failed or the folder can not be entered.
+         */
+        public FTPFile[] getEntries() {
+            return entries;
+        }
+
+        /**
+         * Gets the reply of a listing that failed in both forms.
+         *
+         * @return the reply, or null when the listing ended with a good reply or the folder can not be entered.
+         */
+        public Reply getFailure() {
+            return failure;
+        }
+
+        /**
+         * Tells whether the second form changed into the folder.
+         *
+         * @return true when the folder was entered.
+         */
+        public boolean isEntered() {
+            return entered;
+        }
+
+        /**
+         * Tells whether the change back to the first folder was refused. Such a client is not used again.
+         *
+         * @return true when the change back was refused.
+         */
+        public boolean isBackRefused() {
+            return backRefused;
+        }
+    }
+
+    /**
+     * A change into a folder and back.
+     */
+    final class Change {
+
+        private final Reply reply;
+
+        private final boolean entered;
+
+        private final boolean backRefused;
+
+        /**
+         * Constructs a change.
+         *
+         * @param reply the reply to the change into the folder.
+         * @param entered true when the change into the folder worked.
+         * @param backRefused true when the change back to the first folder was refused.
+         */
+        public Change(final Reply reply, final boolean entered, final boolean backRefused) {
+            this.reply = reply;
+            this.entered = entered;
+            this.backRefused = backRefused;
+        }
+
+        /**
+         * Gets the reply to the change into the folder.
+         *
+         * @return the reply.
+         */
+        public Reply getReply() {
+            return reply;
+        }
+
+        /**
+         * Tells whether the change into the folder worked.
+         *
+         * @return true when the folder was entered.
+         */
+        public boolean isEntered() {
+            return entered;
+        }
+
+        /**
+         * Tells whether the change back to the first folder was refused. Such a client is not used again.
+         *
+         * @return true when the change back was refused.
+         */
+        public boolean isBackRefused() {
+            return backRefused;
+        }
+    }
+
+    /**
      * Aborts the current operation.
      *
      * @return true if aborted.
      * @throws IOException If an I/O error occurs
      */
     boolean abort() throws IOException;
+
+    /**
+     * Closes the sockets of the client at once. It sends no command and waits for no reply, so any thread may call it.
+     * A client after this call is not handed out again.
+     */
+    default void abortNow() {
+        // A client with no socket group has nothing to close here.
+    }
+
+    /**
+     * Tells from local state whether the client looks alive. It makes no remote call.
+     *
+     * @return true when the client is connected and was not aborted.
+     */
+    default boolean isAliveLocally() {
+        try {
+            return isConnected();
+        } catch (final FileSystemException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Tells whether an idle client can still be used. The caller holds the client, so no command runs on it. It sends
+     * nothing to the server.
+     *
+     * @return true when the client looks alive.
+     */
+    default boolean probeIdle() {
+        return isAliveLocally();
+    }
 
     /**
      * Returns an OutputStream through which data can be written to append to a file on the server with the given name.
@@ -115,6 +347,15 @@ public interface FtpClient {
     boolean isConnected() throws FileSystemException;
 
     /**
+     * Changes into a folder and back to the first folder. A read command. A transport reply aborts the client.
+     *
+     * @param relPath The folder.
+     * @return the change.
+     * @throws IOException if an I/O error occurs.
+     */
+    Change enterAndBack(String relPath) throws IOException;
+
+    /**
      * Using the default system autodetect mechanism, obtain a list of file information for the current working directory or
      * for just a single file.
      * <p>
@@ -128,6 +369,18 @@ public interface FtpClient {
     FTPFile[] listFiles(String relPath) throws IOException;
 
     /**
+     * Lists a folder and reads the final reply of the listing. A read command. A transport reply aborts the client and
+     * sends no further command on it. A refusal that is not a transport reply runs the second form: a change into the
+     * folder, a listing with no path, and the change back.
+     *
+     * @param relPath The folder.
+     * @param hidden true to ask for hidden names with the option {@code -a}.
+     * @return the listing.
+     * @throws IOException if an I/O error occurs.
+     */
+    Listing listChecked(String relPath, boolean hidden) throws IOException;
+
+    /**
      * Creates a new subdirectory on the FTP server in the current directory (if a relative pathname is given) or where
      * specified (if an absolute pathname is given).
      *
@@ -136,6 +389,15 @@ public interface FtpClient {
      * @throws IOException If an I/O error occurs.
      */
     boolean makeDirectory(String relPath) throws IOException;
+
+    /**
+     * Sends MDTM and gives its reply. A read command. A transport reply aborts the client.
+     *
+     * @param relPath The file.
+     * @return the reply, with the time as its text for a reply 213.
+     * @throws IOException if an I/O error occurs.
+     */
+    Reply mdtmReply(String relPath) throws IOException;
 
     /**
      * Sends the MDTM command to get a file's date and time information after file transfer. It is typically more accurate
@@ -173,6 +435,17 @@ public interface FtpClient {
      * @throws IOException If an I/O error occurs.
      */
     boolean rename(String from, String to) throws IOException;
+
+    /**
+     * Renames in two steps. RNTO is sent only after a positive intermediate reply to RNFR. Nothing is sent again. A
+     * reply 421 to a step is given as the reply of that step, and the caller does not use the client again.
+     *
+     * @param from The name to rename.
+     * @param to The new name.
+     * @return the replies.
+     * @throws IOException if an I/O error occurs. The client is aborted, and the rename may have worked.
+     */
+    RenameReplies renameSteps(String from, String to) throws IOException;
 
     /**
      * Returns an InputStream from which a named file from the server can be read.
@@ -225,5 +498,14 @@ public interface FtpClient {
      * @throws IOException If an I/O error occurs.
      */
     OutputStream storeFileStream(String relPath) throws IOException;
+
+    /**
+     * Sends SIZE and gives its reply. A read command. A transport reply aborts the client.
+     *
+     * @param relPath The file.
+     * @return the reply, with the size as its text for a reply 213.
+     * @throws IOException if an I/O error occurs.
+     */
+    Reply sizeReply(String relPath) throws IOException;
 
 }

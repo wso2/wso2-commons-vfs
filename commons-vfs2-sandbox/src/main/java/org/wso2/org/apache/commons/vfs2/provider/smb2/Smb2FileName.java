@@ -25,12 +25,19 @@ import org.wso2.org.apache.commons.vfs2.provider.GenericFileName;
 public class Smb2FileName extends GenericFileName {
 
     private final String shareName;
+    private final String query;
     private String uri;
 
     protected Smb2FileName(String scheme, String hostName, int port, int defaultPort,
                            String userName, String password, String path, FileType type, String shareName) {
 
+        this(scheme, hostName, port, defaultPort, userName, password, path, type, shareName, null);
+    }
+
+    Smb2FileName(String scheme, String hostName, int port, int defaultPort, String userName, String password,
+                 String path, FileType type, String shareName, String query) {
         super(scheme, hostName, port, defaultPort, userName, password, path, type);
+        this.query = query;
         this.shareName = shareName;
         createURI();
     }
@@ -43,6 +50,10 @@ public class Smb2FileName extends GenericFileName {
     public String getShareName() {
 
         return shareName;
+    }
+
+    public String getQueryString() {
+        return query;
     }
 
     @Override
@@ -82,6 +93,9 @@ public class Smb2FileName extends GenericFileName {
             }
             sb.append(path);
         }
+        if (query != null) {
+            sb.append('?').append(query);
+        }
         return sb.toString();
     }
 
@@ -93,7 +107,7 @@ public class Smb2FileName extends GenericFileName {
         } else {
             return new Smb2FileName(this.getScheme(), this.getHostName(), this.getPort(),
                     this.getDefaultPort(), this.getUserName(), this.getPassword(),
-                    path.substring(0, path.lastIndexOf("/")), this.getType(), shareName);
+                    path.substring(0, path.lastIndexOf("/")), this.getType(), shareName, query);
         }
     }
 

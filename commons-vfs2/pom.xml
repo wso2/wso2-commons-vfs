@@ -77,6 +77,18 @@
       <artifactId>jsch</artifactId>
       <optional>true</optional>
     </dependency>
+    <!-- Faults reads the exceptions of smbj. LibraryCallsTest checks the smbj calls of the sandbox too. -->
+    <dependency>
+      <groupId>com.hierynomus</groupId>
+      <artifactId>smbj</artifactId>
+      <optional>true</optional>
+      <exclusions>
+        <exclusion>
+          <groupId>org.bouncycastle</groupId>
+          <artifactId>bcprov-jdk18on</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Tests -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -162,6 +174,9 @@
     <project.build.outputTimestamp>2025-08-22T06:19:28Z</project.build.outputTimestamp>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- The release form of TestPoints. The profile testbuild takes the test form in its place. -->
+    <testpoints.source>src/testpoints-off/java</testpoints.source>
+    <testpoints.excludedGroups>testbuild</testpoints.excludedGroups>
   </properties>
 
 
@@ -202,6 +217,26 @@
 
     <plugins>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>add-testpoints-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${testpoints.source}</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <executions>
@@ -237,8 +272,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <skipTests>true</skipTests>
+          <skipTests>false</skipTests>
           <trimStackTrace>false</trimStackTrace>
+          <excludedGroups>${testpoints.excludedGroups}</excludedGroups>
           <systemPropertyVariables>
             <test.basedir>target/test-classes/test-data</test.basedir>
             <test.basedir.res>test-data</test.basedir.res>
@@ -259,6 +295,15 @@
   </build>
 
   <profiles>
+    <!-- The test build. It compiles the test form of TestPoints and runs the tests that need it. -->
+    <profile>
+      <id>testbuild</id>
+      <properties>
+        <testpoints.source>src/testpoints-on/java</testpoints.source>
+        <testpoints.excludedGroups />
+      </properties>
+    </profile>
+
     <profile>
       <id>webdav</id>
       <activation>

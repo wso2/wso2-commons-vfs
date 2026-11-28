@@ -18,6 +18,9 @@ package org.wso2.org.apache.commons.vfs2;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.wso2.org.apache.commons.vfs2.FileSystemException;
 
@@ -49,6 +52,49 @@ public class FileSystemExceptionTest {
     }
 
     /**
+     * A password with white space or a slash is masked to the last @ before the host, as the log mask does.
+     */
+    @Test
+    public void testMasksPasswordWithWhiteSpaceOrSlash() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/rename.error",
+                "sftp://user:my pass@host/in", "sftp://rig:pa/ss@host/in");
+        assertEquals("sftp://user:***@host/in", fse.getInfo()[0]);
+        assertEquals("sftp://rig:***@host/in", fse.getInfo()[1]);
+        final FileSystemException more = new FileSystemException("vfs.provider/rename.error",
+                "sftp://user:pass @host/in", "smb2://John Smith:pw@server/share");
+        assertEquals("sftp://user:***@host/in", more.getInfo()[0]);
+        assertEquals("smb2://John Smith:***@server/share", more.getInfo()[1]);
+    }
+
+    // Runs the work on a thread with a small stack, so a pattern that recurses once per word fails here.
+    private static String onSmallStack(final Callable<String> work) throws InterruptedException {
+        final AtomicReference<Object> result = new AtomicReference<>();
+        final Thread thread = new Thread(null, () -> {
+            try {
+                result.set(work.call());
+            } catch (final Throwable error) {
+                result.set(error);
+            }
+        }, "small-stack", 256 * 1024);
+        thread.start();
+        thread.join();
+        if (result.get() instanceof Throwable) {
+            throw new AssertionError("The mask failed on a small stack", (Throwable) result.get());
+        }
+        return (String) result.get();
+    }
+
+    @Test
+    public void testManyWordsWithNoSlashDoNotOverflowASmallStack() throws Exception {
+        final StringBuilder text = new StringBuilder("Could not connect to sftp://host:22");
+        for (int i = 0; i < 5000; i++) {
+            text.append(" word");
+        }
+        assertEquals(text.toString(), onSmallStack(() -> new FileSystemException("vfs.provider/rename.error",
+                text.toString()).getInfo()[0]));
+    }
+
+    /**
      * Tests a {@link FileSystemException} containing info with a nested URL containing a complete basic authentication.
      */
     @Test
@@ -56,6 +102,27 @@ public class FileSystemExceptionTest {
         final FileSystemException fse = new FileSystemException("vfs.provider/delete.error",
                 "zip:http://foo:bar@junit.org/test.bin");
         assertEquals("zip:http://foo:***@junit.org/test.bin", fse.getInfo()[0]);
+    }
+
+
+    /**
+     * VFS takes a # in the user name as typed. The password after it is masked in every address of the text.
+     */
+    @Test
+    public void testMasksPasswordAfterAUserNameWithAHash() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/rename.error",
+                "Failed sftp://un#it:SyntheticOne@host/a and ftp://x#y:SyntheticTwo@server/b");
+        assertEquals("Failed sftp://un#it:***@host/a and ftp://x#y:***@server/b", fse.getInfo()[0]);
+    }
+
+    /**
+     * Tests that a secret in the query of a URL, such as the proxy password of FTP, is masked too.
+     */
+    @Test
+    public void testMasksSecretQueryValues() {
+        final FileSystemException fse = new FileSystemException("vfs.provider/delete.error",
+                "ftp://foo:bar@junit.org/test.bin?proxyPassword=secret&passive=true");
+        assertEquals("ftp://foo:***@junit.org/test.bin?proxyPassword=***&passive=true", fse.getInfo()[0]);
     }
 
 }
